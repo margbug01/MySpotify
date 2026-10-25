@@ -1,0 +1,82 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Vinyl 播放页草图 · 三个方向</title>
+<style>
+:root{--muted:#EEEDEA;--muted-foreground:#6B6A66;--radius:8px;--font-sans:"MiSans",system-ui,sans-serif;--border:#D6D4CE;--primary:#2C2C2A;--primary-foreground:#fff}
+body{font:14px/1.6 var(--font-sans);margin:32px auto;max-width:1100px;padding:0 24px;color:#222;background:#FAFAF8}
+button{font:500 13px var(--font-sans);padding:6px 14px;border:0.5px solid var(--border);border-radius:var(--radius);background:transparent;cursor:pointer}
+button:hover{background:var(--muted)}
+button.primary{background:var(--primary);color:var(--primary-foreground);border-color:var(--primary)}
+@keyframes vspin{to{transform:rotate(360deg)}}
+.vrec{animation:vspin 3.6s linear infinite;animation-play-state:paused}
+.vplay .vrec{animation-play-state:running}
+@media (prefers-reduced-motion: reduce){.vrec{animation:none}.vcol,.varm{transition:none!important}}
+.vcol{transition:transform .7s cubic-bezier(.2,0,0,1)}
+.vl{margin:0 0 18px;transition:opacity .5s}
+.vtr{transition:opacity .5s;margin-top:4px}
+.vnum{font-variant-numeric:tabular-nums}
+</style>
+<div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+<button id="pA">唱片机</button><button id="pB">浸色</button><button id="pC">海报</button>
+<span style="flex:1"></span><button id="pP">暂停</button>
+</div>
+<div style="background:var(--muted);border-radius:calc(var(--radius)*1.5);padding:12px">
+<div id="vwin" style="position:relative;height:520px;border-radius:var(--radius);overflow:hidden;font-family:MiSans,var(--font-sans)"></div>
+</div>
+<div id="vnote" style="color:var(--muted-foreground);font-size:13px;margin-top:10px"></div>
+<script>
+const L=[["The ferry lights are counting down the shore","渡轮的灯一盏盏数着岸"],["I keep the radio low so you can sleep","我把收音机调小，好让你睡"],["Every song tonight sounds like the sea","今晚每首歌都像海"],["And every wave is something we forgot","每一道浪，都是我们忘掉的事"],["Hold the line until the morning finds us","撑到早晨来找我们"],["Low tide, low light, low radio","退潮，微光，小声的电台"],["Nobody's driving, nobody's home","没人开车，也没人在家"],["Just the hum of the engine and you","只剩引擎的低鸣，和你"]];
+const COVER="radial-gradient(circle at 70% 34%, #FBD58A 0 7%, #F0A94B 7.5% 10%, rgba(240,169,75,.32) 10.5% 15%, transparent 15.5%), linear-gradient(180deg, #1E4C5C 0%, #2E6E7E 58%, #F0A94B 58% 58.8%, #163F4D 59%, #0F2E3A 100%)";
+const DUR=221;let dir="A",cur=1,playing=true,t=52;
+const win=document.getElementById("vwin"),note=document.getElementById("vnote");
+const NOTES={A:"唱片机：封面印在唱片中间的标签上，播放时唱片转、唱臂落下，暂停时唱臂抬起。底色取自封面的两个主色。",B:"浸色：整个窗口铺满放大模糊后的封面，歌词用大字逐行滚动。最常见，也最稳。",C:"海报：画面上只放正在唱的这一句，字号拉到最大，底色直接用封面里最亮的那个颜色。"};
+const ico=(d,c,s,st)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" style="display:block" ${st?`fill="none" stroke="${c}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"`:`fill="${c}"`}><path d="${d}"/></svg>`;
+const I={prev:"M6 6h2v12H6zM9.5 12 18 6v12z",next:"M16 6h2v12h-2zM6 18l8.5-6L6 6z",play:"M8.5 5.5v13l10.5-6.5z",pause:"M7 5h3.6v14H7zM13.4 5H17v14h-3.6z",shuf:"M16 4h4v4M20 4l-6 6M4 20l6-6M16 20h4v-4M20 20 4 4",rep:"M17 2l3 3-3 3M4 11V9a4 4 0 0 1 4-4h12M7 22l-3-3 3-3M20 13v2a4 4 0 0 1-4 4H4",heart:"M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"};
+const cover=(s,r,x)=>`<div style="width:${s}px;height:${s}px;border-radius:${r}px;background:${COVER};flex:none;${x||""}"></div>`;
+const fmt=s=>{s=Math.max(0,Math.round(s));return Math.floor(s/60)+":"+String(s%60).padStart(2,"0")};
+const prog=(fg,track,w,h)=>`<div style="width:${w};"><div style="height:${h}px;border-radius:${h}px;background:${track};overflow:hidden"><div class="vfill" style="height:100%;width:0;background:${fg};border-radius:${h}px"></div></div><div class="vnum" style="display:flex;justify-content:space-between;font-size:12px;opacity:.6;margin-top:6px"><span class="vcur">0:00</span><span>${fmt(DUR)}</span></div></div>`;
+const ctl=(fg,pbg,pfg,w,just)=>`<div style="width:${w};display:flex;align-items:center;justify-content:${just};gap:22px"><span style="opacity:.6">${ico(I.shuf,fg,18,1)}</span>${ico(I.prev,fg,24)}<span style="width:52px;height:52px;border-radius:50%;background:${pbg};display:flex;align-items:center;justify-content:center;cursor:pointer" class="vpp" data-c="${pfg}"></span>${ico(I.next,fg,24)}<span style="opacity:.6">${ico(I.rep,fg,18,1)}</span></div>`;
+const lines=()=>L.map((l,i)=>`<div class="vl" data-i="${i}"><div class="ven">${l[0]}</div><div class="vtr">${l[1]}</div></div>`).join("");
+const lyrBox=(fs,fw)=>`<div class="vbox" style="flex:1;min-width:0;position:relative;overflow:hidden;-webkit-mask-image:linear-gradient(transparent,#000 16%,#000 76%,transparent);mask-image:linear-gradient(transparent,#000 16%,#000 76%,transparent)"><div class="vcol" style="position:absolute;left:0;right:0;top:0;font-size:${fs}px;font-weight:${fw};line-height:1.3">${lines()}</div></div>`;
+const T={
+A:()=>`<div style="position:absolute;inset:0;background:radial-gradient(90% 70% at 92% 0%, rgba(240,169,75,.30), transparent 62%), linear-gradient(165deg,#173D4C 0%,#0F2A35 58%,#123744 100%);color:#F4E7CF;display:flex;padding:34px 40px;gap:44px">
+<div style="width:300px;flex:none;display:flex;flex-direction:column;align-items:flex-start">
+<div style="position:relative;width:260px;height:260px;margin:6px 0 26px 10px">
+<div class="vrec" style="position:absolute;inset:0;border-radius:50%;background:repeating-radial-gradient(circle at 50% 50%, #181A1B 0 1.2px, #222527 1.2px 2.6px);box-shadow:0 18px 40px rgba(0,0,0,.45)">${cover(100,50,"position:absolute;left:80px;top:80px")}<div style="position:absolute;left:126px;top:126px;width:8px;height:8px;border-radius:50%;background:#0D0F10"></div></div>
+<div style="position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 20deg, transparent 0 8%, rgba(255,255,255,.08) 12%, transparent 18% 50%, rgba(255,255,255,.05) 58%, transparent 66%);pointer-events:none"></div>
+<div class="varm" style="position:absolute;left:262px;top:-14px;width:24px;height:24px;transform-origin:12px 12px;transition:transform .9s cubic-bezier(.2,0,0,1)"><div style="position:absolute;inset:0;border-radius:50%;background:#CFC5B4;box-shadow:0 2px 6px rgba(0,0,0,.4)"></div><div style="position:absolute;left:10px;top:12px;width:4px;height:166px;border-radius:2px;background:#DCD3C4"></div><div style="position:absolute;left:5px;top:172px;width:14px;height:22px;border-radius:3px;background:#EDE5D7"></div></div>
+</div>
+<div style="width:280px;display:flex;align-items:flex-start;justify-content:space-between"><div><div style="font-size:24px;font-weight:600">Low Tide Radio</div><div style="font-size:14px;opacity:.65;margin-top:2px">Hollow Coast</div></div><span style="margin-top:6px">${ico(I.heart,"#F0A94B",20,1)}</span></div>
+<div style="margin-top:18px">${prog("#F0A94B","rgba(244,231,207,.16)","280px",3)}</div>
+<div style="margin-top:10px">${ctl("#F4E7CF","#F4E7CF","#173A4A","280px","space-between")}</div>
+</div>${lyrBox(20,600)}</div>`,
+B:()=>`<div style="position:absolute;inset:-80px;background:${COVER};filter:blur(70px) saturate(1.35);transform:scale(1.25)"></div><div style="position:absolute;inset:0;background:rgba(8,28,36,.38)"></div>
+<div style="position:absolute;inset:0;color:#fff;display:flex;padding:40px 44px;gap:48px">
+<div style="width:270px;flex:none">${cover(260,14,"box-shadow:0 24px 50px rgba(0,0,0,.40)")}
+<div style="margin-top:22px;font-size:22px;font-weight:700">Low Tide Radio</div><div style="font-size:14px;opacity:.7;margin-top:2px">Hollow Coast</div>
+<div style="margin-top:16px">${prog("#fff","rgba(255,255,255,.22)","260px",4)}</div>
+<div style="margin-top:8px">${ctl("#fff","#fff","#173A4A","260px","space-between")}</div></div>
+${lyrBox(28,700)}</div>`,
+C:()=>`<div style="position:absolute;inset:0;background:#F0A94B;color:#173A4A;padding:30px 40px 26px;display:flex;flex-direction:column">
+<div style="display:flex;align-items:center;gap:12px">${cover(52,6)}<div style="flex:1"><div style="font-size:15px;font-weight:600">Low Tide Radio</div><div style="font-size:13px;opacity:.7">Hollow Coast</div></div>${ico(I.heart,"#173A4A",20,1)}</div>
+<div style="flex:1;display:flex;flex-direction:column;justify-content:center;max-width:92%">
+<div id="vbig" style="font-size:54px;font-weight:800;line-height:1.06;letter-spacing:-.5px;transition:opacity .35s,transform .35s"></div>
+<div id="vtrc" style="font-size:18px;font-weight:500;margin-top:16px;opacity:.75;transition:opacity .35s"></div>
+<div id="vnext" style="font-size:17px;margin-top:30px;opacity:.38;transition:opacity .35s"></div></div>
+${prog("#173A4A","rgba(23,58,74,.16)","100%",6)}
+<div style="margin-top:6px;display:flex;justify-content:flex-end">${ctl("#173A4A","#173A4A","#F0A94B","auto","flex-end")}</div></div>`};
+function setPP(){win.classList.toggle("vplay",playing);document.getElementById("pP").textContent=playing?"暂停":"播放";win.querySelectorAll(".vpp").forEach(e=>e.innerHTML=ico(playing?I.pause:I.play,e.dataset.c,24));const a=win.querySelector(".varm");if(a)a.style.transform=`rotate(${playing?24:-4}deg)`}
+function paintProg(){const p=t/DUR*100;win.querySelectorAll(".vfill").forEach(e=>e.style.width=p.toFixed(2)+"%");win.querySelectorAll(".vcur").forEach(e=>e.textContent=fmt(t))}
+function paintLyr(first){
+if(dir==="C"){const b=document.getElementById("vbig"),tr=document.getElementById("vtrc"),n=document.getElementById("vnext");const put=()=>{b.textContent=L[cur][0];tr.textContent=L[cur][1];n.textContent=L[(cur+1)%L.length][0];b.style.opacity=1;b.style.transform="none";tr.style.opacity=.75;n.style.opacity=.38};if(first){put();return}b.style.opacity=0;b.style.transform="translateY(-8px)";tr.style.opacity=0;n.style.opacity=0;setTimeout(put,350);return}
+const col=win.querySelector(".vcol"),box=win.querySelector(".vbox");const tc=dir==="A"?"#F0A94B":"#fff",tf=dir==="A"?14:15;
+col.querySelectorAll(".vl").forEach(el=>{const on=+el.dataset.i===cur;el.style.opacity=on?1:(dir==="A"?.3:.28);const tr=el.querySelector(".vtr");tr.style.opacity=on?(dir==="A"?.95:.75):0;tr.style.fontSize=tf+"px";tr.style.fontWeight=500;tr.style.color=tc});
+const c=col.querySelector(`.vl[data-i="${cur}"]`);if(first)col.style.transition="none";col.style.transform=`translateY(${Math.round(box.clientHeight*.36-c.offsetTop)}px)`;if(first){col.offsetHeight;col.style.transition=""}}
+function render(){win.innerHTML=T[dir]();note.textContent=NOTES[dir];["A","B","C"].forEach(k=>document.getElementById("p"+k).className=k===dir?"primary":"");setPP();paintProg();paintLyr(true)}
+["A","B","C"].forEach(k=>document.getElementById("p"+k).onclick=()=>{dir=k;render()});
+document.getElementById("pP").onclick=()=>{playing=!playing;setPP()};
+win.addEventListener("click",e=>{if(e.target.closest(".vpp")){playing=!playing;setPP()}});
+setInterval(()=>{if(playing){t+=.25;if(t>=DUR)t=0;paintProg()}},250);
+setInterval(()=>{if(playing){cur=(cur+1)%L.length;paintLyr(false)}},3400);
+render();
+</script>

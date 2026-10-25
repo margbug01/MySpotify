@@ -1,0 +1,65 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Vinyl</title>
+<style>
+  body { font: 15px "MiSans", system-ui, sans-serif; margin: 40px; color: #222; }
+  h2 { margin: 0 0 16px; font-weight: 600; }
+  button { font: inherit; padding: 8px 20px; }
+  audio { width: 100%; margin: 16px 0; }
+  #log { font: 12px ui-monospace, Consolas, monospace; white-space: pre-wrap; color: #666; }
+</style>
+<h2 id="title">…</h2>
+<button id="play" hidden>▶ 播放</button>
+<audio id="audio" controls></audio>
+<div id="log"></div>
+<script src="/hls.js"></script>
+<script>
+const logEl = document.getElementById('log');
+const log = (type, msg) => {
+  logEl.textContent += type + ' ' + (msg || '') + '\n';
+  fetch('/log', { method: 'POST', body: JSON.stringify({ type, msg: String(msg || '') }) }).catch(() => {});
+};
+
+(async () => {
+  const info = await (await fetch('/info')).json();
+  document.getElementById('title').textContent = info.name;
+  try {
+    await navigator.requestMediaKeySystemAccess('com.widevine.alpha', [{
+      initDataTypes: ['cenc'],
+      audioCapabilities: [{ contentType: 'audio/mp4; codecs="mp4a.40.2"' }],
+    }]);
+    log('widevine', 'available');
+  } catch (e) {
+    log('widevine', 'unavailable: ' + e);
+  }
+
+  const audio = document.getElementById('audio');
+  for (const n of ['playing', 'waiting', 'waitingforkey', 'pause', 'ended']) {
+    audio.addEventListener(n, () => log('audio', n + ' t=' + audio.currentTime.toFixed(1)));
+  }
+  audio.addEventListener('error', () => log('error', audio.error && audio.error.code + ' ' + audio.error.message));
+  let last = -1;
+  audio.addEventListener('timeupdate', () => {
+    const s = Math.floor(audio.currentTime);
+    if (s % 5 === 0 && s !== last) { last = s; log('position', s + 's / ' + Math.round(audio.duration || 0) + 's'); }
+  });
+
+  const hls = new Hls({
+    emeEnabled: true,
+    drmSystems: { 'com.widevine.alpha': { licenseUrl: '/license', serverCertificateUrl: '/cert' } },
+  });
+  hls.on(Hls.Events.ERROR, (e, d) => log(d.fatal ? 'fatal' : 'hls-error',
+    d.type + ' ' + d.details + (d.response && d.response.code ? ' http=' + d.response.code : '') + (d.error ? ' ' + d.error.message : '')));
+  hls.on(Hls.Events.MANIFEST_PARSED, () => {
+    log('hls', 'manifest parsed');
+    audio.play().then(() => log('play', 'started')).catch((err) => {
+      log('play', 'needs a click: ' + err.name);
+      const b = document.getElementById('play');
+      b.hidden = false;
+      b.onclick = () => { b.hidden = true; audio.play(); };
+    });
+  });
+  hls.loadSource('/track.m3u8');
+  hls.attachMedia(audio);
+})().catch((e) => log('fatal', (e && e.stack) || e));
+</script>
