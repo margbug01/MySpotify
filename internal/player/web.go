@@ -44,6 +44,9 @@ type Web struct {
 	mu   sync.Mutex
 	gen  int
 	outs map[int]*webOut
+
+	// Cache, if set, keeps the parts of tracks the page asks for.
+	Cache *Cache
 }
 
 // NewWeb starts the page that plays, in a window never shown. It runs on
@@ -236,8 +239,12 @@ func (w *Web) serveMedia(rw http.ResponseWriter, r *http.Request, rest string) {
 		http.NotFound(rw, r)
 		return
 	}
+	rg := r.Header.Get("Range")
+	if w.Cache.serve(rw, o.sources[i], rg) {
+		return
+	}
 	req, _ := http.NewRequestWithContext(r.Context(), http.MethodGet, o.sources[i], nil)
-	if rg := r.Header.Get("Range"); rg != "" {
+	if rg != "" {
 		req.Header.Set("Range", rg)
 	}
 	res, err := spotify.Client.Do(req)
@@ -252,7 +259,9 @@ func (w *Web) serveMedia(rw http.ResponseWriter, r *http.Request, rest string) {
 		}
 	}
 	rw.WriteHeader(res.StatusCode)
-	io.Copy(rw, res.Body)
+	k := w.Cache.keep(o.sources[i], rg, res)
+	_, err = io.Copy(rw, io.TeeReader(res.Body, k))
+	k.done(err == nil)
 }
 
 // forward sends the Widevine module's request to Spotify's licence

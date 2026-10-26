@@ -29,13 +29,14 @@ go run github.com/tc-hib/go-winres@v0.3.3 simply --icon resources/icon.png --man
 ## 开发
 
 - `NM_SHOTS=<目录>`：自动走一遍首页 → 排行榜 → 歌单 → 播放 → 播放页 → 待播清单 → 搜索，每步截图（静音）。
+- `NM_SHOTS=<目录> NM_SCENE=once`：静音放排行榜里的一首歌 10 秒，只要一次许可证，打印播放状态和缓存大小。验证真播放先用它，别用 play（play 要好几次许可证，半小时十几次就会被限流）。
 - `NM_SHOTS=<目录> NM_SCENE=play`：静音验证播放：起播、拖到结尾自动下一首、暂停/继续、下一首，过程打到 stderr。用不带 `-H windowsgui` 编的版本看输出。
 - `LIVE=<身份文件> go test -run TestLive ./internal/spotify`：用真 token 把每个接口打一遍。身份文件是 `window.__vinyl` 的 JSON。
 - `LIVE=<身份文件> LIVE_EDIT=1 go test -run TestLiveEdit ./internal/spotify`：在这个账号上建歌单、加两首、删一首、改名、删歌单，点喜欢再取消、关注再取消，每步读回来核对，最后恢复原样。会真改账号，先问过再跑。
 
 ## 和上游比少了什么
 
-评论和间奏热评、私人 FM 和心动模式（换成了 Spotify 的歌曲/歌手电台）、音质档位、音量均衡、歌曲缓存、跨设备续播、自动更新。Spotify 没有对应的，或者暂时没接。
+评论和间奏热评、私人 FM 和心动模式（换成了 Spotify 的歌曲/歌手电台）、音质档位（免费号只有 128k）、音量均衡、跨设备续播、自动更新。Spotify 没有对应的，或者暂时没接。
 
 频谱拿不到（音频在 CDM 里解密），播放中的小音柱是按播放位置算的动画。
 

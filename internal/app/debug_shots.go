@@ -250,6 +250,38 @@ func init() {
 				mygo.RunOnMain(mygo.App.Quit)
 				return
 			}
+			if os.Getenv("NM_SCENE") == "once" {
+				// One track of the charts, muted, for ten seconds: one licence
+				// asked for, which a dozen in half an hour would have Spotify
+				// turn away. What it does, and the cache, go to stderr.
+				step(0, func() { a.loadPlaylist(a.charts[1].ID, false) })
+				for range 40 {
+					var ok bool
+					mygo.RunOnMain(func() { ok = a.playlists[a.charts[1].ID] != nil })
+					if ok {
+						break
+					}
+					time.Sleep(250 * time.Millisecond)
+				}
+				step(0, func() {
+					tracks := a.playlists[a.charts[1].ID].Tracks
+					a.volume = 0
+					a.pl.SetVolume(0)
+					a.pl.PlayQueue(tracks, firstPlayable(tracks))
+				})
+				for i := range 10 {
+					time.Sleep(time.Second)
+					mygo.RunOnMain(func() {
+						println(i+1, "s", a.pl.Current().Name, "playing", a.pl.Playing(), "loading", a.pl.Loading(),
+							"at", a.pl.Position().Round(100*time.Millisecond).String(), "err", a.pl.Err())
+					})
+				}
+				if c := a.partCache(); c != nil {
+					println("cache", c.Size())
+				}
+				mygo.RunOnMain(mygo.App.Quit)
+				return
+			}
 			if os.Getenv("NM_SCENE") == "play" {
 				// The web player's transport, muted: playing on, a track
 				// ending into the next, pausing, resuming and skipping.

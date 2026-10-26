@@ -129,6 +129,7 @@ type app struct {
 
 	settings    settings
 	settingsWin *mygo.Window
+	cacheUsed   int64 // the bytes the cache of tracks takes, -1 until measured
 
 	restored     bool   // playback picked up where it was left
 	savedSession string // the session as last kept
@@ -177,6 +178,7 @@ func Run() error {
 		arErr:      map[string]string{},
 		loadingRel: map[string]bool{},
 		lyricAt:    -1,
+		cacheUsed:  -1,
 		queueAt:    -1,
 	}
 	// Its data, the web player's sign-in among it, lives under this name,
@@ -207,6 +209,7 @@ func Run() error {
 		a.pl = player.New(a.post)
 		if web, err := player.NewWeb(); err == nil {
 			a.pl.Web = web
+			web.Cache = newPartCache(a.settings.CacheMB)
 		} else {
 			log.Printf("player: %v", err)
 		}

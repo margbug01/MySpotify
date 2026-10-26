@@ -38,11 +38,15 @@ type settings struct {
 	// on.
 	Fog bool `json:"fog"`
 
+	// CacheMB is how many megabytes the parts of tracks kept on disk may
+	// take; 0 keeps none.
+	CacheMB int `json:"cacheMB"`
+
 	path string // where they were loaded from, and are saved to
 }
 
 func defaultSettings() settings {
-	return settings{NotchActivity: true, Appearance: "system", Volume: 0.8}
+	return settings{NotchActivity: true, Appearance: "system", Volume: 0.8, CacheMB: 1024}
 }
 
 func settingsPath() (string, error) {

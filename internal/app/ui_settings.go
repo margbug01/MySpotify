@@ -8,6 +8,7 @@ import (
 
 // openSettings shows the settings window, opening it the first time.
 func (a *app) openSettings() {
+	a.measureCache()
 	if a.settingsWin != nil {
 		a.settingsWin.Show()
 		a.settingsWin.Focus()
@@ -114,6 +115,33 @@ func (a *app) settingsView(c *ui.Context) {
 			row("烟雾背景", "播放页的背景化作封面色调的烟雾，缓缓升起，随低音起伏；仍在打磨，会多用一些电量", func() {
 				if ui.Switch(c.Key("fog"), &s.Fog).Label("烟雾背景").Changed() {
 					a.changed()
+				}
+			})
+		})
+
+		group("缓存", func() {
+			row("歌曲缓存", "听过的歌曲（加密的）保存在本机，再次播放更快、不耗流量，但仍要联网授权；"+a.cacheUsage(), func() {
+				labels := make([]string, len(cacheLimits))
+				chosen := cacheLimits[2].label
+				for i, l := range cacheLimits {
+					labels[i] = l.label
+					if l.mb == s.CacheMB {
+						chosen = l.label
+					}
+				}
+				if ui.Select(c.Key("cache"), &chosen, labels).Label("歌曲缓存").Width(150).Changed() {
+					for _, l := range cacheLimits {
+						if l.label == chosen {
+							s.CacheMB = l.mb
+						}
+					}
+					s.save()
+					a.applyCacheLimit()
+				}
+			})
+			row("清除缓存", "删除保存在本机的全部歌曲", func() {
+				if ui.Button(c.Key("clear-cache"), "清除").Disabled(a.cacheUsed <= 0).Clicked() {
+					a.clearCache()
 				}
 			})
 		})
