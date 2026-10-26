@@ -17,6 +17,12 @@ go test ./...
 CGO_ENABLED=0 go build -trimpath -ldflags="-H windowsgui -s -w" -o outputs/Vinyl.exe .
 ```
 
+图标、版本信息和 manifest 在 `rsrc_windows_amd64.syso`，换图标时重新生成：
+
+```
+go run github.com/tc-hib/go-winres@v0.3.3 simply --icon resources/icon.png --manifest gui --product-name Vinyl --product-version 0.1.0 --file-version 0.1.0 --original-filename Vinyl.exe --arch amd64 --out rsrc
+```
+
 需要系统装有 WebView2 运行时（Windows 10/11 一般自带）。数据在 `%APPDATA%\Vinyl`，WebView 登录态在 `%LOCALAPPDATA%\Vinyl\WebView2`。
 
 ## 开发
@@ -33,4 +39,4 @@ CGO_ENABLED=0 go build -trimpath -ldflags="-H windowsgui -s -w" -o outputs/Vinyl
 
 ## 许可证
 
-AGPL-3.0，随上游。`internal/player/web/hls.min.js` 是 hls.js 1.7.3（Apache-2.0）。
+AGPL-3.0，随上游。图标 `resources/icon.png` 是上游的。`internal/player/web/hls.min.js` 是 hls.js 1.7.3（Apache-2.0）。
