@@ -254,6 +254,7 @@ var ops = map[string]string{
 	"searchArtists":                      "7bf95d754fdbe32c8b161fbbe54d1ae50974900df4dce4c8f1afcbcad153224d",
 	"addToPlaylist":                      "b907ad6b088d5bf7680fa81198996d58398c2d55dfcdf59fcc959e0be98a418a",
 	"removeFromPlaylist":                 "b907ad6b088d5bf7680fa81198996d58398c2d55dfcdf59fcc959e0be98a418a",
+	"fetchEntitiesForRecentlyPlayed":     "cf5d2e94ffd82788470788ae1f6090cc3e9e774fb8fd383580634c6e6f50f7be",
 }
 
 // query runs the web player's GraphQL operation op with vars, decoding its

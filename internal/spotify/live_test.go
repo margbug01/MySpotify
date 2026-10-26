@@ -96,6 +96,11 @@ func TestLive(t *testing.T) {
 	}
 	t.Logf("library: made %d saved %d artists %d %v", len(lib.Made), len(lib.Saved), len(lib.Artists), lib.Artists[:min(2, len(lib.Artists))])
 	t.Logf("home artists: %d %v", len(home.Artists), home.Artists[:min(2, len(home.Artists))])
+	recent, recentArtists, err := RecentlyPlayed(me.UserID)
+	if err != nil {
+		t.Fatal("recently played:", err)
+	}
+	t.Logf("recently played: %d lists %d artists", len(recent), len(recentArtists))
 
 	for _, uri := range []string{"spotify:artist:2QcZxAgcs2I1q7CtCkl6MI", "spotify:artist:2IUl3m1H1EQ7QfNbNWvgru"} {
 		ar, err := ArtistDetail(uri)

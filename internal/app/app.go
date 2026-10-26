@@ -26,6 +26,7 @@ const (
 	pagePlaylist
 	pageSearch
 	pageArtist
+	pageRecent
 )
 
 type route struct {
@@ -59,6 +60,10 @@ type app struct {
 	naming        nameDialog           // the name of a playlist asked for
 	deleting      deleteDialog         // whether to delete a playlist, asked
 	radioStarting string               // the radio asked for its first songs, or ""
+	played        []spotify.Track      // the songs Vinyl played, the latest first
+	recentLists   []spotify.Playlist   // what the listener played in Spotify's apps
+	recentArtists []spotify.ArtistCard
+	recentLoading bool
 
 	daily       []spotify.Track
 	dailySpin   spinState // the record on the daily card
@@ -202,7 +207,11 @@ func Run() error {
 		} else {
 			log.Printf("player: %v", err)
 		}
-		a.pl.Changed = a.keepSession
+		a.pl.Changed = func() {
+			a.notePlayed()
+			a.keepSession()
+		}
+		a.played = loadPlayed()
 		a.volume = a.settings.Volume
 		a.pl.SetVolume(a.volume)
 		a.win = mygo.NewWindow(mygo.WindowOptions{

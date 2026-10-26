@@ -121,6 +121,8 @@ func (a *app) show(r route) {
 		a.loadPlaylist(r.playlist, false)
 	case pageArtist:
 		a.loadArtist(r.artist)
+	case pageRecent:
+		a.loadRecent()
 	}
 }
 
@@ -185,6 +187,7 @@ func (a *app) sidebar(c *ui.Context) {
 			a.navItem(c, iconHome, "为你推荐", route{page: pageHome})
 			a.navItem(c, iconDaily, "每日推荐", route{page: pageDaily})
 			a.navItem(c, iconCharts, "排行榜", route{page: pageCharts})
+			a.navItem(c, iconRecent, "最近播放", route{page: pageRecent})
 			if a.searched != "" {
 				a.navItem(c, iconSearch, "搜索结果", route{page: pageSearch})
 			}
@@ -361,6 +364,8 @@ func (a *app) content(c *ui.Context) {
 		a.searchPage(c)
 	case pageArtist:
 		a.artistPage(c)
+	case pageRecent:
+		a.recentPage(c)
 	}
 }
 
