@@ -3,6 +3,7 @@ package app
 import (
 	"cmp"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -54,7 +55,7 @@ func (a *app) homePage(c *ui.Context) {
 			a.homeSkeleton(c, a.pageShimmer(c))
 			return
 		}
-		sections := a.homeSections
+		sections := a.withPlayedFrom(a.homeSections)
 		if a.homeFacet != "" {
 			sections = a.facets[a.homeFacet]
 			if sections == nil {
@@ -160,8 +161,10 @@ func (a *app) gridItems() []spotify.HomeItem {
 			out = append(out, it)
 		}
 	}
-	for _, it := range a.homeShortcuts {
-		add(it)
+	for _, played := range [][]spotify.HomeItem{a.playedFrom, a.homeShortcuts} {
+		for _, it := range played {
+			add(it)
+		}
 	}
 	for _, lists := range [][]spotify.Playlist{a.mine, a.saved} {
 		for i := range lists {
@@ -252,13 +255,41 @@ func (a *app) shelf(c *ui.Context, s *spotify.HomeSection) {
 	})
 }
 
+// withPlayedFrom returns sections with what Vinyl played from first in
+// the recently played, as Spotify hears nothing of it: in Spotify's, or in
+// one of its own first if Spotify's home has none.
+func (a *app) withPlayedFrom(sections []spotify.HomeSection) []spotify.HomeSection {
+	if len(a.playedFrom) == 0 {
+		return sections
+	}
+	out := slices.Clone(sections)
+	for i := range out {
+		if s := &out[i]; s.Recent {
+			s.Items = firstThen(a.playedFrom, s.Items)
+			return out
+		}
+	}
+	return append([]spotify.HomeSection{{Title: "最近播放", Recent: true, Total: len(a.playedFrom), Items: a.playedFrom}}, out...)
+}
+
+// firstThen returns front, then those of rest it lacks.
+func firstThen(front, rest []spotify.HomeItem) []spotify.HomeItem {
+	out := slices.Clone(front)
+	for _, it := range rest {
+		if !slices.ContainsFunc(out, func(o spotify.HomeItem) bool { return o.ID() == it.ID() }) {
+			out = append(out, it)
+		}
+	}
+	return out
+}
+
 // sectionKey names s for its page: its URI, or its title if it has none.
 func sectionKey(s *spotify.HomeSection) string { return cmp.Or(s.URI, s.Title) }
 
 // findSection returns the section of the home named key, of all of it or
 // with a chip chosen.
 func (a *app) findSection(key string) *spotify.HomeSection {
-	all := [][]spotify.HomeSection{a.homeSections}
+	all := [][]spotify.HomeSection{a.withPlayedFrom(a.homeSections)}
 	for _, f := range homeFacets {
 		all = append(all, a.facets[f.id])
 	}
@@ -296,6 +327,9 @@ func (a *app) sectionPage(c *ui.Context) {
 	items := s.Items
 	if all := a.sectionAll[a.route.section]; len(all) > len(items) {
 		items = all
+		if s.Recent {
+			items = firstThen(a.playedFrom, all)
+		}
 	}
 	top, bottom := a.insets(c)
 	ui.Scroll(c.Key("section")).TrackScroll(&a.pageScroll).Grow(1).Padding(top+pageGap, pagePad, bottom+48, pagePad).ScrollbarInsets(top, 0, bottom, 0).Children(func() {
@@ -467,7 +501,12 @@ func (a *app) playItem(it *spotify.HomeItem) {
 	case it.Artist != nil:
 		a.playArtist(artistURI(it.Artist.ID))
 	case it.Episode != nil:
-		a.pl.PlayQueue([]spotify.Track{*it.Episode}, 0)
+		ep := it.Episode
+		show := spotify.Playlist{ID: ep.Album.ID, Name: ep.Album.Name, CoverURL: ep.Album.PicURL}
+		if len(ep.Artists) > 0 {
+			show.Creator.Nickname = ep.Artists[0].Name
+		}
+		a.playFrom(spotify.HomeItem{List: &show}, []spotify.Track{*ep}, 0)
 	}
 }
 
@@ -475,7 +514,7 @@ func (a *app) playItem(it *spotify.HomeItem) {
 // first if it has not.
 func (a *app) playArtist(uri string) {
 	if pg := a.artists[uri]; pg != nil {
-		a.pl.PlayQueue(pg.TopTracks, firstPlayable(pg.TopTracks))
+		a.playFrom(spotify.HomeItem{Artist: &pg.ArtistCard}, pg.TopTracks, firstPlayable(pg.TopTracks))
 		return
 	}
 	go func() {
@@ -486,7 +525,7 @@ func (a *app) playArtist(uri string) {
 				return
 			}
 			a.artists[uri] = pg
-			a.pl.PlayQueue(pg.TopTracks, firstPlayable(pg.TopTracks))
+			a.playFrom(spotify.HomeItem{Artist: &pg.ArtistCard}, pg.TopTracks, firstPlayable(pg.TopTracks))
 		})
 	}()
 }

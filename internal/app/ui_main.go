@@ -455,7 +455,7 @@ func (a *app) loadHome() {
 func (a *app) loadPlaylist(id string, thenPlay bool) {
 	if pl := a.playlists[id]; pl != nil {
 		if thenPlay {
-			a.pl.PlayQueue(pl.Tracks, firstPlayable(pl.Tracks))
+			a.playFrom(spotify.HomeItem{List: pl}, pl.Tracks, firstPlayable(pl.Tracks))
 		}
 		return
 	}
@@ -474,7 +474,7 @@ func (a *app) loadPlaylist(id string, thenPlay bool) {
 			}
 			a.playlists[id] = pl
 			if thenPlay {
-				a.pl.PlayQueue(pl.Tracks, firstPlayable(pl.Tracks))
+				a.playFrom(spotify.HomeItem{List: pl}, pl.Tracks, firstPlayable(pl.Tracks))
 			}
 		})
 	}()

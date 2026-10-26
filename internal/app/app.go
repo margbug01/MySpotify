@@ -70,6 +70,8 @@ type app struct {
 	deleting                            deleteDialog         // whether to delete a playlist, asked
 	radioStarting                       string               // the radio asked for its first songs, or ""
 	played                              []spotify.Track      // the songs Vinyl played, the latest first
+	playedFrom                          []spotify.HomeItem   // the lists, artists and podcasts Vinyl played them from
+	queuedFrom                          *queued              // what the queue was played from, until it plays
 	recentLists                         []spotify.Playlist   // what the listener played in Spotify's apps
 	recentArtists                       []spotify.ArtistCard
 	recentLoading                       bool
@@ -255,7 +257,7 @@ func Run() error {
 			a.notePlayed()
 			a.keepSession()
 		}
-		a.played = loadPlayed()
+		a.played, a.playedFrom = loadPlayed()
 		a.volume = a.settings.Volume
 		a.pl.SetVolume(a.volume)
 		a.win = mygo.NewWindow(mygo.WindowOptions{

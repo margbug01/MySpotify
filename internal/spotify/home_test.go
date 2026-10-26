@@ -78,6 +78,11 @@ func TestHomeFeedKeepsSpotifysSections(t *testing.T) {
 	if fmt.Sprint(got) != fmt.Sprint(want) {
 		t.Errorf("sections\n got %q\nwant %q", got, want)
 	}
+	for i, s := range h.Sections {
+		if s.Recent != (i == 1) {
+			t.Errorf("section %q: recent = %v", s.Title, s.Recent)
+		}
+	}
 	if len(h.Shortcuts) != 1 || h.Shortcuts[0].ID() != "spotify:playlist:p1" {
 		t.Errorf("shortcuts = %+v, want the recently played", h.Shortcuts)
 	}

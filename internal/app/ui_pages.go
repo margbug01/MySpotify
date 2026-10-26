@@ -227,13 +227,13 @@ func (a *app) playlistHeader(c *ui.Context, pl *spotify.Playlist) {
 					if a.pl.Shuffle() {
 						a.pl.ToggleShuffle()
 					}
-					a.pl.PlayQueue(pl.Tracks, firstPlayable(pl.Tracks))
+					a.playFrom(spotify.HomeItem{List: pl}, pl.Tracks, firstPlayable(pl.Tracks))
 				}
 				if pillButton(c.Key("shuffle"), iconShuffle, "随机播放", p.hover.Over(p.bg), p.text).Clicked() {
 					if !a.pl.Shuffle() {
 						a.pl.ToggleShuffle()
 					}
-					a.pl.PlayQueue(pl.Tracks, firstPlayable(pl.Tracks))
+					a.playFrom(spotify.HomeItem{List: pl}, pl.Tracks, firstPlayable(pl.Tracks))
 				}
 				if a.profile != nil && !pl.Liked() && a.editable(pl.ID) == nil {
 					icon, label := iconPlus, "收藏"
@@ -416,7 +416,7 @@ func (a *app) trackRows(c *ui.Context, tracks []spotify.Track, covers bool, head
 			ui.Text(c, clock(tr.Length())).FontSize(12.5).FontFeatures("tnum").TextColor(p.faint).Width(44).TextAlign(ui.End)
 		})
 		if row.Clicked() && tr.Playable() {
-			a.pl.PlayQueue(tracks, i)
+			a.playFrom(a.routeItem(), tracks, i)
 		}
 	}).Grow(1).Padding(top+pageGap, pagePad-12, bottom+32, pagePad-12).ScrollbarInsets(top, 0, bottom, 0)
 }

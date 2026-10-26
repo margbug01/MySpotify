@@ -180,13 +180,13 @@ func (a *app) artistHeader(c *ui.Context, pg *spotify.ArtistPage) {
 				if a.pl.Shuffle() {
 					a.pl.ToggleShuffle()
 				}
-				a.pl.PlayQueue(pg.TopTracks, firstPlayable(pg.TopTracks))
+				a.playFrom(spotify.HomeItem{Artist: &pg.ArtistCard}, pg.TopTracks, firstPlayable(pg.TopTracks))
 			}
 			if pillButton(c.Key("shuffle"), iconShuffle, "随机播放", p.hover.Over(p.bg), p.text).Clicked() {
 				if !a.pl.Shuffle() {
 					a.pl.ToggleShuffle()
 				}
-				a.pl.PlayQueue(pg.TopTracks, firstPlayable(pg.TopTracks))
+				a.playFrom(spotify.HomeItem{Artist: &pg.ArtistCard}, pg.TopTracks, firstPlayable(pg.TopTracks))
 			}
 			label := "电台"
 			if a.radioStarting == radioName(pg.ID, pg.Name) {

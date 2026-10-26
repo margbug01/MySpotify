@@ -433,6 +433,8 @@ type HomeSection struct {
 	// Total is how many cards it has, of which Items are the first.
 	Total int
 	Items []HomeItem
+	// Recent is the recently played, as Spotify heard of it.
+	Recent bool `json:",omitempty"`
 }
 
 // HomeItem is a card of the home page: a list (a playlist, an album or a
@@ -521,7 +523,8 @@ func HomeFeed(facet string) (*Home, error) {
 			h.addFeed(cmp.Or(title, feedTitle), items)
 			continue
 		}
-		h.Sections = append(h.Sections, HomeSection{URI: s.URI, Title: title, Total: max(s.SectionItems.TotalCount, len(items)), Items: items})
+		h.Sections = append(h.Sections, HomeSection{URI: s.URI, Title: title, Total: max(s.SectionItems.TotalCount, len(items)), Items: items,
+			Recent: s.Data.Typename == "HomeRecentlyPlayedSectionData"})
 		if s.URI == forYouSection && items[0].List != nil {
 			forYou = items[0].List.ID
 		}
