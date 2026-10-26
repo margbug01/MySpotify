@@ -19,29 +19,49 @@ window.vinyl = {
     document.body.append(a);
     const hls = new Hls({
       emeEnabled: true,
-      drmSystems: { 'com.widevine.alpha': { licenseUrl: '/license', serverCertificateUrl: '/cert' } },
+      drmSystems: { 'com.widevine.alpha': { licenseUrl: '/license?gen=' + gen, serverCertificateUrl: '/cert?gen=' + gen } },
     });
-    const t = { gen, a, hls, seek: null };
+    // tries counts the recoveries, two at most; want is whether to play.
+    const t = { gen, a, hls, seek: null, tries: 0, want: false };
+    // A network or media error is tried again; a licence turned down, or a
+    // third error, is reported: Vinyl knows how the licence service answered.
+    const fail = (what) => {
+      const again = t.tries < 2 && what.type !== 'licence';
+      if (!again) return send(gen, 'error', a.currentTime, what.msg);
+      t.tries++;
+      send(gen, 'retry', a.currentTime, what.msg);
+      if (what.type === Hls.ErrorTypes.NETWORK_ERROR) {
+        // Without the manifest, there is nothing to start loading from.
+        if (what.details.startsWith('manifest')) hls.loadSource(src); else hls.startLoad();
+      } else {
+        hls.recoverMediaError();
+        if (t.want) a.play().catch(() => {});
+      }
+    };
     hls.on(Hls.Events.ERROR, (e, d) => {
-      if (d.fatal) send(gen, 'error', a.currentTime, d.type + ' ' + d.details + (d.response && d.response.code ? ' http=' + d.response.code : ''));
+      if (!d.fatal) return;
+      const msg = d.type + ' ' + d.details + (d.response && d.response.code ? ' http=' + d.response.code : '');
+      fail({ type: d.type === Hls.ErrorTypes.KEY_SYSTEM_ERROR ? 'licence' : d.type, details: d.details, msg });
     });
     for (const n of ['playing', 'pause', 'waiting', 'ended', 'seeked']) a.addEventListener(n, () => send(gen, n, a.currentTime));
     a.addEventListener('timeupdate', () => send(gen, 'time', a.currentTime));
-    a.addEventListener('error', () => send(gen, 'error', a.currentTime, 'media ' + (a.error ? a.error.code + ' ' + a.error.message : '')));
+    a.addEventListener('error', () => fail({ type: Hls.ErrorTypes.MEDIA_ERROR, details: '', msg: 'media ' + (a.error ? a.error.code + ' ' + a.error.message : '') }));
     a.addEventListener('loadedmetadata', () => {
       if (t.seek != null) { a.currentTime = t.seek; t.seek = null; }
     });
-    hls.loadSource('/m/' + gen + '/track.m3u8');
+    const src = '/m/' + gen + '/track.m3u8';
+    hls.loadSource(src);
     hls.attachMedia(a);
     cur = t;
   },
   play(gen) {
     if (!cur || cur.gen !== gen) return;
     const a = cur.a;
+    cur.want = true;
     const p = a.play();
     if (p) p.catch((e) => { if (e.name !== 'AbortError') send(gen, 'error', a.currentTime, 'play ' + e.name + ': ' + e.message); });
   },
-  pause(gen) { if (cur && cur.gen === gen) cur.a.pause(); },
+  pause(gen) { if (cur && cur.gen === gen) { cur.want = false; cur.a.pause(); } },
   seek(gen, t) {
     if (!cur || cur.gen !== gen) return;
     if (cur.a.readyState >= 1) cur.a.currentTime = t; else cur.seek = t;

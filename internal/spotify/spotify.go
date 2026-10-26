@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -86,6 +87,28 @@ var ErrSignedOut = errors.New("spotify: signed out")
 // ErrNotFound is what a request for something Spotify doesn't have fails with.
 var ErrNotFound = errors.New("spotify: not found")
 
+// Throttled is what a request fails with while Spotify turns requests away
+// for coming too often. Wait is how long it asked to wait, 0 if it did not
+// say.
+type Throttled struct{ Wait time.Duration }
+
+func (e *Throttled) Error() string {
+	return fmt.Sprintf("spotify: too many requests, again in %v", e.Wait)
+}
+
+// RetryAfter reads how long a response asks to wait before asking again:
+// its Retry-After, in seconds or as a date. It is 0 if it does not say.
+func RetryAfter(h http.Header) time.Duration {
+	v := strings.TrimSpace(h.Get("Retry-After"))
+	if n, err := strconv.Atoi(v); err == nil {
+		return max(time.Duration(n)*time.Second, 0)
+	}
+	if t, err := http.ParseTime(v); err == nil {
+		return max(time.Until(t), 0)
+	}
+	return 0
+}
+
 var (
 	idMu     sync.Mutex
 	current  Identity
@@ -106,6 +129,10 @@ func SetIdentity(id Identity) {
 // CurrentIdentity returns the identity requests go as, renewed first if it
 // is about to run out.
 func CurrentIdentity() (Identity, error) { return identity(false) }
+
+// RenewedIdentity renews the identity now, as the service turned the
+// current one down, and returns it.
+func RenewedIdentity() (Identity, error) { return identity(true) }
 
 // identity returns a usable identity: the current one, unless it runs out
 // within two minutes or stale says the service turned it down.
@@ -188,6 +215,8 @@ func do(build func() (*http.Request, error)) ([]byte, error) {
 			continue
 		case res.StatusCode == http.StatusNotFound:
 			return nil, ErrNotFound
+		case res.StatusCode == http.StatusTooManyRequests:
+			return nil, &Throttled{RetryAfter(res.Header)}
 		}
 		return nil, fmt.Errorf("spotify: %s %s: %s", req.URL.Host, res.Status, snippet(body))
 	}

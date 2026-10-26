@@ -5,6 +5,7 @@ import (
 	"log"
 	"math"
 	"math/rand/v2"
+	"net/http"
 	"time"
 
 	"github.com/egoist/mygo"
@@ -70,6 +71,12 @@ type Player struct {
 	playing bool // what the listener wants: false while paused
 	err     string
 	gen     int // counts loads, to drop the results of stale ones
+	skipped int // the tracks skipped, as they could not play, before this one
+
+	// Spotify turned the track away for asking too often: it loads again
+	// once the wait is over, if it is to play then.
+	waiting   bool
+	throttles int // the times in a row, to wait longer each
 
 	lyrics       []lyrics.Line
 	lyricsLoaded bool
@@ -139,14 +146,15 @@ func (p *Player) announce(t *spotify.Track, artwork []byte) {
 }
 
 func (p *Player) ended() {
-	if e, ok := p.out.(interface{ Err() string }); ok && e.Err() != "" {
-		// The page could not play it, as when the licence is turned down:
-		// the rest of the queue would fail the same way, one after another.
-		p.err = "这首歌暂时无法播放"
-		p.playing = false
-		p.sync()
-		return
+	if f, ok := p.out.(interface {
+		Fault() (string, int, time.Duration)
+	}); ok {
+		if msg, licence, wait := f.Fault(); msg != "" {
+			p.failed(licence, wait)
+			return
+		}
 	}
+	p.throttles = 0
 	if p.repeat == RepeatOne {
 		p.out.Seek(0)
 		p.out.Play()
@@ -162,6 +170,67 @@ func (p *Player) ended() {
 		return
 	}
 	p.Next()
+}
+
+// failed goes on from a track the page could not play: licence is how the
+// licence service last answered for it, wait how long it asked to wait.
+func (p *Player) failed(licence int, wait time.Duration) {
+	switch licence {
+	case http.StatusTooManyRequests:
+		p.throttled(wait)
+	case http.StatusUnauthorized, http.StatusForbidden:
+		// Turned down: the rest of the queue would be too, one after
+		// another.
+		p.err = "这首歌暂时无法播放"
+		p.playing = false
+		p.sync()
+	default:
+		// The page tried again, and could not: on to the next.
+		p.err = "这首歌暂时无法播放"
+		p.skip(p.at, p.skipped)
+	}
+}
+
+// throttled waits as Spotify asked, wait, or longer each time if it did not
+// say, then loads the track again from where it was.
+func (p *Player) throttled(wait time.Duration) {
+	if wait <= 0 {
+		wait = 30 * time.Second << min(p.throttles, 4)
+	}
+	wait = min(wait, 30*time.Minute)
+	p.throttles++
+	from := p.Position()
+	p.stop()
+	p.pending, p.waiting = from, true
+	p.err = "Spotify 暂时限流，稍后重试"
+	log.Printf("player: throttled, again in %v", wait)
+	gen := p.gen
+	afterFunc(wait, func() {
+		p.post(func() {
+			if gen != p.gen || !p.waiting {
+				return
+			}
+			p.waiting = false
+			if p.playing {
+				p.loadSkipping(p.at, p.skipped, true, p.pending)
+			}
+		})
+	})
+	p.sync()
+}
+
+// afterFunc runs fn after d, on a goroutine; tests run it when they like.
+var afterFunc = func(d time.Duration, fn func()) { time.AfterFunc(d, fn) }
+
+// skip goes on from the track at order[at], which cannot play, unless
+// nothing in the queue can: skipped of them so far.
+func (p *Player) skip(at, skipped int) {
+	if skipped+1 >= len(p.order) {
+		p.playing = false
+		p.sync()
+		return
+	}
+	p.loadSkipping((at+1)%len(p.order), skipped+1, p.playing, 0)
 }
 
 // PlayQueue replaces the queue with tracks and plays the one at start.
@@ -411,7 +480,7 @@ func (p *Player) Jump(i int) {
 func (p *Player) TogglePlay() {
 	if p.out == nil {
 		switch {
-		case p.loading:
+		case p.loading || p.waiting:
 			// It plays once loaded, or not.
 			p.playing = !p.playing
 			p.sync()
@@ -556,9 +625,9 @@ func (p *Player) load(at int) {
 // skipping those that cannot play: skipped of them so far.
 func (p *Player) loadSkipping(at, skipped int, play bool, from time.Duration) {
 	gen, t := p.cue(at, play, from)
-	p.loading = true
+	p.loading, p.skipped = true, skipped
 	go func() {
-		m, err := spotify.ResolveMedia(t.ID)
+		m, err := resolve(t.ID)
 		p.post(func() {
 			if gen != p.gen {
 				return
@@ -569,18 +638,13 @@ func (p *Player) loadSkipping(at, skipped int, play bool, from time.Duration) {
 			}
 			if err != nil {
 				log.Printf("player: %s: %v", t.URI(), err)
-				p.err = "这首歌暂时无法播放"
-				// Skip what cannot play, unless nothing in the queue can.
-				if skipped+1 < len(p.order) {
-					next := at + 1
-					if next >= len(p.order) {
-						next = 0
-					}
-					p.loadSkipping(next, skipped+1, p.playing, 0)
-				} else {
-					p.playing = false
-					p.sync()
+				var thr *spotify.Throttled
+				if errors.As(err, &thr) {
+					p.throttled(thr.Wait)
+					return
 				}
+				p.err = "这首歌暂时无法播放"
+				p.skip(at, skipped)
 				return
 			}
 			p.out = p.Web.Open(m)
@@ -622,7 +686,7 @@ func (p *Player) cue(at int, play bool, from time.Duration) (int, spotify.Track)
 	t := p.queue[p.order[at]]
 	p.track = &t
 	p.loading, p.playing, p.err = false, play, ""
-	p.awaiting = false
+	p.awaiting, p.waiting = false, false
 	p.lyrics, p.lyricsLoaded = nil, false
 	p.pending = from
 	p.announce(&t, nil)
@@ -656,6 +720,9 @@ func (p *Player) cue(at int, play bool, from time.Duration) (int, spotify.Track)
 }
 
 var errNoWeb = errors.New("no web player to play in")
+
+// resolve finds where a track's audio is; tests swap it.
+var resolve = spotify.ResolveMedia
 
 // Session is where playback was left, to pick up again.
 type Session struct {

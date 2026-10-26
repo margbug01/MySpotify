@@ -1,8 +1,10 @@
 package app
 
 import (
+	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"runtime"
 	"runtime/debug"
 	"strings"
@@ -171,6 +173,10 @@ func Run() error {
 	// Its data, the web player's sign-in among it, lives under this name,
 	// whatever the executable is called.
 	mygo.App.SetName("Vinyl")
+	if dir, err := mygo.App.Path(mygo.PathUserData); err == nil {
+		log.SetOutput(io.MultiWriter(&logFile{path: filepath.Join(dir, "vinyl.log")}, os.Stderr))
+	}
+	log.Printf("start, pid %d", os.Getpid())
 	// The page that plays starts without a click; its GPU work, which
 	// it hardly has, runs in the web view's main process rather than a
 	// process of its own (50 MB).

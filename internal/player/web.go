@@ -25,7 +25,8 @@ import (
 //go:embed web
 var webFiles embed.FS
 
-const licenseHost = "https://spclient.wg.spotify.com/widevine-license/v1"
+// licenseHost is Spotify's licence service; tests swap it for their own.
+var licenseHost = "https://spclient.wg.spotify.com/widevine-license/v1"
 
 // Web plays tracks in a web view that never shows, whose Widevine module
 // decrypts what Spotify streams, as the web player's does: the one way a
@@ -192,6 +193,7 @@ func (w *Web) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		w.forward(rw, r, http.MethodPost, licenseHost+"/audio/license")
 	case p == "/cert":
 		w.forward(rw, r, http.MethodGet, licenseHost+"/application-certificate")
+
 	case p == "/event" && r.Method == http.MethodPost:
 		var e struct {
 			Gen  int     `json:"gen"`
@@ -254,40 +256,58 @@ func (w *Web) serveMedia(rw http.ResponseWriter, r *http.Request, rest string) {
 }
 
 // forward sends the Widevine module's request to Spotify's licence
-// service, as the web player.
+// service, as the web player: once more, renewed, if the service turned
+// the identity down. The track it is for, gen in the query, notes the
+// answer.
 func (w *Web) forward(rw http.ResponseWriter, r *http.Request, method, target string) {
-	var body io.Reader
+	var body []byte
 	if method == http.MethodPost {
 		b, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 		if err != nil {
 			http.Error(rw, err.Error(), http.StatusBadRequest)
 			return
 		}
-		body = bytes.NewReader(b)
+		body = b
 	}
-	id, err := spotify.CurrentIdentity()
-	if err != nil {
-		http.Error(rw, err.Error(), http.StatusUnauthorized)
-		return
+	gen, _ := strconv.Atoi(r.URL.Query().Get("gen"))
+	o := w.out(gen)
+	var res *http.Response
+	var out []byte
+	for attempt := 0; ; attempt++ {
+		id, err := spotify.CurrentIdentity()
+		if attempt > 0 {
+			id, err = spotify.RenewedIdentity()
+		}
+		if err != nil {
+			log.Printf("player: %s: %v", r.URL.Path, err)
+			o.answered(http.StatusUnauthorized, 0)
+			http.Error(rw, err.Error(), http.StatusUnauthorized)
+			return
+		}
+		req, _ := http.NewRequestWithContext(r.Context(), method, target, bytes.NewReader(body))
+		req.Header.Set("client-token", id.ClientToken)
+		req.Header.Set("User-Agent", spotify.UserAgent)
+		req.Header.Set("Referer", "https://open.spotify.com/")
+		if method == http.MethodPost {
+			req.Header.Set("Authorization", "Bearer "+id.Token)
+			req.Header.Set("Content-Type", "application/octet-stream")
+		}
+		if res, err = spotify.Client.Do(req); err != nil {
+			http.Error(rw, err.Error(), http.StatusBadGateway)
+			return
+		}
+		out, _ = io.ReadAll(res.Body)
+		res.Body.Close()
+		if res.StatusCode != http.StatusUnauthorized || attempt > 0 {
+			break
+		}
+		log.Printf("player: %s: 401, renewing the identity", r.URL.Path)
 	}
-	req, _ := http.NewRequestWithContext(r.Context(), method, target, body)
-	req.Header.Set("client-token", id.ClientToken)
-	req.Header.Set("User-Agent", spotify.UserAgent)
-	req.Header.Set("Referer", "https://open.spotify.com/")
-	if method == http.MethodPost {
-		req.Header.Set("Authorization", "Bearer "+id.Token)
-		req.Header.Set("Content-Type", "application/octet-stream")
-	}
-	res, err := spotify.Client.Do(req)
-	if err != nil {
-		http.Error(rw, err.Error(), http.StatusBadGateway)
-		return
-	}
-	defer res.Body.Close()
-	out, _ := io.ReadAll(res.Body)
+	wait := spotify.RetryAfter(res.Header)
 	if res.StatusCode != http.StatusOK {
-		log.Printf("player: %s: %s %s", r.URL.Path, res.Status, bytes.TrimSpace(out[:min(len(out), 200)]))
+		log.Printf("player: %s: %s, retry after %v: %s", r.URL.Path, res.Status, wait, bytes.TrimSpace(out[:min(len(out), 200)]))
 	}
+	o.answered(res.StatusCode, wait)
 	rw.WriteHeader(res.StatusCode)
 	rw.Write(out)
 }
@@ -308,6 +328,8 @@ type webOut struct {
 	playing bool // it was asked to play, and has not ended
 	onEnd   func()
 	err     string
+	licence int           // how the licence service last answered
+	wait    time.Duration // how long it asked to wait, with a 429
 }
 
 func (o *webOut) Play() {
@@ -368,11 +390,24 @@ func (o *webOut) OnEnd(fn func()) (off func()) {
 func (o *webOut) SetVolume(v float64) { o.w.setVolume(v) }
 func (o *webOut) Close()              { o.w.close(o.gen) }
 
-// Err returns why the page could not play the track, or "".
-func (o *webOut) Err() string {
+// Fault returns why the page could not play the track, "" if it could;
+// with how the licence service last answered, and how long it asked to
+// wait.
+func (o *webOut) Fault() (msg string, licence int, wait time.Duration) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
-	return o.err
+	return o.err, o.licence, o.wait
+}
+
+// answered notes how the licence service answered the track's request. It
+// does nothing for a track gone.
+func (o *webOut) answered(status int, wait time.Duration) {
+	if o == nil {
+		return
+	}
+	o.mu.Lock()
+	o.licence, o.wait = status, wait
+	o.mu.Unlock()
 }
 
 // event takes in what the page reports: an event of its audio at t.
@@ -388,6 +423,11 @@ func (o *webOut) event(kind string, t time.Duration, msg string) {
 	case "ended":
 		o.running, o.playing = false, false
 		t, end = o.dur, o.onEnd
+	case "retry":
+		// The page tries again, as after a network error.
+		log.Printf("player: track %d: retrying after %s", o.gen, msg)
+		o.mu.Unlock()
+		return
 	case "error":
 		log.Printf("player: track %d: %s", o.gen, msg)
 		o.running, o.playing, o.err = false, false, msg
