@@ -414,14 +414,18 @@ func (a *app) loadMine(uid string) {
 	}()
 }
 
-// myPlaylists lists the listener's playlists in the sidebar.
-func (a *app) myPlaylists(c *ui.Context, title string, lists []spotify.Playlist) {
+// myPlaylists lists the listener's playlists in the sidebar: those they
+// made, if mine, with a button to make one and a menu to rename them.
+func (a *app) myPlaylists(c *ui.Context, title string, lists []spotify.Playlist, mine bool) {
 	if len(lists) == 0 {
 		return
 	}
 	p := a.pal
 	ui.Row(c.Key(title)).AlignItems(ui.Center).Margin(18, 4, 6, 10).Children(func() {
 		ui.Text(c, title).FontSize(11.5).FontWeight(600).TextColor(p.faint).Grow(1)
+		if mine && iconButton(c.Key("new"), iconPlus, 13, p.faint, "新建歌单").Clicked() {
+			a.newPlaylist(nil)
+		}
 	})
 	for i := range lists {
 		pl := &lists[i]
@@ -443,6 +447,17 @@ func (a *app) myPlaylists(c *ui.Context, title string, lists []spotify.Playlist)
 			}
 			ui.Text(c, pl.Name).FontSize(13).SingleLine().Shrink(1).MinWidth(0)
 		})
+		if mine && !pl.Liked() {
+			b.ContextMenu(func(m *ui.Menu) {
+				if m.Item("重命名…").Chosen() {
+					a.startRename(pl)
+				}
+				m.Separator()
+				if m.Item("删除歌单…").Chosen() {
+					a.confirmDelete(pl)
+				}
+			})
+		}
 		if b.Clicked() {
 			a.open(route{page: pagePlaylist, playlist: pl.ID})
 		}

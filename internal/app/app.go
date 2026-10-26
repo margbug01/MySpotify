@@ -56,6 +56,8 @@ type app struct {
 	accountOpen  bool                 // the dropdown of the account row shows
 	liked        map[string]bool      // the songs the listener likes
 	toast        string               // a message to show once
+	naming       nameDialog           // the name of a playlist asked for
+	deleting     deleteDialog         // whether to delete a playlist, asked
 
 	daily       []spotify.Track
 	dailySpin   spinState // the record on the daily card

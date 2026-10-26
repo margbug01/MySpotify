@@ -276,6 +276,18 @@ func (a *app) playlistHeader(c *ui.Context, pl *spotify.Playlist) {
 					}
 					a.pl.PlayQueue(pl.Tracks, firstPlayable(pl.Tracks))
 				}
+				if mine := a.editable(pl.ID); mine != nil {
+					more := iconButton(c.Key("more"), iconMore, 18, p.muted, "更多")
+					more.Menu(func(m *ui.Menu) {
+						if m.Item("重命名…").Chosen() {
+							a.startRename(mine)
+						}
+						m.Separator()
+						if m.Item("删除歌单…").Chosen() {
+							a.confirmDelete(mine)
+						}
+					})
+				}
 			})
 		})
 	})
@@ -323,6 +335,12 @@ func (a *app) trackRows(c *ui.Context, tracks []spotify.Track, covers bool, head
 	// Rows out of view are not built, their marks with them: a list
 	// scrolled away from its start or end has content under the bars.
 	a.underTop, a.underBottom = true, true
+	// The playlist the tracks are listed in, if any, which they can be
+	// taken out of.
+	var pid string
+	if a.route.page == pagePlaylist {
+		pid = a.route.playlist
+	}
 	n := len(tracks) + 1
 	if footer != nil {
 		n++
@@ -349,7 +367,7 @@ func (a *app) trackRows(c *ui.Context, tracks []spotify.Track, covers bool, head
 		tr := &tracks[i]
 		playing := cur != nil && cur.ID == tr.ID
 		row := ui.ButtonBase(c.Key(tr.ID)).Height(54).PaddingX(12).Gap(14).Radius(10).AlignItems(ui.Center).FocusRing(false).Label(tr.Name).
-			ContextMenu(a.songItems(tr))
+			ContextMenu(a.songItems(tr, pid))
 		hovered := row.Hovered()
 		bg := ui.Transparent
 		switch {

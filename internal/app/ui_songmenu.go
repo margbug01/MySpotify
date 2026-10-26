@@ -15,14 +15,16 @@ var copyText = func(text string) error { return mygo.Clipboard.Write(transfer.Te
 // songMenu is three dots that open the menu of tr.
 func (a *app) songMenu(c *ui.Context, tr *spotify.Track, size float32, color ui.Color) ui.Element {
 	b := iconButton(c, iconMore, size, color, "更多")
-	b.Menu(a.songItems(tr))
+	b.Menu(a.songItems(tr, ""))
 	return b
 }
 
 // songItems builds the menu of what can be done with tr, behind its dots
 // or a right click on its row: copying its title, its title with its
-// artists, or the link to its page.
-func (a *app) songItems(tr *spotify.Track) func(m *ui.Menu) {
+// artists, or the link to its page; going to its artists or album; and,
+// signed in, adding it to a playlist or taking it out of pid, the playlist
+// it is listed in, if set.
+func (a *app) songItems(tr *spotify.Track, pid string) func(m *ui.Menu) {
 	return func(m *ui.Menu) {
 		if m.Item("复制歌名").Chosen() {
 			copyText(tr.Name)
@@ -45,5 +47,6 @@ func (a *app) songItems(tr *spotify.Track) func(m *ui.Menu) {
 		if tr.Album.ID != "" && m.Item("查看专辑："+tr.Album.Name).Chosen() {
 			a.goTo(route{page: pagePlaylist, playlist: tr.Album.ID})
 		}
+		a.playlistItems(m, tr, pid)
 	}
 }

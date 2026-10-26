@@ -31,6 +31,9 @@ type Track struct {
 	Duration int64    `json:"duration"` // milliseconds
 	// Unplayable marks a track Spotify won't play to this listener.
 	Unplayable bool `json:"unplayable,omitempty"`
+	// UID is its place in the playlist it is listed in, which taking it
+	// out of the playlist names.
+	UID string `json:"uid,omitempty"`
 }
 
 // ArtistNames joins the track's artists as the credits read.
@@ -198,6 +201,7 @@ type gqlTrack struct {
 	Playability   struct {
 		Playable bool `json:"playable"`
 	} `json:"playability"`
+	uid string // its place in a playlist
 }
 
 // track returns t as a Track, on album if its own isn't given.
@@ -208,6 +212,7 @@ func (t *gqlTrack) track(album *Album) Track {
 		Artists:    t.Artists.list(),
 		Duration:   max(t.Duration.TotalMilliseconds, t.TrackDuration.TotalMilliseconds),
 		Unplayable: !t.Playability.Playable,
+		UID:        t.uid,
 	}
 	if album != nil {
 		tr.Album = *album
@@ -517,6 +522,7 @@ func playlistPage(uri string, offset, limit int) (*pagedPlaylist, error) {
 			Content struct {
 				TotalCount int `json:"totalCount"`
 				Items      []struct {
+					UID    string `json:"uid"`
 					ItemV2 struct {
 						Data *gqlTrack `json:"data"`
 					} `json:"itemV2"`
@@ -536,7 +542,9 @@ func playlistPage(uri string, offset, limit int) (*pagedPlaylist, error) {
 	pl.TrackCount = p.Content.TotalCount
 	items := make([]*gqlTrack, len(p.Content.Items))
 	for i, it := range p.Content.Items {
-		items[i] = it.ItemV2.Data
+		if items[i] = it.ItemV2.Data; items[i] != nil {
+			items[i].uid = it.UID
+		}
 	}
 	pl.Tracks = tracks(items, nil)
 	return &pagedPlaylist{Playlist: pl, fetched: len(items)}, nil
