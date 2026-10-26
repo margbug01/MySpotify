@@ -79,11 +79,36 @@ func TestLive(t *testing.T) {
 	}
 	t.Logf("search: %d, first %s - %s", len(found), found[0].Name, found[0].ArtistNames())
 
-	made, saved, err := UserPlaylists(me.UserID)
+	lib, err := UserLibrary(me.UserID)
 	if err != nil {
 		t.Fatal("library:", err)
 	}
-	t.Logf("library: made %d saved %d", len(made), len(saved))
+	t.Logf("library: made %d saved %d artists %d %v", len(lib.Made), len(lib.Saved), len(lib.Artists), lib.Artists[:min(2, len(lib.Artists))])
+	t.Logf("home artists: %d %v", len(home.Artists), home.Artists[:min(2, len(home.Artists))])
+
+	for _, uri := range []string{"spotify:artist:2QcZxAgcs2I1q7CtCkl6MI", "spotify:artist:2IUl3m1H1EQ7QfNbNWvgru"} {
+		ar, err := ArtistDetail(uri)
+		if err != nil {
+			t.Fatal("artist:", err)
+		}
+		t.Logf("artist %s: verified %v followers %d monthly %d followed %v banner %v avatar %v bio %d", ar.Name, ar.Verified, ar.Followers, ar.MonthlyListeners, ar.Followed, ar.Banner != "", ar.Avatar != "", len(ar.Bio))
+		t.Logf("  top %d first %s (%s) | popular %d %s %q | albums %d/%d singles %d/%d comps %d/%d | related %d %v",
+			len(ar.TopTracks), ar.TopTracks[0].Name, ar.TopTracks[0].Album.Name, len(ar.Popular), ar.Popular[0].Name, ar.Popular[0].Note,
+			len(ar.Albums.Items), ar.Albums.Total, len(ar.Singles.Items), ar.Singles.Total, len(ar.Compilations.Items), ar.Compilations.Total, len(ar.Related), ar.Related[0])
+		if len(ar.TopTracks) == 0 || ar.TopTracks[0].Duration == 0 || len(ar.Popular) == 0 || ar.Avatar == "" {
+			t.Errorf("artist %s incomplete", uri)
+		}
+	}
+	all, err := ArtistReleases("spotify:artist:2QcZxAgcs2I1q7CtCkl6MI", "陳奕迅", KindAlbums)
+	if err != nil || len(all.Items) != all.Total {
+		t.Fatalf("all albums: %d of %d, %v", len(all.Items), all.Total, err)
+	}
+	t.Logf("all albums: %d, last %s %q", len(all.Items), all.Items[len(all.Items)-1].Name, all.Items[len(all.Items)-1].Note)
+	singer, err := SearchArtists("陈奕迅", 8)
+	if err != nil || len(singer) == 0 {
+		t.Fatalf("search artists: %v %v", singer, err)
+	}
+	t.Logf("search artists: %d %v", len(singer), singer[0])
 
 	liked, err := LikedIDs()
 	if err != nil {

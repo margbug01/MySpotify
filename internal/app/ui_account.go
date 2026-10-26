@@ -183,6 +183,9 @@ func (a *app) openLogin() {
 func (a *app) signedIn(prof *spotify.Profile) {
 	a.profile = prof
 	a.mine, a.saved, a.recPlaylists, a.liked = nil, nil, nil, nil
+	a.followed, a.homeArtists = nil, nil
+	a.artists = map[string]*spotify.ArtistPage{}
+	a.arErr = map[string]string{}
 	// Who listens changed: load the lists again.
 	a.playlists = map[string]*spotify.Playlist{}
 	a.plErr = map[string]string{}
@@ -194,9 +197,7 @@ func (a *app) signedIn(prof *spotify.Profile) {
 	}
 	// Playback picks up where it was left, once there is someone to play to.
 	a.restoreSession()
-	if a.route.page == pagePlaylist {
-		a.loadPlaylist(a.route.playlist, false)
-	}
+	a.show(a.route)
 	if a.searched != "" {
 		a.runSearch(a.searched)
 	}
@@ -333,10 +334,10 @@ func (a *app) avatar(c *ui.Context, url string, size float32, empty ui.Color) {
 // loadMine loads the listener's playlists, for the sidebar.
 func (a *app) loadMine(uid string) {
 	go func() {
-		made, saved, err := spotify.UserPlaylists(uid)
+		lib, err := spotify.UserLibrary(uid)
 		a.post(func() {
 			if err == nil && a.profile != nil && a.profile.UserID == uid {
-				a.mine, a.saved = made, saved
+				a.mine, a.saved, a.followed = lib.Made, lib.Saved, lib.Artists
 			}
 		})
 	}()

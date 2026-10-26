@@ -171,6 +171,37 @@ func init() {
 				}
 				time.Sleep(250 * time.Millisecond)
 			}
+			if os.Getenv("NM_SCENE") == "identity" {
+				// The identity the app signed in with, as CaptureJS notes it,
+				// for spotify's TestLive (LIVE=<dir>/identity.json): nothing plays.
+				id, err := spotify.CurrentIdentity()
+				if err == nil {
+					b := fmt.Sprintf(`{"token":{"accessToken":%q,"accessTokenExpirationTimestampMs":%d,"isAnonymous":false},"clientToken":%q}`,
+						id.Token, id.Expires.UnixMilli(), id.ClientToken)
+					err = os.WriteFile(filepath.Join(dir, "identity.json"), []byte(b), 0o600)
+				}
+				println("identity", err == nil)
+				mygo.RunOnMain(mygo.App.Quit)
+				return
+			}
+			if os.Getenv("NM_SCENE") == "artist" {
+				// Artists' pages, with a banner and without, the artists a
+				// search finds and the home's: nothing plays.
+				mygo.RunOnMain(func() { a.win.SetSize(1180, 1300) })
+				for _, s := range []struct{ name, uri string }{{"a1-eason", "spotify:artist:2QcZxAgcs2I1q7CtCkl6MI"}, {"a2-vaundy", "spotify:artist:2IUl3m1H1EQ7QfNbNWvgru"}} {
+					step(0, func() { a.open(route{page: pageArtist, artist: s.uri}) })
+					time.Sleep(6 * time.Second)
+					shot(s.name, a.win)
+				}
+				step(0, func() { a.search("陈奕迅") })
+				time.Sleep(5 * time.Second)
+				shot("a3-search", a.win)
+				step(0, func() { a.open(route{page: pageHome}) })
+				time.Sleep(4 * time.Second)
+				shot("a4-home", a.win)
+				mygo.RunOnMain(mygo.App.Quit)
+				return
+			}
 			if os.Getenv("NM_SCENE") == "mem" {
 				// What the pages cost to keep: each page in turn, muted, then
 				// the Go heap and the covers held, and a pause to measure the

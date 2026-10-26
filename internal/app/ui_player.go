@@ -380,15 +380,14 @@ func (a *app) playerBar(c *ui.Context) {
 				})
 				ui.Column(c).Shrink(1).MinWidth(0).Gap(3).Children(func() {
 					ui.Text(c, tr.Name).FontSize(13.5).FontWeight(600).SingleLine()
-					sub := tr.ArtistNames()
-					color := p.muted
 					switch {
 					case pl.Loading():
-						sub = "正在缓冲…"
+						ui.Text(c, "正在缓冲…").FontSize(12).TextColor(p.muted).SingleLine()
 					case pl.Err() != "":
-						sub, color = pl.Err(), p.accent
+						ui.Text(c, pl.Err()).FontSize(12).TextColor(p.accent).SingleLine()
+					default:
+						a.artistLinks(c.Key("by"), tr.Artists, 12, p.muted, p.text)
 					}
-					ui.Text(c, sub).FontSize(12).TextColor(color).SingleLine()
 				})
 			})
 			if info.Clicked() {

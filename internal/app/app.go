@@ -23,11 +23,13 @@ const (
 	pageCharts
 	pagePlaylist
 	pageSearch
+	pageArtist
 )
 
 type route struct {
 	page     pageKind
 	playlist string
+	artist   string // its URI
 }
 
 // app is the state both windows show. Everything in it is read and changed
@@ -44,17 +46,20 @@ type app struct {
 	forward []route // the pages gone back from, the last first to go to
 
 	profile      *spotify.Profile
-	mine, saved  []spotify.Playlist // the listener's playlists: made, and saved
-	recPlaylists []spotify.Playlist // the day's playlists picked for the listener
-	signin       signin             // the web player's window, which signs the listener in
-	accountOpen  bool               // the dropdown of the account row shows
-	liked        map[string]bool    // the songs the listener likes
-	toast        string             // a message to show once
+	mine, saved  []spotify.Playlist   // the listener's playlists: made, and saved
+	followed     []spotify.ArtistCard // the artists the listener follows
+	next         *route               // the page to open once the frame is built (goTo)
+	recPlaylists []spotify.Playlist   // the day's playlists picked for the listener
+	signin       signin               // the web player's window, which signs the listener in
+	accountOpen  bool                 // the dropdown of the account row shows
+	liked        map[string]bool      // the songs the listener likes
+	toast        string               // a message to show once
 
 	daily       []spotify.Track
 	dailySpin   spinState // the record on the daily card
 	dailyBars   barState  // the bars on its play button
 	featured    []spotify.Playlist
+	homeArtists []spotify.ArtistCard
 	charts      []spotify.Playlist
 	homeErr     string
 	homeLoading bool
@@ -62,7 +67,12 @@ type app struct {
 	playlists map[string]*spotify.Playlist
 	loadingPl map[string]bool
 	plErr     map[string]string
-	trackList ui.ListState
+
+	artists    map[string]*spotify.ArtistPage
+	loadingAr  map[string]bool
+	arErr      map[string]string
+	loadingRel map[string]bool // an artist's releases of a kind, all asked for
+	trackList  ui.ListState
 	// Where the page and the sidebar are scrolled, kept while Now Playing
 	// covers them, unbuilt.
 	pageScroll ui.ScrollState
@@ -71,6 +81,7 @@ type app struct {
 	query     string
 	searched  string
 	results   []spotify.Track
+	found     []spotify.ArtistCard // the artists matching the search
 	searching bool
 	searchErr string
 	searchBox ui.Handle
@@ -147,11 +158,15 @@ func (a *app) showMain() {
 // Run runs the app until it quits.
 func Run() error {
 	a := &app{
-		playlists: map[string]*spotify.Playlist{},
-		loadingPl: map[string]bool{},
-		plErr:     map[string]string{},
-		lyricAt:   -1,
-		queueAt:   -1,
+		playlists:  map[string]*spotify.Playlist{},
+		loadingPl:  map[string]bool{},
+		plErr:      map[string]string{},
+		artists:    map[string]*spotify.ArtistPage{},
+		loadingAr:  map[string]bool{},
+		arErr:      map[string]string{},
+		loadingRel: map[string]bool{},
+		lyricAt:    -1,
+		queueAt:    -1,
 	}
 	// Its data, the web player's sign-in among it, lives under this name,
 	// whatever the executable is called.

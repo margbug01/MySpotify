@@ -18,6 +18,8 @@ func TestSized(t *testing.T) {
 		{"https://i.scdn.co/image/ab67616d0000b2734cacd8997b3641fca4bbff99", 40, "https://i.scdn.co/image/ab67616d000048514cacd8997b3641fca4bbff99#40"},
 		{"https://mosaic.scdn.co/640/ab67616d00001e02aa", 200, "https://mosaic.scdn.co/300/ab67616d00001e02aa#200"},
 		{"https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da84aa", 600, "https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da84aa#600"},
+		{"https://i.scdn.co/image/ab6761610000e5eb438e5730e9e86121f329d2dd", 78, "https://i.scdn.co/image/ab6761610000f178438e5730e9e86121f329d2dd#78"},
+		{"https://i.scdn.co/image/ab6761610000e5eb438e5730e9e86121f329d2dd", 300, "https://i.scdn.co/image/ab67616100005174438e5730e9e86121f329d2dd#300"},
 		{"", 600, ""},
 	} {
 		if got := Sized(c.in, c.n); got != c.want {

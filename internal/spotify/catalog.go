@@ -55,7 +55,12 @@ type Playlist struct {
 	Description string
 	TrackCount  int
 	Creator     struct{ Nickname string }
-	Tracks      []Track
+	// Artists are an album's.
+	Artists []Artist
+	// Note is what a card says under the name, as a release's year and
+	// kind; the creator if empty.
+	Note   string
+	Tracks []Track
 	// Preview holds a chart's top songs, as its card shows them.
 	Preview []ChartLine
 }
@@ -96,6 +101,17 @@ func cdnSized(pic string, n int) string {
 		}
 		return "https://mosaic.scdn.co/" + size + "/" + rest
 	}
+	if i := strings.Index(pic, "/ab676161"); i >= 0 && len(pic) >= i+17 {
+		// An artist's picture: as album art, but its own sizes.
+		code := "0000e5eb"
+		switch {
+		case n <= 160:
+			code = "0000f178"
+		case n <= 320:
+			code = "00005174"
+		}
+		return pic[:i+9] + code + pic[i+17:]
+	}
 	if i := strings.Index(pic, "/ab67616d"); i >= 0 && len(pic) >= i+17 {
 		// Album art: its size is coded in the ID.
 		code := "0000b273"
@@ -114,8 +130,9 @@ func idOf(uri string) string { return uri[strings.LastIndexByte(uri, ':')+1:] }
 
 type gqlImage struct {
 	Sources []struct {
-		URL   string `json:"url"`
-		Width int    `json:"width"`
+		URL      string `json:"url"`
+		Width    int    `json:"width"`
+		MaxWidth int    `json:"maxWidth"` // an artist's banner says this instead
 	} `json:"sources"`
 }
 
@@ -123,8 +140,8 @@ type gqlImage struct {
 func (im gqlImage) best() string {
 	url, w := "", -1
 	for _, s := range im.Sources {
-		if s.Width > w {
-			url, w = s.URL, s.Width
+		if sw := max(s.Width, s.MaxWidth); sw > w {
+			url, w = s.URL, sw
 		}
 	}
 	return url
@@ -228,6 +245,19 @@ type gqlEntity struct {
 	Content struct {
 		TotalCount int `json:"totalCount"`
 	} `json:"content"`
+	// Artists
+	Profile struct {
+		Name string `json:"name"`
+	} `json:"profile"`
+	Visuals struct {
+		AvatarImage gqlImage `json:"avatarImage"`
+	} `json:"visuals"`
+}
+
+// artist returns e as an ArtistCard, or false if it is no artist.
+func (e *gqlEntity) artist() (ArtistCard, bool) {
+	ok := e.Typename == "Artist" && e.URI != ""
+	return ArtistCard{ID: e.URI, Name: e.Profile.Name, Avatar: e.Visuals.AvatarImage.best()}, ok
 }
 
 // playlist returns e as a Playlist, or false if it is no list of songs.
@@ -239,7 +269,8 @@ func (e *gqlEntity) playlist() (Playlist, bool) {
 		pl.Creator.Nickname = e.OwnerV2.Data.Name
 	case "Album":
 		pl.CoverURL = e.CoverArt.best()
-		pl.Creator.Nickname = Track{Artists: e.Artists.list()}.ArtistNamesOf()
+		pl.Artists = e.Artists.list()
+		pl.Creator.Nickname = Track{Artists: pl.Artists}.ArtistNamesOf()
 	default:
 		return pl, false
 	}
@@ -293,6 +324,8 @@ type Home struct {
 	ForYou []Playlist
 	// Featured are the rest of the home's playlists and albums.
 	Featured []Playlist
+	// Artists are the artists the home shows.
+	Artists []ArtistCard
 }
 
 // The home's section of playlists made for the listener.
@@ -301,6 +334,10 @@ const forYouSection = "spotify:section:0JQ5DAUnp4wcj0bCb3wh3S"
 // featuredMax is how many of the rest the home page shows: of over a
 // hundred, those first, in the home's order.
 const featuredMax = 36
+
+// artistsMax is how many artists the home page shows, of the twenty or so
+// its sections hold.
+const artistsMax = 12
 
 // HomeFeed returns the listener's home, as the web player shows it.
 func HomeFeed() (*Home, error) {
@@ -325,6 +362,13 @@ func HomeFeed() (*Home, error) {
 	seen := map[string]bool{}
 	for _, s := range res.Home.SectionContainer.Sections.Items {
 		for _, it := range s.SectionItems.Items {
+			if ar, ok := it.Content.Data.artist(); ok && !seen[ar.ID] {
+				seen[ar.ID] = true
+				if len(h.Artists) < artistsMax {
+					h.Artists = append(h.Artists, ar)
+				}
+				continue
+			}
 			pl, ok := it.Content.Data.playlist()
 			if !ok || seen[pl.ID] {
 				continue
@@ -591,10 +635,17 @@ func Account() (*Profile, error) {
 	return &Profile{UserID: p.Username, Nickname: p.Name, AvatarURL: p.Avatar.best()}, nil
 }
 
-// UserPlaylists returns the listener's playlists: those they made, their
-// liked songs first, and those they saved.
-func UserPlaylists(user string) (made, saved []Playlist, err error) {
-	made = []Playlist{{ID: LikedURI, Name: "我喜欢的音乐"}}
+// Library is what the listener keeps: the playlists they made, their
+// liked songs first, the playlists and albums they saved, and the artists
+// they follow.
+type Library struct {
+	Made, Saved []Playlist
+	Artists     []ArtistCard
+}
+
+// UserLibrary returns the library of user, the listener signed in.
+func UserLibrary(user string) (*Library, error) {
+	lib := &Library{Made: []Playlist{{ID: LikedURI, Name: "我喜欢的音乐"}}}
 	for offset := 0; ; {
 		var res struct {
 			Me struct {
@@ -608,34 +659,37 @@ func UserPlaylists(user string) (made, saved []Playlist, err error) {
 				} `json:"libraryV3"`
 			} `json:"me"`
 		}
-		err = query("libraryV3", map[string]any{
-			"filters": []string{"Playlists"}, "order": nil, "textFilter": "", "features": []string{"LIKED_SONGS"},
+		err := query("libraryV3", map[string]any{
+			"filters": []string{}, "order": nil, "textFilter": "", "features": []string{"LIKED_SONGS"},
 			"limit": 50, "offset": offset, "flatten": true, "expandedFolders": []string{}, "folderUri": nil,
 			"includeFoldersWhenFlattening": false,
 		}, &res)
 		if err != nil {
-			return made, saved, err
+			return lib, err
 		}
-		lib := res.Me.LibraryV3
-		for _, it := range lib.Items {
+		page := res.Me.LibraryV3
+		for _, it := range page.Items {
 			e := it.Item.Data
 			if e.Typename == "PseudoPlaylist" && e.URI == LikedURI {
-				made[0].TrackCount = e.Content.TotalCount
+				lib.Made[0].TrackCount = e.Content.TotalCount
+				continue
+			}
+			if ar, ok := e.artist(); ok {
+				lib.Artists = append(lib.Artists, ar)
 				continue
 			}
 			pl, ok := e.playlist()
-			if !ok {
-				continue
-			}
-			if e.OwnerV2.Data.Username == user {
-				made = append(made, pl)
-			} else {
-				saved = append(saved, pl)
+			switch {
+			case !ok:
+			case e.Typename == "Playlist" && e.OwnerV2.Data.Username == user:
+				lib.Made = append(lib.Made, pl)
+			default:
+				lib.Saved = append(lib.Saved, pl)
 			}
 		}
-		offset += len(lib.Items)
-		if len(lib.Items) == 0 || offset >= lib.TotalCount {
-			return made, saved, nil
+		offset += len(page.Items)
+		if len(page.Items) == 0 || offset >= page.TotalCount {
+			return lib, nil
 		}
 	}
 }
@@ -703,11 +757,15 @@ func LikedIDs() ([]string, error) {
 }
 
 // Like adds the track id to the listener's liked songs, or takes it out.
-func Like(id string, like bool) error {
+func Like(id string, like bool) error { return Save("spotify:track:"+id, like) }
+
+// Save adds what uri stands for, a track or an artist followed, to the
+// listener's library, or takes it out.
+func Save(uri string, save bool) error {
 	op := "addToLibrary"
-	if !like {
+	if !save {
 		op = "removeFromLibrary"
 	}
 	var res json.RawMessage
-	return query(op, map[string]any{"libraryItemUris": []string{"spotify:track:" + id}}, &res)
+	return query(op, map[string]any{"libraryItemUris": []string{uri}}, &res)
 }

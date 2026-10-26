@@ -136,7 +136,15 @@ func (a *app) nowPlayingBody(c *ui.Context, tr *spotify.Track, art *artwork, acc
 				ui.Row(c).Gap(8).AlignItems(ui.Center).Margin(36, 0, 18, 0).Children(func() {
 					ui.Column(c).Grow(1).Shrink(1).MinWidth(0).Gap(4).Children(func() {
 						ui.Text(c, tr.Name).FontSize(22).FontWeight(700).LetterSpacing(-0.3).SingleLine()
-						ui.Text(c, tr.ArtistNames()+" — "+tr.Album.Name).FontSize(15).TextColor(white.Alpha(0.6)).SingleLine()
+						ui.Row(c).AlignItems(ui.Center).Children(func() {
+							a.artistLinks(c.Key("by"), tr.Artists, 15, white.Alpha(0.6), white)
+							if tr.Album.Name != "" {
+								ui.Text(c, " — ").FontSize(15).TextColor(white.Alpha(0.6)).Shrink(0)
+								if link(c.Key("album"), tr.Album.Name, 15, white.Alpha(0.6), white).Clicked() && tr.Album.ID != "" {
+									a.goTo(route{page: pagePlaylist, playlist: tr.Album.ID})
+								}
+							}
+						})
 					})
 					a.likeButton(c.Key("like"), tr, 22, white.Alpha(0.7))
 					a.songMenu(c.Key("more"), tr, 22, white.Alpha(0.7)).Margin(0, -8, 0, 0)
@@ -233,7 +241,7 @@ func (a *app) stageBar(c *ui.Context, tr *spotify.Track, art *artwork, accent ui
 				}
 				ui.Column(c).Shrink(1).MinWidth(0).Gap(2).Children(func() {
 					ui.Text(c, tr.Name).FontSize(14).FontWeight(700).SingleLine()
-					ui.Text(c, tr.ArtistNames()).FontSize(12).TextColor(white.Alpha(0.55)).SingleLine()
+					a.artistLinks(c.Key("by"), tr.Artists, 12, white.Alpha(0.55), white)
 				})
 				a.likeButton(c.Key("like"), tr, 17, white.Alpha(0.6))
 				a.songMenu(c.Key("more"), tr, 17, white.Alpha(0.6)).Margin(0, 0, 0, -10)

@@ -208,16 +208,21 @@ func snippet(b []byte) string {
 // when a query fails with PersistedQueryNotFound, by reading them again from
 // the web player's scripts.
 var ops = map[string]string{
-	"profileAttributes":  "08ffb4730af3746e04a8301396f20875dbbce10c75243803091a9274eacc8ac0",
-	"home":               "5fb7da7a03ee2776c0670856609cb85a189a3cecc36cc160b91cde79063b9cf1",
-	"browsePage":         "f5c4e6d668f5716464a231c1cc8b22c1cbf6ad68b09929fd7de813a30581298b",
-	"fetchPlaylist":      "21ea11a6ac75a5f3e01fd365d29c18e0a4a8b7dc09f89bbb5d73910190c6acaf",
-	"getAlbum":           "0b6ce3511e1b02e4a40fa95440f992acbe85080eb308af9194322d708fc1914f",
-	"searchTracks":       "b02683192a98dde7966b5e6655a79eeb62713eab703eda9902c932818dd52751",
-	"libraryV3":          "390c78e5b951029bad359785e69b07b536a509c581cbcd0aded5e5067f187455",
-	"fetchLibraryTracks": "087278b20b743578a6262c2b0b4bcd20d879c503cc359a2285baf083ef944240",
-	"addToLibrary":       "896ebcb47815681340860d121cb5d494e157e2a78d3950385cd54e0393c67148",
-	"removeFromLibrary":  "896ebcb47815681340860d121cb5d494e157e2a78d3950385cd54e0393c67148",
+	"profileAttributes":                  "08ffb4730af3746e04a8301396f20875dbbce10c75243803091a9274eacc8ac0",
+	"home":                               "5fb7da7a03ee2776c0670856609cb85a189a3cecc36cc160b91cde79063b9cf1",
+	"browsePage":                         "f5c4e6d668f5716464a231c1cc8b22c1cbf6ad68b09929fd7de813a30581298b",
+	"fetchPlaylist":                      "21ea11a6ac75a5f3e01fd365d29c18e0a4a8b7dc09f89bbb5d73910190c6acaf",
+	"getAlbum":                           "0b6ce3511e1b02e4a40fa95440f992acbe85080eb308af9194322d708fc1914f",
+	"searchTracks":                       "b02683192a98dde7966b5e6655a79eeb62713eab703eda9902c932818dd52751",
+	"libraryV3":                          "390c78e5b951029bad359785e69b07b536a509c581cbcd0aded5e5067f187455",
+	"fetchLibraryTracks":                 "087278b20b743578a6262c2b0b4bcd20d879c503cc359a2285baf083ef944240",
+	"addToLibrary":                       "896ebcb47815681340860d121cb5d494e157e2a78d3950385cd54e0393c67148",
+	"removeFromLibrary":                  "896ebcb47815681340860d121cb5d494e157e2a78d3950385cd54e0393c67148",
+	"queryArtistOverview":                "1ac33ddab5d39a3a9c27802774e6d78b9405cc188c6f75aed007df2a32737c72",
+	"queryArtistDiscographyAlbums":       "5e07d323febb57b4a56a42abbf781490e58764aa45feb6e3dc0591564fc56599",
+	"queryArtistDiscographySingles":      "5e07d323febb57b4a56a42abbf781490e58764aa45feb6e3dc0591564fc56599",
+	"queryArtistDiscographyCompilations": "5e07d323febb57b4a56a42abbf781490e58764aa45feb6e3dc0591564fc56599",
+	"searchArtists":                      "7bf95d754fdbe32c8b161fbbe54d1ae50974900df4dce4c8f1afcbcad153224d",
 }
 
 // query runs the web player's GraphQL operation op with vars, decoding its

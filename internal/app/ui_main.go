@@ -76,6 +76,11 @@ func (a *app) view(c *ui.Context) {
 		c.Toast(a.toast)
 		a.toast = ""
 	}
+	if r := a.next; r != nil {
+		a.next = nil
+		a.open(*r)
+		c.AnimationFrame()
+	}
 	a.syncWindows()
 }
 
@@ -109,8 +114,11 @@ func (a *app) open(r route) {
 func (a *app) show(r route) {
 	a.route = r
 	a.trackList, a.pageScroll = ui.ListState{}, ui.ScrollState{}
-	if r.page == pagePlaylist {
+	switch r.page {
+	case pagePlaylist:
 		a.loadPlaylist(r.playlist, false)
+	case pageArtist:
+		a.loadArtist(r.artist)
 	}
 }
 
@@ -180,6 +188,7 @@ func (a *app) sidebar(c *ui.Context) {
 			}
 			a.myPlaylists(c, "我的歌单", a.mine)
 			a.myPlaylists(c, "收藏的歌单", a.saved)
+			a.followedArtists(c)
 		})
 
 		// What plays, as a card at the foot of the sidebar, over who listens.
@@ -348,6 +357,8 @@ func (a *app) content(c *ui.Context) {
 		a.playlistPage(c)
 	case pageSearch:
 		a.searchPage(c)
+	case pageArtist:
+		a.artistPage(c)
 	}
 }
 
@@ -389,7 +400,7 @@ func (a *app) loadHome() {
 		a.post(func() {
 			a.homeLoading = false
 			if home != nil {
-				a.featured, a.recPlaylists = home.Featured, home.ForYou
+				a.featured, a.recPlaylists, a.homeArtists = home.Featured, home.ForYou, home.Artists
 			}
 			a.charts, a.daily = charts, daily
 			if err1 != nil && err2 != nil {
@@ -447,15 +458,22 @@ func (a *app) search(q string) {
 
 // runSearch loads the results of q, wherever the listener is.
 func (a *app) runSearch(q string) {
-	a.searched, a.searching, a.searchErr, a.results = q, true, "", nil
+	a.searched, a.searching, a.searchErr, a.results, a.found = q, true, "", nil, nil
 	go func() {
+		var found []spotify.ArtistCard
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			found, _ = spotify.SearchArtists(q, 12)
+		}()
 		res, err := spotify.Search(q, 60)
+		<-done
 		a.post(func() {
 			if q != a.searched {
 				return
 			}
 			a.searching = false
-			a.results = res
+			a.results, a.found = res, found
 			if err != nil {
 				a.searchErr = "搜索失败，请稍后再试"
 			}

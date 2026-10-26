@@ -1,6 +1,7 @@
 package app
 
 import (
+	"cmp"
 	"fmt"
 	"strings"
 	"time"
@@ -62,6 +63,11 @@ func (a *app) homePage(c *ui.Context) {
 					a.playlistCard(c.Key(a.recPlaylists[i].ID), &a.recPlaylists[i])
 				}
 			})
+		}
+
+		if len(a.homeArtists) > 0 {
+			a.section(c, "你喜欢的艺人")
+			a.artistRow(c, a.homeArtists)
 		}
 
 		a.section(c, "官方榜单")
@@ -144,12 +150,12 @@ func (a *app) playlistCard(c *ui.Context, pl *spotify.Playlist) {
 			a.coverPlayButton(c, pl.ID, hovered)
 		})
 		ui.Text(c, pl.Name).FontSize(13).FontWeight(500).MaxLines(2).LineHeight(1.35)
-		if pl.Creator.Nickname != "" {
-			ui.Text(c, pl.Creator.Nickname).FontSize(12).TextColor(p.muted).SingleLine().Margin(-6, 0, 0, 0)
+		if note := cmp.Or(pl.Note, pl.Creator.Nickname); note != "" {
+			ui.Text(c, note).FontSize(12).TextColor(p.muted).SingleLine().Margin(-6, 0, 0, 0)
 		}
 	})
 	if card.Clicked() {
-		a.open(route{page: pagePlaylist, playlist: pl.ID})
+		a.goTo(route{page: pagePlaylist, playlist: pl.ID})
 	}
 }
 
@@ -229,7 +235,7 @@ func (a *app) playlistPage(c *ui.Context) {
 		a.trackSkeleton(c, s, false, func(c *ui.Context) { a.playlistHeaderSkeleton(c, s) })
 		return
 	}
-	a.trackRows(c, pl.Tracks, false, func(c *ui.Context) { a.playlistHeader(c, pl) })
+	a.trackRows(c, pl.Tracks, false, func(c *ui.Context) { a.playlistHeader(c, pl) }, nil)
 }
 
 func (a *app) playlistHeader(c *ui.Context, pl *spotify.Playlist) {
@@ -245,12 +251,15 @@ func (a *app) playlistHeader(c *ui.Context, pl *spotify.Playlist) {
 			}
 			ui.Text(c, kind).FontSize(12).FontWeight(600).TextColor(p.accent)
 			ui.Text(c, pl.Name).FontSize(30).FontWeight(800).LetterSpacing(-0.6).MaxLines(2).LineHeight(1.2)
-			var meta []string
-			if pl.Creator.Nickname != "" {
-				meta = append(meta, pl.Creator.Nickname)
-			}
-			meta = append(meta, fmt.Sprintf("%d 首", len(pl.Tracks)))
-			ui.Text(c, strings.Join(meta, " · ")).FontSize(13).TextColor(p.muted)
+			ui.Row(c).AlignItems(ui.Center).Children(func() {
+				if len(pl.Artists) > 0 {
+					a.artistLinks(c.Key("by"), pl.Artists, 13, p.muted, p.text)
+					ui.Text(c, " · ").FontSize(13).TextColor(p.muted)
+				} else if pl.Creator.Nickname != "" {
+					ui.Text(c, pl.Creator.Nickname+" · ").FontSize(13).TextColor(p.muted)
+				}
+				ui.Text(c, fmt.Sprintf("%d 首", len(pl.Tracks))).FontSize(13).TextColor(p.muted).Shrink(0)
+			})
 			if d := strings.TrimSpace(pl.Description); d != "" {
 				ui.Text(c, strings.ReplaceAll(d, "\n", " ")).FontSize(12.5).TextColor(p.muted).MaxLines(2).LineHeight(1.45).Margin(2, 0, 0, 0)
 			}
@@ -293,12 +302,19 @@ func (a *app) searchPage(c *ui.Context) {
 	}
 	a.trackRows(c, a.results, true, func(c *ui.Context) {
 		a.heading(c, "“"+a.searched+"”", "搜索")
-	})
+		if len(a.found) > 0 {
+			ui.Column(c).PaddingX(12).Margin(0, 0, 8, 0).Children(func() {
+				ui.Text(c, "艺人").FontSize(19).FontWeight(700).LetterSpacing(-0.3).Margin(4, 0, 14, 0)
+				a.artistRow(c, a.found)
+				ui.Text(c, "歌曲").FontSize(19).FontWeight(700).LetterSpacing(-0.3).Margin(30, 0, 6, 0)
+			})
+		}
+	}, nil)
 }
 
-// trackRows lists tracks under a header, which scrolls with them; a click
-// plays the list from the track clicked.
-func (a *app) trackRows(c *ui.Context, tracks []spotify.Track, covers bool, header func(c *ui.Context)) {
+// trackRows lists tracks under a header, and over a footer if any, which
+// scroll with them; a click plays the list from the track clicked.
+func (a *app) trackRows(c *ui.Context, tracks []spotify.Track, covers bool, header, footer func(c *ui.Context)) {
 	p := a.pal
 	cur := a.pl.Current()
 	w, _ := c.Size()
@@ -307,7 +323,11 @@ func (a *app) trackRows(c *ui.Context, tracks []spotify.Track, covers bool, head
 	// Rows out of view are not built, their marks with them: a list
 	// scrolled away from its start or end has content under the bars.
 	a.underTop, a.underBottom = true, true
-	ui.List(c.Key(a.route), &a.trackList, len(tracks)+1, func(i int) {
+	n := len(tracks) + 1
+	if footer != nil {
+		n++
+	}
+	ui.List(c.Key(a.route), &a.trackList, n, func(i int) {
 		if i == 0 {
 			ui.Column(c).Children(func() {
 				a.startMark(c)
@@ -315,7 +335,14 @@ func (a *app) trackRows(c *ui.Context, tracks []spotify.Track, covers bool, head
 			})
 			return
 		}
-		if i == len(tracks) {
+		if i == len(tracks)+1 {
+			ui.Column(c).Children(func() {
+				footer(c)
+				a.endMark(c)
+			})
+			return
+		}
+		if i == len(tracks) && footer == nil {
 			defer a.endMark(c)
 		}
 		i--
@@ -359,11 +386,17 @@ func (a *app) trackRows(c *ui.Context, tracks []spotify.Track, covers bool, head
 					if !tr.Playable() {
 						ui.Text(c, "不可播放").FontSize(9).FontWeight(800).TextColor(p.accent).Padding(0, 4).Radius(3).Border(1, p.accent.Alpha(0.6))
 					}
-					ui.Text(c, tr.ArtistNames()).FontSize(12.5).TextColor(p.muted).SingleLine().Shrink(1).MinWidth(0)
+					a.artistLinks(c.Key("by"), tr.Artists, 12.5, p.muted, p.text)
 				})
 			})
 			if wide {
-				ui.Text(c, tr.Album.Name).Grow(2).Basis(0).MinWidth(0).FontSize(12.5).TextColor(p.muted).SingleLine()
+				ui.Row(c).Grow(2).Basis(0).MinWidth(0).Children(func() {
+					if tr.Album.ID == "" {
+						ui.Text(c, tr.Album.Name).FontSize(12.5).TextColor(p.muted).SingleLine()
+					} else if link(c.Key("album"), tr.Album.Name, 12.5, p.muted, p.text).Clicked() {
+						a.goTo(route{page: pagePlaylist, playlist: tr.Album.ID})
+					}
+				})
 			}
 			// A liked song's heart shows; the others' as the pointer is on them.
 			ui.Box(c).Size(32, 32).Center().Children(func() {
