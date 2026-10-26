@@ -1,39 +1,36 @@
-# 网易云音乐 · MyGo
+# Vinyl
 
-用 Go 和 [MyGo](https://github.com/egoist/mygo) 写的第三方网易云音乐桌面客户端，原生界面，无 WebView。
+Windows 上的 Spotify 播放器，Go + [MyGo](https://github.com/egoist/mygo) 原生界面，免费账号也能整首播放。
 
-## 功能
+界面来自 [egoist/mygo-cloudmusic](https://github.com/egoist/mygo-cloudmusic)（一个网易云音乐客户端，AGPL-3.0），数据和播放换成了 Spotify。仓库保留了上游历史（remote `upstream`），以后可以 `git merge upstream/main` 拉作者的界面更新。
 
-- 扫码登录，登录态保存在系统凭据存储中
-- 每日推荐、推荐歌单、排行榜、我的歌单、搜索
-- 私人 FM（推荐 / 熟悉 / 探索）与心动模式
-- 边下边播，支持标准 / 较高 / 极高 / 无损（FLAC）/ Hi-Res 音质
-- 听过的歌曲缓存在本机，再次播放无需等待
-- 音量均衡，暂停与继续时淡出淡入，拖动进度无杂音
-- 退出后再打开，从上次的播放队列与进度继续
-- 逐字歌词与翻译，正在播放页的「律动」视图与歌曲评论
-- 刘海播放器：在屏幕顶部刘海处显示迷你播放器，悬停展开（在设置中开启）
-- 喜欢歌曲、播放队列、随机与循环播放
-- 浅色 / 深色 / 跟随系统
+## 怎么做到的
+
+- 登录：一个平时隐藏的窗口打开 open.spotify.com，`internal/spotify/capture.js` 记下网页播放器自己拿到的 token 和 client-token。没登录就把这个窗口显示成 Spotify 官方登录页。token 快过期时在后台重新加载一次。
+- 数据：网页播放器用的 Pathfinder GraphQL（首页、排行榜、歌单、专辑、搜索、资料库、喜欢）+ spclient（歌词、播放清单）。公开 Web API 对这个身份一律 429，不用。查询哈希写死在 `internal/spotify/spotify.go` 的 `ops` 里，Spotify 更新网页播放器后可能失效（报 PersistedQueryNotFound），到时从 open.spotify.com 的 JS 包里重新取。
+- 播放：另一个隐藏的 WebView 页面（`internal/player/web/player.html`）用 hls.js + Widevine 播加密的 MP4，解密在浏览器的 CDM 里。清单、分段、许可证都经本机 127.0.0.1 的小服务转发。队列、随机、循环、淡入淡出、会话恢复沿用上游。
 
 ## 构建
 
-需要 Go 1.27+。
-
-```bash
-go tool mygo dev     # 开发模式运行
-go tool mygo build   # 打包到 build/
-go test ./...        # 运行测试
+```
+go test ./...
+CGO_ENABLED=0 go build -trimpath -ldflags="-H windowsgui -s -w" -o outputs/Vinyl.exe .
 ```
 
-## 致谢
+需要系统装有 WebView2 运行时（Windows 10/11 一般自带）。数据在 `%APPDATA%\Vinyl`，WebView 登录态在 `%LOCALAPPDATA%\Vinyl\WebView2`。
 
-- [MyGo](https://github.com/egoist/mygo)：原生 UI 与应用框架
-- [NeteaseCloudMusicApi](https://github.com/Binaryify/NeteaseCloudMusicApi)：eapi 加密与登录流程的参考
-- [folia-major](https://github.com/chthollyphile/folia-major)：歌词动画效果的参考
+## 开发
 
-本项目与网易云音乐官方无关，音乐版权归各权利人所有。
+- `NM_SHOTS=<目录>`：自动走一遍首页 → 排行榜 → 歌单 → 播放 → 播放页 → 待播清单 → 搜索，每步截图（静音）。
+- `NM_SHOTS=<目录> NM_SCENE=play`：静音验证播放：起播、拖到结尾自动下一首、暂停/继续、下一首，过程打到 stderr。用不带 `-H windowsgui` 编的版本看输出。
+- `LIVE=<身份文件> go test -run TestLive ./internal/spotify`：用真 token 把每个接口打一遍。身份文件是 `window.__vinyl` 的 JSON。
+
+## 和上游比少了什么
+
+评论和间奏热评、私人 FM 和心动模式、歌单编辑（新建/重命名/删除/加歌）、音质档位、音量均衡、歌曲缓存、跨设备续播、自动更新。Spotify 没有对应的，或者暂时没接。
+
+频谱拿不到（音频在 CDM 里解密），播放中的小音柱是按播放位置算的动画。
 
 ## 许可证
 
-[AGPL-3.0](LICENSE)
+AGPL-3.0，随上游。`internal/player/web/hls.min.js` 是 hls.js 1.7.3（Apache-2.0）。

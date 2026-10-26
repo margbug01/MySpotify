@@ -166,6 +166,53 @@ func init() {
 				}
 				time.Sleep(250 * time.Millisecond)
 			}
+			if os.Getenv("NM_SCENE") == "play" {
+				// The web player's transport, muted: playing on, a track
+				// ending into the next, pausing, resuming and skipping.
+				// What it does goes to stderr.
+				say := func(what string) {
+					mygo.RunOnMain(func() {
+						name := ""
+						if tr := a.pl.Current(); tr != nil {
+							name = tr.Name
+						}
+						println(time.Now().Format("15:04:05.0"), what, "|", name, "playing", a.pl.Playing(), "loading", a.pl.Loading(),
+							"at", a.pl.Position().Round(100*time.Millisecond).String(), "of", a.pl.Duration().Round(time.Second).String(), "err", a.pl.Err())
+					})
+				}
+				watch := func(what string, n int) {
+					for i := range n {
+						time.Sleep(time.Second)
+						say(fmt.Sprint(what, " +", i+1, "s"))
+					}
+				}
+				step(0, func() { a.loadPlaylist(a.charts[1].ID, false) })
+				for range 40 {
+					var ok bool
+					mygo.RunOnMain(func() { ok = a.playlists[a.charts[1].ID] != nil })
+					if ok {
+						break
+					}
+					time.Sleep(250 * time.Millisecond)
+				}
+				step(0, func() {
+					pl := a.playlists[a.charts[1].ID]
+					a.volume = 0
+					a.pl.SetVolume(0)
+					a.pl.PlayQueue(pl.Tracks, 0)
+				})
+				watch("start", 6)
+				step(0, func() { a.pl.Seek(a.pl.Duration() - 5*time.Second) })
+				watch("near end", 10)
+				step(0, a.pl.TogglePlay)
+				watch("paused", 3)
+				step(0, a.pl.TogglePlay)
+				watch("resumed", 3)
+				step(0, a.pl.Next)
+				watch("next", 5)
+				mygo.RunOnMain(mygo.App.Quit)
+				return
+			}
 			time.Sleep(2 * time.Second)
 			shot("1-home", a.win)
 			step(0, func() { a.open(route{page: pageCharts}) })

@@ -3,6 +3,7 @@ package player
 import (
 	"errors"
 	"log"
+	"math"
 	"math/rand/v2"
 	"time"
 
@@ -514,9 +515,24 @@ func (p *Player) Duration() time.Duration {
 }
 
 // Levels returns the spectrum of what plays now. The page decrypts and
-// plays the audio itself, out of reach: there is none.
+// plays the audio out of reach, so it is a stand-in, as Spotify's own apps
+// animate theirs: waves across the bands, neighbors rising together,
+// moving with the position, and still while paused.
 func (p *Player) Levels() ([Bands]float32, bool) {
-	return [Bands]float32{}, false
+	var lv [Bands]float32
+	if p.out == nil || !p.playing {
+		return lv, false
+	}
+	t := p.Position().Seconds()
+	for i := range lv {
+		f := float64(i) / (Bands - 1) // from the lowest band to the highest
+		v := 0.55 - 0.25*f
+		v += 0.28 * math.Sin(2*math.Pi*(1.7*t+1.3*f))
+		v += 0.16 * math.Sin(2*math.Pi*(2.9*t-0.7*f)+1)
+		v += 0.08 * math.Sin(2*math.Pi*(5.3*t+3.1*f)+2)
+		lv[i] = float32(min(1, max(0.05, v)))
+	}
+	return lv, true
 }
 
 func (p *Player) stop() {

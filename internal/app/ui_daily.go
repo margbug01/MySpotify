@@ -353,7 +353,7 @@ func (a *app) dailyPicks(c *ui.Context, songs []spotify.Track, ours bool) {
 		for i := range min(3, len(songs)) {
 			tr := &songs[i]
 			row := ui.ButtonBase(c.Key(tr.ID)).Row().Gap(12).Padding(7, 12).Radius(12).AlignItems(ui.Center).FocusRing(false).Label(tr.Name).
-				ContextMenu(a.songItems(tr, ""))
+				ContextMenu(a.songItems(tr))
 			bg := white.Alpha(0)
 			if row.Hovered() {
 				bg = white.Alpha(0.1)

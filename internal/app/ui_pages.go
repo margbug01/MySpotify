@@ -301,11 +301,6 @@ func (a *app) searchPage(c *ui.Context) {
 func (a *app) trackRows(c *ui.Context, tracks []spotify.Track, covers bool, header func(c *ui.Context)) {
 	p := a.pal
 	cur := a.pl.Current()
-	// A song's menu can take it out of the playlist it is listed in.
-	var pid string
-	if a.route.page == pagePlaylist {
-		pid = a.route.playlist
-	}
 	w, _ := c.Size()
 	wide := w-sidebarWidth > 820
 	top, bottom := a.insets(c)
@@ -327,7 +322,7 @@ func (a *app) trackRows(c *ui.Context, tracks []spotify.Track, covers bool, head
 		tr := &tracks[i]
 		playing := cur != nil && cur.ID == tr.ID
 		row := ui.ButtonBase(c.Key(tr.ID)).Height(54).PaddingX(12).Gap(14).Radius(10).AlignItems(ui.Center).FocusRing(false).Label(tr.Name).
-			ContextMenu(a.songItems(tr, pid))
+			ContextMenu(a.songItems(tr))
 		hovered := row.Hovered()
 		bg := ui.Transparent
 		switch {
