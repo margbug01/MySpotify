@@ -1,3 +1,7 @@
+/build/
+/.mygo/
+mygo_windows_*.syso
+/node_modules/
 outputs/
 *.exe
 .alma-snapshots/
