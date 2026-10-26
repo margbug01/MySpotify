@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"netease-music-mygo/internal/netease"
+	"vinyl/internal/netease"
 )
 
 // Cache keeps the songs played on disk, so that they play again at once,

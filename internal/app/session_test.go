@@ -6,7 +6,7 @@ import (
 
 	"github.com/egoist/mygo/audio"
 
-	"netease-music-mygo/internal/netease"
+	"vinyl/internal/netease"
 )
 
 // The session is kept a while after playback changes and every while as

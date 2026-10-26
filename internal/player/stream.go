@@ -15,7 +15,7 @@ import (
 	"github.com/egoist/mygo/audio"
 	gomp3 "github.com/hajimehoshi/go-mp3"
 
-	"netease-music-mygo/internal/netease"
+	"vinyl/internal/netease"
 )
 
 // A download fetches a song as it plays: readers wait for the bytes they

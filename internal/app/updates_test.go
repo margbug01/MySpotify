@@ -8,7 +8,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"netease-music-mygo/internal/netease"
+	"vinyl/internal/netease"
 )
 
 // fakeUpdater swaps the update plugin's preferences for ones in memory,

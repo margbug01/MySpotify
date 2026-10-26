@@ -9,7 +9,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"netease-music-mygo/internal/netease"
+	"vinyl/internal/netease"
 )
 
 // editTestApp is signed in, with liked songs, two playlists of their own

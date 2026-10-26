@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"netease-music-mygo/internal/netease"
+	"vinyl/internal/netease"
 )
 
 // A login picks up the last stretch of listening on one device, oldest

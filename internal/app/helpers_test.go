@@ -1,8 +1,8 @@
 package app
 
 import (
-	"netease-music-mygo/internal/netease"
-	"netease-music-mygo/internal/player"
+	"vinyl/internal/netease"
+	"vinyl/internal/player"
 )
 
 func newTestApp() *app {

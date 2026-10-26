@@ -8,7 +8,7 @@ import (
 
 	"github.com/egoist/mygo"
 
-	"netease-music-mygo/internal/player"
+	"vinyl/internal/player"
 )
 
 // Where playback was left is kept in session.json in the user data

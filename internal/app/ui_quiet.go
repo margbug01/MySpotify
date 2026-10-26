@@ -6,8 +6,8 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"netease-music-mygo/internal/lyrics"
-	"netease-music-mygo/internal/netease"
+	"vinyl/internal/lyrics"
+	"vinyl/internal/netease"
 )
 
 // Through the quiet parts of a song, its intro, an interlude or its outro,

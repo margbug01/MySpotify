@@ -7,7 +7,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"netease-music-mygo/internal/netease"
+	"vinyl/internal/netease"
 )
 
 func TestSongMenuCopies(t *testing.T) {

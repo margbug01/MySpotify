@@ -8,7 +8,7 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/shader"
 
-	"netease-music-mygo/internal/player"
+	"vinyl/internal/player"
 )
 
 // The backdrop of Now Playing paints the cover's colors behind it, as

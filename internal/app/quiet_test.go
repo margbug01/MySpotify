@@ -6,8 +6,8 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"netease-music-mygo/internal/lyrics"
-	"netease-music-mygo/internal/netease"
+	"vinyl/internal/lyrics"
+	"vinyl/internal/netease"
 )
 
 // quietApp is Now Playing a song sung from 20 s to 30 s, quiet before and

@@ -5,8 +5,8 @@ import (
 	"slices"
 	"time"
 
-	"netease-music-mygo/internal/netease"
-	"netease-music-mygo/internal/player"
+	"vinyl/internal/netease"
+	"vinyl/internal/player"
 )
 
 // Signed in, the listener finds what they played last, on their phone or

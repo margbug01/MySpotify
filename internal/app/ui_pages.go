@@ -7,8 +7,8 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"netease-music-mygo/internal/netease"
-	"netease-music-mygo/internal/player"
+	"vinyl/internal/netease"
+	"vinyl/internal/player"
 )
 
 const pagePad = 40

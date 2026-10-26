@@ -1,4 +1,4 @@
-module netease-music-mygo
+module vinyl
 
 go 1.27.3
 
@@ -19,5 +19,6 @@ require (
 	github.com/mewkiz/pkg v0.0.0-20250417130911-3f050ff8c56d // indirect
 	github.com/mewpkg/term v0.0.0-20241026122259-37a80af23985 // indirect
 	golang.org/x/net v0.59.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
 	golang.org/x/text v0.43.0 // indirect
 )

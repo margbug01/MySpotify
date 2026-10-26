@@ -11,8 +11,8 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"netease-music-mygo/internal/netease"
-	"netease-music-mygo/internal/player"
+	"vinyl/internal/netease"
+	"vinyl/internal/player"
 )
 
 // The drift eases in as the music plays and glides to a stop as it

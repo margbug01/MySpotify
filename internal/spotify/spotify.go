@@ -1,0 +1,287 @@
+// Package spotify reaches Spotify as its web player does: with the identity
+// the web player gets for itself (see CaptureJS), its GraphQL queries
+// (Pathfinder) and the spclient endpoints for lyrics and media.
+package spotify
+
+import (
+	"bytes"
+	_ "embed"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
+	"sync"
+	"time"
+)
+
+const (
+	pathfinderURL = "https://api-partner.spotify.com/pathfinder/v2/query"
+	spclientURL   = "https://spclient.wg.spotify.com"
+	// UserAgent is the browser the requests say they come from, as the web
+	// player's own do.
+	UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0"
+)
+
+// Client is the HTTP client of every request to Spotify and its CDNs.
+var Client = &http.Client{
+	Timeout:   30 * time.Second,
+	Transport: &http.Transport{Proxy: systemProxy, ForceAttemptHTTP2: true, MaxIdleConnsPerHost: 8, IdleConnTimeout: 90 * time.Second},
+}
+
+// CaptureJS runs before open.spotify.com's own scripts and notes the
+// identity the web player gets: see ParseIdentity.
+//
+//go:embed capture.js
+var CaptureJS string
+
+// WebPlayerURL is the page that signs the web player in, if it can.
+const WebPlayerURL = "https://open.spotify.com/"
+
+// LoginURL is where a listener signs in, coming back to the web player.
+const LoginURL = "https://accounts.spotify.com/login?continue=https%3A%2F%2Fopen.spotify.com%2F"
+
+// Identity is who the requests go as: the web player's access token and
+// client token.
+type Identity struct {
+	Token       string
+	ClientToken string
+	Expires     time.Time
+	Anonymous   bool
+}
+
+// ParseIdentity reads what CaptureJS noted (window.__vinyl, as JSON). It
+// returns false until the web player has a token.
+func ParseIdentity(s string) (Identity, bool) {
+	var v struct {
+		Token *struct {
+			AccessToken string `json:"accessToken"`
+			Expires     int64  `json:"accessTokenExpirationTimestampMs"`
+			Anonymous   bool   `json:"isAnonymous"`
+		} `json:"token"`
+		ClientToken string `json:"clientToken"`
+		Bearer      string `json:"bearer"`
+	}
+	if json.Unmarshal([]byte(s), &v) != nil {
+		return Identity{}, false
+	}
+	id := Identity{ClientToken: v.ClientToken}
+	switch {
+	case v.Token != nil && v.Token.AccessToken != "":
+		id.Token, id.Anonymous = v.Token.AccessToken, v.Token.Anonymous
+		id.Expires = time.UnixMilli(v.Token.Expires)
+	case v.Bearer != "":
+		// Seen on a request only: its lifetime unknown, an hour at most.
+		id.Token, id.Expires = v.Bearer, time.Now().Add(45*time.Minute)
+	default:
+		return Identity{}, false
+	}
+	return id, true
+}
+
+// ErrSignedOut is what requests fail with while nobody is signed in.
+var ErrSignedOut = errors.New("spotify: signed out")
+
+// ErrNotFound is what a request for something Spotify doesn't have fails with.
+var ErrNotFound = errors.New("spotify: not found")
+
+var (
+	idMu     sync.Mutex
+	current  Identity
+	renewing chan struct{} // closed once the renewal under way ends
+	renewErr error
+	// Renew, set by the app, gets a fresh identity from the web player,
+	// blocking until it has one.
+	Renew func() (Identity, error)
+)
+
+// SetIdentity makes id the one requests go as.
+func SetIdentity(id Identity) {
+	idMu.Lock()
+	current = id
+	idMu.Unlock()
+}
+
+// CurrentIdentity returns the identity requests go as, renewed first if it
+// is about to run out.
+func CurrentIdentity() (Identity, error) { return identity(false) }
+
+// identity returns a usable identity: the current one, unless it runs out
+// within two minutes or stale says the service turned it down.
+func identity(stale bool) (Identity, error) {
+	idMu.Lock()
+	id := current
+	fresh := id.Token != "" && !id.Anonymous && time.Until(id.Expires) > 2*time.Minute
+	if fresh && !stale {
+		idMu.Unlock()
+		return id, nil
+	}
+	if Renew == nil {
+		idMu.Unlock()
+		if id.Token == "" || id.Anonymous {
+			return id, ErrSignedOut
+		}
+		return id, nil
+	}
+	// One renewal at a time; whoever else asks waits for it.
+	wait := renewing
+	if wait == nil {
+		wait = make(chan struct{})
+		renewing = wait
+		go func() {
+			next, err := Renew()
+			idMu.Lock()
+			if err == nil {
+				current = next
+			}
+			renewErr, renewing = err, nil
+			idMu.Unlock()
+			close(wait)
+		}()
+	}
+	idMu.Unlock()
+	<-wait
+	idMu.Lock()
+	defer idMu.Unlock()
+	if renewErr != nil {
+		return current, renewErr
+	}
+	if current.Anonymous || current.Token == "" {
+		return current, ErrSignedOut
+	}
+	return current, nil
+}
+
+// do sends the request build makes as the web player, renewing the
+// identity once if the service turns it down, and returns the body of a 200.
+func do(build func() (*http.Request, error)) ([]byte, error) {
+	for attempt := 0; ; attempt++ {
+		id, err := identity(attempt > 0)
+		if err != nil {
+			return nil, err
+		}
+		req, err := build()
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Authorization", "Bearer "+id.Token)
+		if id.ClientToken != "" {
+			req.Header.Set("client-token", id.ClientToken)
+		}
+		req.Header.Set("app-platform", "WebPlayer")
+		req.Header.Set("User-Agent", UserAgent)
+		req.Header.Set("Accept-Language", "zh-CN")
+		res, err := Client.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		body, err := io.ReadAll(io.LimitReader(res.Body, 32<<20))
+		res.Body.Close()
+		if err != nil {
+			return nil, err
+		}
+		switch {
+		case res.StatusCode == http.StatusOK:
+			return body, nil
+		case res.StatusCode == http.StatusUnauthorized && attempt == 0:
+			continue
+		case res.StatusCode == http.StatusNotFound:
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("spotify: %s %s: %s", req.URL.Host, res.Status, snippet(body))
+	}
+}
+
+func snippet(b []byte) string {
+	s := strings.Join(strings.Fields(string(b)), " ")
+	if len(s) > 160 {
+		s = s[:160] + "…"
+	}
+	return s
+}
+
+// ops are the web player's persisted GraphQL queries, by name: the hash
+// stands for the query, which Spotify's servers hold.
+//
+// shortcut: hashes taken from web-player.f954508a.js (2026-10-26); revisit
+// when a query fails with PersistedQueryNotFound, by reading them again from
+// the web player's scripts.
+var ops = map[string]string{
+	"profileAttributes":  "08ffb4730af3746e04a8301396f20875dbbce10c75243803091a9274eacc8ac0",
+	"home":               "5fb7da7a03ee2776c0670856609cb85a189a3cecc36cc160b91cde79063b9cf1",
+	"browsePage":         "f5c4e6d668f5716464a231c1cc8b22c1cbf6ad68b09929fd7de813a30581298b",
+	"fetchPlaylist":      "21ea11a6ac75a5f3e01fd365d29c18e0a4a8b7dc09f89bbb5d73910190c6acaf",
+	"getAlbum":           "0b6ce3511e1b02e4a40fa95440f992acbe85080eb308af9194322d708fc1914f",
+	"searchTracks":       "b02683192a98dde7966b5e6655a79eeb62713eab703eda9902c932818dd52751",
+	"libraryV3":          "390c78e5b951029bad359785e69b07b536a509c581cbcd0aded5e5067f187455",
+	"fetchLibraryTracks": "087278b20b743578a6262c2b0b4bcd20d879c503cc359a2285baf083ef944240",
+	"addToLibrary":       "896ebcb47815681340860d121cb5d494e157e2a78d3950385cd54e0393c67148",
+	"removeFromLibrary":  "896ebcb47815681340860d121cb5d494e157e2a78d3950385cd54e0393c67148",
+}
+
+// query runs the web player's GraphQL operation op with vars, decoding its
+// data into out.
+func query(op string, vars map[string]any, out any) error {
+	body, err := json.Marshal(map[string]any{
+		"variables":     vars,
+		"operationName": op,
+		"extensions":    map[string]any{"persistedQuery": map[string]any{"version": 1, "sha256Hash": ops[op]}},
+	})
+	if err != nil {
+		return err
+	}
+	raw, err := do(func() (*http.Request, error) {
+		req, err := http.NewRequest(http.MethodPost, pathfinderURL, bytes.NewReader(body))
+		if err == nil {
+			req.Header.Set("Content-Type", "application/json;charset=UTF-8")
+			req.Header.Set("Accept", "application/json")
+		}
+		return req, err
+	})
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	var res struct {
+		Data   json.RawMessage `json:"data"`
+		Errors []struct {
+			Message string `json:"message"`
+		} `json:"errors"`
+	}
+	if err := json.Unmarshal(raw, &res); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	if len(res.Errors) > 0 && (len(res.Data) == 0 || string(res.Data) == "null") {
+		return fmt.Errorf("%s: %s", op, res.Errors[0].Message)
+	}
+	return json.Unmarshal(res.Data, out)
+}
+
+// spGet gets path from spclient, as the web player does.
+func spGet(path, accept string) ([]byte, error) {
+	return do(func() (*http.Request, error) {
+		req, err := http.NewRequest(http.MethodGet, spclientURL+path, nil)
+		if err == nil && accept != "" {
+			req.Header.Set("Accept", accept)
+		}
+		return req, err
+	})
+}
+
+// Fetch returns what is at url, as a cover the image CDN serves.
+func Fetch(url string) ([]byte, error) {
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", UserAgent)
+	res, err := Client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return nil, errors.New(res.Status)
+	}
+	return io.ReadAll(res.Body)
+}

@@ -7,7 +7,7 @@ import (
 	"github.com/egoist/mygo/plugins/glass"
 	"github.com/egoist/mygo/ui"
 
-	"netease-music-mygo/internal/player"
+	"vinyl/internal/player"
 )
 
 // scrubState is a progress bar's own: the value dragged, while it is, and
