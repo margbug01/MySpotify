@@ -181,32 +181,14 @@ func (a *app) playlistPage(c *ui.Context) {
 		a.trackSkeleton(c, s, false, func(c *ui.Context) { a.playlistHeaderSkeleton(c, s) })
 		return
 	}
-	tint := likedTint
-	if !pl.Liked() {
-		tint = a.artTint(pl.Cover(), 600)
-	}
-	a.tones = a.pageTones(tint)
 	a.trackRows(c, pl.Tracks, false, func(c *ui.Context) { a.playlistHeader(c, pl) }, nil)
 }
 
-// playlistHeader is the top of a list's page, as Spotify's: from the top of
-// the window and edge to edge, on its cover's color, deeper than the page's.
 func (a *app) playlistHeader(c *ui.Context, pl *spotify.Playlist) {
-	top, _ := a.insets(c)
-	band := a.bleed(c).Padding(top+pageGap+28, pagePad, 30, pagePad)
-	tintBand(band, a.tones.head)
-	band.Children(func() {
-		a.playlistTop(c, pl)
-		// Content is under the bar at the top once the band is.
-		a.startMark(c)
-	})
-}
-
-func (a *app) playlistTop(c *ui.Context, pl *spotify.Playlist) {
 	p := a.pal
-	ui.Row(c).Gap(28).AlignItems(ui.End).Children(func() {
-		ui.Box(c).Size(232, 232).Shrink(0).Radius(10).Shadow(0, 18, 44, -10, ui.RGBA(0, 0, 0, 0.4)).Children(func() {
-			a.itemArt(c, &spotify.HomeItem{List: pl}, 600, 10)
+	ui.Row(c).Gap(28).AlignItems(ui.End).Padding(0, 0, 26, 0).Children(func() {
+		ui.Box(c).Size(212, 212).Radius(14).Shadow(0, 18, 40, -10, p.cardShade).Children(func() {
+			a.coverFill(c, pl.Cover(), 600, 14)
 		})
 		ui.Column(c).Grow(1).Shrink(1).MinWidth(0).Gap(8).Children(func() {
 			kind, unit := "歌单", "首"
@@ -216,8 +198,8 @@ func (a *app) playlistTop(c *ui.Context, pl *spotify.Playlist) {
 			case strings.HasPrefix(pl.ID, "spotify:show:"):
 				kind, unit = "播客", "集"
 			}
-			ui.Text(c, kind).FontSize(12.5).FontWeight(600)
-			ui.Text(c, pl.Name).FontSize(a.titleSize(c)).FontWeight(800).LetterSpacing(-1).MaxLines(2).LineHeight(1.12)
+			ui.Text(c, kind).FontSize(12).FontWeight(600).TextColor(p.accent)
+			ui.Text(c, pl.Name).FontSize(30).FontWeight(800).LetterSpacing(-0.6).MaxLines(2).LineHeight(1.2)
 			ui.Row(c).AlignItems(ui.Center).Children(func() {
 				if len(pl.Artists) > 0 {
 					a.artistLinks(c.Key("by"), pl.Artists, 13, p.muted, p.text)
@@ -277,80 +259,6 @@ func (a *app) playlistTop(c *ui.Context, pl *spotify.Playlist) {
 			})
 		})
 	})
-}
-
-// bleed is a column that reaches past the list's padding to the top of the
-// window and its edges, under the bars, for a page's header, as Spotify's.
-func (a *app) bleed(c *ui.Context) ui.Element {
-	top, _ := a.insets(c)
-	return ui.Column(c).Margin(-(top + pageGap), -(pagePad - 12), 0, -(pagePad - 12))
-}
-
-// tintBand paints el with tint fading down its height into the page.
-func tintBand(el ui.Element, tint ui.Color) {
-	t := el.AnimateColor("tint", tint, ui.Animation{Duration: 500 * time.Millisecond})
-	el.LinearGradient(ui.LinearGradient{Angle: 180, Oklab: true, Stops: []ui.GradientStop{
-		{Color: t, At: 0},
-		{Color: t.Alpha(0.7), At: 0.6},
-		{Color: t.Alpha(0), At: 1},
-	}})
-}
-
-// tones are the colors a page takes from its picture, all the way down,
-// as the page's background, rather than a band of it over a white page.
-type tones struct {
-	page ui.Color // the page's: deep on a dark page, pale on a light one
-	head ui.Color // deeper, under the header, fading into page
-	deep ui.Color // dark, under white text over a banner
-}
-
-// pageTones are the tones of a page whose picture's color is base: gray
-// for a gray picture, or one still loading.
-func (a *app) pageTones(base ui.Color) tones {
-	h, s, _ := hsv(float64(base.R)/255, float64(base.G)/255, float64(base.B)/255)
-	if s < 0.12 {
-		s = 0
-	}
-	s = min(s, 0.65)
-	if a.pal.dark {
-		page := hsvColor(h, s*0.75, 0.25)
-		return tones{page: page, head: hsvColor(h, s*0.85, 0.4), deep: page}
-	}
-	return tones{page: hsvColor(h, s*0.42, 0.95), head: hsvColor(h, s*0.6, 0.88), deep: hsvColor(h, s*0.8, 0.28)}
-}
-
-// pageWash paints list, a page that takes tones (a.tones), with the page's
-// tone from top to bottom, and notes what shows under the bars, for their
-// edges. It stays as the list scrolls, as the page's background.
-func (a *app) pageWash(list ui.Element) {
-	if a.tones == (tones{}) {
-		return
-	}
-	page := list.AnimateColor("tint", a.tones.page, ui.Animation{Duration: 500 * time.Millisecond})
-	foot := page.Mix(a.pal.bg, 0.4)
-	// Even down to under a banner's foot (artistBanner), which melts into
-	// the page's tone.
-	list.LinearGradient(ui.LinearGradient{Angle: 180, Oklab: true, Stops: []ui.GradientStop{
-		{Color: page, At: 0},
-		{Color: page, At: 0.72},
-		{Color: foot, At: 1},
-	}})
-	a.washTop, a.washFoot = page, foot
-}
-
-// edgeBG is what a bar's edge frosts over: the page's tone, if it has one.
-func (a *app) edgeBG(tone ui.Color) ui.Color {
-	if tone == (ui.Color{}) {
-		return a.pal.bg
-	}
-	return tone
-}
-
-// titleSize is how large the name over a page's header is, as wide as the
-// page lets it.
-func (a *app) titleSize(c *ui.Context) float32 {
-	w, _ := c.Size()
-	return min(max((w-sidebarWidth)*0.06, 36), 64)
 }
 
 func (a *app) searchPage(c *ui.Context) {
@@ -428,7 +336,7 @@ func (a *app) trackRows(c *ui.Context, tracks []spotify.Track, covers bool, head
 	if footer != nil {
 		n++
 	}
-	list := ui.List(c.Key(a.route), &a.trackList, n, func(i int) {
+	ui.List(c.Key(a.route), &a.trackList, n, func(i int) {
 		if i == 0 {
 			ui.Column(c).Children(func() {
 				a.startMark(c)
@@ -511,7 +419,6 @@ func (a *app) trackRows(c *ui.Context, tracks []spotify.Track, covers bool, head
 			a.playFrom(a.routeItem(), tracks, i)
 		}
 	}).Grow(1).Padding(top+pageGap, pagePad-12, bottom+32, pagePad-12).ScrollbarInsets(top, 0, bottom, 0)
-	a.pageWash(list)
 }
 
 // nowPlayingBars dance in the row of the track playing.

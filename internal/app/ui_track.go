@@ -51,63 +51,53 @@ func (a *app) trackPage(c *ui.Context) {
 		a.trackSkeleton(c, s, true, func(c *ui.Context) { a.playlistHeaderSkeleton(c, s) })
 		return
 	}
-	a.tones = a.pageTones(a.artTint(pg.Track.Album.PicURL, 600))
 	a.trackRows(c, pg.Recommended, true, func(c *ui.Context) { a.trackHeader(c, pg) }, func(c *ui.Context) { a.trackFooter(c, pg) })
 }
 
-// trackHeader is the top of a song's page, as a list's (playlistHeader):
-// from the top of the window, on its cover's color fading into the page.
 func (a *app) trackHeader(c *ui.Context, pg *spotify.TrackPage) {
 	p := a.pal
 	tr := &pg.Track
-	top, _ := a.insets(c)
-	band := a.bleed(c).Padding(top+pageGap+28, pagePad, 30, pagePad)
-	tintBand(band, a.tones.head)
-	band.Children(func() {
-		ui.Row(c).Gap(28).AlignItems(ui.End).Children(func() {
-			ui.Box(c).Size(232, 232).Shrink(0).Radius(10).Shadow(0, 18, 44, -10, ui.RGBA(0, 0, 0, 0.4)).Children(func() {
-				a.coverFill(c, tr.Album.PicURL, 600, 10)
+	ui.Row(c).Gap(28).AlignItems(ui.End).Padding(0, 0, 26, 0).Children(func() {
+		ui.Box(c).Size(212, 212).Radius(14).Shadow(0, 18, 40, -10, p.cardShade).Children(func() {
+			a.coverFill(c, tr.Album.PicURL, 600, 14)
+		})
+		ui.Column(c).Grow(1).Shrink(1).MinWidth(0).Gap(8).Children(func() {
+			ui.Text(c, "歌曲").FontSize(12).FontWeight(600).TextColor(p.accent)
+			ui.Text(c, tr.Name).FontSize(30).FontWeight(800).LetterSpacing(-0.6).MaxLines(2).LineHeight(1.2)
+			ui.Row(c).AlignItems(ui.Center).Children(func() {
+				a.artistLinks(c.Key("by"), tr.Artists, 13, p.muted, p.text)
+				if tr.Album.Name != "" {
+					ui.Text(c, " · ").FontSize(13).TextColor(p.muted).Shrink(0)
+					if link(c.Key("album"), tr.Album.Name, 13, p.muted, p.text).Clicked() && tr.Album.ID != "" {
+						a.goTo(route{page: pagePlaylist, playlist: tr.Album.ID})
+					}
+				}
+				var meta []string
+				if pg.Year > 0 {
+					meta = append(meta, strconv.Itoa(pg.Year))
+				}
+				meta = append(meta, clock(tr.Length()))
+				if pg.Plays > 0 {
+					meta = append(meta, plays(float64(pg.Plays))+" 次播放")
+				}
+				ui.Text(c, " · "+strings.Join(meta, " · ")).FontSize(13).TextColor(p.muted).Shrink(0)
 			})
-			ui.Column(c).Grow(1).Shrink(1).MinWidth(0).Gap(8).Children(func() {
-				ui.Text(c, "歌曲").FontSize(12.5).FontWeight(600)
-				ui.Text(c, tr.Name).FontSize(a.titleSize(c)).FontWeight(800).LetterSpacing(-1).MaxLines(2).LineHeight(1.12)
-				ui.Row(c).AlignItems(ui.Center).Children(func() {
-					a.artistLinks(c.Key("by"), tr.Artists, 13, p.muted, p.text)
-					if tr.Album.Name != "" {
-						ui.Text(c, " · ").FontSize(13).TextColor(p.muted).Shrink(0)
-						if link(c.Key("album"), tr.Album.Name, 13, p.muted, p.text).Clicked() && tr.Album.ID != "" {
-							a.goTo(route{page: pagePlaylist, playlist: tr.Album.ID})
-						}
-					}
-					var meta []string
-					if pg.Year > 0 {
-						meta = append(meta, strconv.Itoa(pg.Year))
-					}
-					meta = append(meta, clock(tr.Length()))
-					if pg.Plays > 0 {
-						meta = append(meta, plays(float64(pg.Plays))+" 次播放")
-					}
-					ui.Text(c, " · "+strings.Join(meta, " · ")).FontSize(13).TextColor(p.muted).Shrink(0)
-				})
-				ui.Row(c).Gap(10).Margin(10, 0, 0, 0).AlignItems(ui.Center).Children(func() {
-					if pillButton(c.Key("play"), iconPlay, "播放", p.accent, p.onAccent).Clicked() && tr.Playable() {
-						// The track, then songs like it.
-						a.pl.PlayQueue(append([]spotify.Track{*tr}, pg.Recommended...), 0)
-					}
-					label := "电台"
-					if a.radioStarting == radioName(tr.URI(), tr.Name) {
-						label = "正在开启…"
-					}
-					if pillButton(c.Key("radio"), iconRadio, label, p.hover.Over(p.bg), p.text).Clicked() {
-						a.startRadio(tr.URI(), tr.Name)
-					}
-					a.likeButton(c.Key("like"), tr, 20, p.muted).Margin(0, 0, 0, 4)
-					a.songMenu(c.Key("more"), tr, 18, p.muted)
-				})
+			ui.Row(c).Gap(10).Margin(10, 0, 0, 0).AlignItems(ui.Center).Children(func() {
+				if pillButton(c.Key("play"), iconPlay, "播放", p.accent, p.onAccent).Clicked() && tr.Playable() {
+					// The track, then songs like it.
+					a.pl.PlayQueue(append([]spotify.Track{*tr}, pg.Recommended...), 0)
+				}
+				label := "电台"
+				if a.radioStarting == radioName(tr.URI(), tr.Name) {
+					label = "正在开启…"
+				}
+				if pillButton(c.Key("radio"), iconRadio, label, p.hover.Over(p.bg), p.text).Clicked() {
+					a.startRadio(tr.URI(), tr.Name)
+				}
+				a.likeButton(c.Key("like"), tr, 20, p.muted).Margin(0, 0, 0, 4)
+				a.songMenu(c.Key("more"), tr, 18, p.muted)
 			})
 		})
-		// Content is under the bar at the top once the band is.
-		a.startMark(c)
 	})
 	if len(pg.Recommended) > 0 {
 		ui.Box(c).PaddingX(12).Children(func() { a.section(c, "推荐") })
