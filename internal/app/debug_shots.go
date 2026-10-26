@@ -184,6 +184,11 @@ func init() {
 				mygo.RunOnMain(mygo.App.Quit)
 				return
 			}
+			if os.Getenv("NM_SCENE") == "readme" {
+				readmeScene(a, shot, step)
+				mygo.RunOnMain(mygo.App.Quit)
+				return
+			}
 			if os.Getenv("NM_SCENE") == "artist" {
 				// Artists' pages, with a banner and without, the artists a
 				// search finds and the home's: nothing plays.

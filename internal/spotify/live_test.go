@@ -165,6 +165,13 @@ func TestLive(t *testing.T) {
 		t.Fatalf("categories: %d, %v", len(cats), err)
 	}
 	t.Logf("categories: %d, first %+v", len(cats), cats[0])
+	names := map[string]bool{}
+	for _, c := range cats {
+		if names[c.Name] {
+			t.Errorf("category %s twice", c.Name)
+		}
+		names[c.Name] = true
+	}
 	for _, name := range []string{"流行", "播客"} {
 		for _, cat := range cats {
 			if cat.Name != name {

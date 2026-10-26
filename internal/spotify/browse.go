@@ -100,9 +100,16 @@ func Categories() ([]Category, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Spotify lists two pages named 音乐: the first of a name only.
 	var out []Category
+	seen := map[string]bool{}
 	for _, sh := range res.BrowseStart.Sections.shelves() {
-		out = append(out, sh.Tiles...)
+		for _, t := range sh.Tiles {
+			if !seen[t.Name] {
+				seen[t.Name] = true
+				out = append(out, t)
+			}
+		}
 	}
 	return out, nil
 }
