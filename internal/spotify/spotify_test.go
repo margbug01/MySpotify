@@ -5,18 +5,19 @@ import (
 	"time"
 )
 
-// Album art asks for the size coded in its ID; other pictures stay as they are.
+// Album art asks for the size coded in its ID, other pictures stay as they
+// are, and each says the size wanted after "#".
 func TestSized(t *testing.T) {
 	for _, c := range []struct {
 		in   string
 		n    int
 		want string
 	}{
-		{"https://i.scdn.co/image/ab67616d00001e024cacd8997b3641fca4bbff99", 600, "https://i.scdn.co/image/ab67616d0000b2734cacd8997b3641fca4bbff99"},
-		{"https://i.scdn.co/image/ab67616d0000b2734cacd8997b3641fca4bbff99", 96, "https://i.scdn.co/image/ab67616d00001e024cacd8997b3641fca4bbff99"},
-		{"https://i.scdn.co/image/ab67616d0000b2734cacd8997b3641fca4bbff99", 40, "https://i.scdn.co/image/ab67616d000048514cacd8997b3641fca4bbff99"},
-		{"https://mosaic.scdn.co/640/ab67616d00001e02aa", 200, "https://mosaic.scdn.co/300/ab67616d00001e02aa"},
-		{"https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da84aa", 600, "https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da84aa"},
+		{"https://i.scdn.co/image/ab67616d00001e024cacd8997b3641fca4bbff99", 600, "https://i.scdn.co/image/ab67616d0000b2734cacd8997b3641fca4bbff99#600"},
+		{"https://i.scdn.co/image/ab67616d0000b2734cacd8997b3641fca4bbff99", 96, "https://i.scdn.co/image/ab67616d00001e024cacd8997b3641fca4bbff99#96"},
+		{"https://i.scdn.co/image/ab67616d0000b2734cacd8997b3641fca4bbff99", 40, "https://i.scdn.co/image/ab67616d000048514cacd8997b3641fca4bbff99#40"},
+		{"https://mosaic.scdn.co/640/ab67616d00001e02aa", 200, "https://mosaic.scdn.co/300/ab67616d00001e02aa#200"},
+		{"https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da84aa", 600, "https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da84aa#600"},
 		{"", 600, ""},
 	} {
 		if got := Sized(c.in, c.n); got != c.want {

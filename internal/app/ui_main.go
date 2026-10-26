@@ -15,12 +15,17 @@ import (
 
 const sidebarWidth = 232
 
+// appFont is the family the windows' text is set in: MiSans where it is
+// installed, the system's elsewhere.
+const appFont = "MiSans, system-ui"
+
 func (a *app) view(c *ui.Context) {
 	t := *c.Theme()
 	a.pal = paletteFor(&t)
 	p := a.pal
 	t.Accent, t.AccentText = p.accent, p.onAccent
 	t.Selection = p.accent.Alpha(0.3)
+	t.Font = appFont
 	c.SetTheme(&t)
 
 	a.shortcuts(c)

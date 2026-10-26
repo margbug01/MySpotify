@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"runtime/pprof"
 	"time"
 
@@ -19,6 +20,8 @@ func init() {
 	if dir == "" {
 		return
 	}
+	// The scenes but mem take screenshots, which draw in software.
+	keepArtPixels = os.Getenv("NM_SCENE") != "mem"
 	shotHook = func(a *app) {
 		// The scenes change settings to measure them: keep the
 		// listener's own as they were.
@@ -167,6 +170,54 @@ func init() {
 					break
 				}
 				time.Sleep(250 * time.Millisecond)
+			}
+			if os.Getenv("NM_SCENE") == "mem" {
+				// What the pages cost to keep: each page in turn, muted, then
+				// the Go heap and the covers held, and a pause to measure the
+				// processes from outside.
+				stats := func(what string) {
+					var n, px int
+					mygo.RunOnMain(func() {
+						for _, art := range a.art.art {
+							if art.bmp != nil {
+								w, h := art.bmp.Size()
+								n, px = n+1, px+w*h*4
+							}
+						}
+					})
+					runtime.GC()
+					var m runtime.MemStats
+					runtime.ReadMemStats(&m)
+					var playing bool
+					var at time.Duration
+					var perr string
+					mygo.RunOnMain(func() { playing, at, perr = a.pl.Playing(), a.pl.Position(), a.pl.Err() })
+					println("mem", what, "covers", n, "pixelsMB", px>>20, "heapInuseMB", m.HeapInuse>>20, "sysMB", m.Sys>>20,
+						"playing", playing, "at", at.Round(time.Second).String(), "err", perr)
+				}
+				stats("home")
+				step(0, func() { a.open(route{page: pageCharts}) })
+				time.Sleep(5 * time.Second)
+				stats("charts")
+				step(0, func() { a.open(route{page: pagePlaylist, playlist: a.charts[1].ID}) })
+				time.Sleep(4 * time.Second)
+				step(0, func() {
+					a.volume = 0
+					a.pl.SetVolume(0)
+					a.pl.PlayQueue(a.playlists[a.charts[1].ID].Tracks, 0)
+				})
+				time.Sleep(4 * time.Second)
+				step(0, func() { a.nowPlaying = true })
+				time.Sleep(4 * time.Second)
+				step(0, func() { a.nowPlaying = false; a.search("陈奕迅") })
+				time.Sleep(4 * time.Second)
+				step(0, func() { a.open(route{page: pageHome}) })
+				time.Sleep(3 * time.Second)
+				stats("end")
+				println("measure", os.Getpid())
+				time.Sleep(25 * time.Second)
+				mygo.RunOnMain(mygo.App.Quit)
+				return
 			}
 			if os.Getenv("NM_SCENE") == "play" {
 				// The web player's transport, muted: playing on, a track

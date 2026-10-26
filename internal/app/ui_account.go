@@ -14,9 +14,10 @@ import (
 	"vinyl/internal/spotify"
 )
 
-// signin is the web player's window. Hidden, it signs in as the listener
-// last did and hands what it gets to package spotify, again whenever that
-// runs out; shown, it is where the listener signs in.
+// signin is the web player's window, open only while it is needed. Hidden,
+// it signs in as the listener last did and hands what it gets to package
+// spotify, again whenever that runs out; shown, it is where the listener
+// signs in. Closed in between, its page gives back the memory it took.
 type signin struct {
 	win   *mygo.Window
 	shown bool // the window shows, for the listener to sign in
@@ -30,20 +31,6 @@ var captureMu sync.Mutex
 // loads the home page.
 func (a *app) boot() {
 	a.homeLoading = true
-	a.signin.win = mygo.NewWindow(mygo.WindowOptions{
-		Title: "登录 Spotify", Width: 480, Height: 720, Hidden: true,
-		Page: mygo.PageOptions{PreloadScript: spotify.CaptureJS},
-	})
-	a.signin.win.OnClose(func(e *mygo.CloseEvent) {
-		if a.quitting {
-			return
-		}
-		// Closed, it hides, for the next time.
-		e.PreventDefault()
-		a.signin.win.Hide()
-		a.signin.shown = false
-		a.signin.gen++
-	})
 	spotify.Renew = a.renewIdentity
 	go func() {
 		id, err := a.renewIdentity()
@@ -58,23 +45,55 @@ func (a *app) boot() {
 	}()
 }
 
+// signinWindow returns the web player's window, at url: the one open, or a
+// new one, hidden. It runs on the main thread.
+func (a *app) signinWindow(url string) *mygo.Window {
+	s := &a.signin
+	if s.win != nil {
+		s.win.Page().LoadURL(url)
+		return s.win
+	}
+	w := mygo.NewWindow(mygo.WindowOptions{
+		Title: "登录 Spotify", Width: 480, Height: 720, Hidden: true, URL: url,
+		Page: mygo.PageOptions{PreloadScript: spotify.CaptureJS},
+	})
+	w.OnClosed(func() {
+		// Closed by the listener, as they gave up signing in.
+		if s.win == w {
+			s.win, s.shown = nil, false
+			s.gen++
+		}
+	})
+	s.win = w
+	return w
+}
+
+// closeSignin closes the web player's window, on the main thread.
+func (a *app) closeSignin() {
+	if w := a.signin.win; w != nil {
+		a.signin.win, a.signin.shown = nil, false
+		w.Close()
+	}
+}
+
 // renewIdentity loads the web player out of sight and waits for its token,
 // anonymous if nobody is signed in. It blocks, so it runs on a goroutine.
 func (a *app) renewIdentity() (spotify.Identity, error) {
 	captureMu.Lock()
 	defer captureMu.Unlock()
-	w := a.signin.win
+	var w *mygo.Window
+	mygo.RunOnMain(func() { w = a.signinWindow(spotify.WebPlayerURL) })
 	if w == nil {
 		return spotify.Identity{}, errors.New("no web player")
 	}
-	w.Page().LoadURL(spotify.WebPlayerURL)
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 	defer cancel()
 	id, err := capture(ctx, w.Page(), false)
-	// The web player has done its part: it would go on using the CPU.
-	if !a.signin.shown {
-		w.Page().LoadURL("about:blank")
-	}
+	mygo.RunOnMain(func() {
+		if !a.signin.shown {
+			a.closeSignin()
+		}
+	})
 	return id, err
 }
 
@@ -111,36 +130,37 @@ func capture(ctx context.Context, page *mygo.Page, signedIn bool) (spotify.Ident
 // the listener has.
 func (a *app) openLogin() {
 	s := &a.signin
-	if s.win == nil {
-		return
-	}
 	s.gen++
 	gen := s.gen
 	s.shown = true
-	s.win.Show()
-	s.win.Focus()
 	go func() {
 		captureMu.Lock()
 		defer captureMu.Unlock()
-		s.win.Page().LoadURL(spotify.LoginURL)
+		var w *mygo.Window
+		mygo.RunOnMain(func() {
+			if gen == s.gen {
+				w = a.signinWindow(spotify.LoginURL)
+				w.Show()
+				w.Focus()
+			}
+		})
+		if w == nil {
+			return
+		}
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 		// Closing the window stops the wait.
 		go func() {
 			for ctx.Err() == nil {
 				time.Sleep(time.Second)
-				done := make(chan bool, 1)
-				a.post(func() { done <- gen != s.gen })
-				select {
-				case closed := <-done:
-					if closed {
-						cancel()
-					}
-				case <-ctx.Done():
+				var closed bool
+				mygo.RunOnMain(func() { closed = gen != s.gen })
+				if closed {
+					cancel()
 				}
 			}
 		}()
-		id, err := capture(ctx, s.win.Page(), true)
+		id, err := capture(ctx, w.Page(), true)
 		if err != nil {
 			return
 		}
@@ -148,9 +168,7 @@ func (a *app) openLogin() {
 		prof, err := spotify.Account()
 		a.post(func() {
 			if gen == s.gen {
-				s.shown = false
-				s.win.Hide()
-				s.win.Page().LoadURL("about:blank")
+				a.closeSignin()
 			}
 			if err != nil {
 				a.toast = "登录失败，请稍后再试"

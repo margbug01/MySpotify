@@ -44,6 +44,7 @@ func (a *app) settingsView(c *ui.Context) {
 	t := *c.Theme()
 	p := paletteFor(&t)
 	t.Accent, t.AccentText = p.accent, p.onAccent
+	t.Font = appFont
 	c.SetTheme(&t)
 	c.Root().Background(p.sidebar)
 	c.OnShortcut(ui.Cmd, ui.KeyW, func() { a.settingsWin.Close() })

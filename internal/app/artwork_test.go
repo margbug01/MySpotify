@@ -1,6 +1,13 @@
 package app
 
 import (
+	"bytes"
+	"image"
+	"image/color"
+	"image/draw"
+	"image/jpeg"
+	"image/png"
+	"io"
 	"os"
 	"testing"
 	"time"
@@ -13,7 +20,7 @@ func TestAnimatedWebPCover(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	bmp, img, err := decodeArt(b)
+	bmp, img, err := decodeArt(b, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -22,6 +29,41 @@ func TestAnimatedWebPCover(t *testing.T) {
 	}
 	if w, h := bmp.Size(); w != 24 || h != 24 {
 		t.Errorf("bitmap is %d×%d, want 24×24", w, h)
+	}
+}
+
+// A cover larger than the size asked for is shrunk to it, keeping its
+// shape, and so is the bitmap; one with transparency stays as it is.
+func TestCoverShrunkToSizeAsked(t *testing.T) {
+	encode := func(img image.Image, enc func(io.Writer, image.Image) error) []byte {
+		var buf bytes.Buffer
+		if err := enc(&buf, img); err != nil {
+			t.Fatal(err)
+		}
+		return buf.Bytes()
+	}
+	photo := image.NewRGBA(image.Rect(0, 0, 640, 480))
+	draw.Draw(photo, photo.Bounds(), image.NewUniform(color.RGBA{200, 40, 60, 255}), image.Point{}, draw.Src)
+	b := encode(photo, func(w io.Writer, m image.Image) error { return jpeg.Encode(w, m, nil) })
+	bmp, img, err := decodeArt(b, 400)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if w, h := bmp.Size(); w != 400 || h != 300 || img.Bounds().Dx() != 400 {
+		t.Errorf("shrunk to %d×%d (image %v), want 400×300", w, h, img.Bounds())
+	}
+	if bmp, _, _ := decodeArt(b, 800); bmp == nil {
+		t.Fatal("no bitmap")
+	} else if w, _ := bmp.Size(); w != 640 {
+		t.Errorf("enlarged to %d, want it left at 640", w)
+	}
+	clear := image.NewNRGBA(image.Rect(0, 0, 640, 640))
+	bmp, _, err = decodeArt(encode(clear, png.Encode), 400)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if w, _ := bmp.Size(); w != 640 {
+		t.Errorf("transparent cover shrunk to %d", w)
 	}
 }
 

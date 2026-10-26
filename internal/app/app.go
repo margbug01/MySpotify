@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"runtime"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -155,8 +156,15 @@ func Run() error {
 	// Its data, the web player's sign-in among it, lives under this name,
 	// whatever the executable is called.
 	mygo.App.SetName("Vinyl")
-	// Without it, the page that plays waits for a click to start.
-	os.Setenv("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", strings.TrimSpace(os.Getenv("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS")+" --autoplay-policy=no-user-gesture-required"))
+	// The page that plays starts without a click; its GPU work, which
+	// it hardly has, runs in the web view's main process rather than a
+	// process of its own (50 MB).
+	os.Setenv("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", strings.TrimSpace(os.Getenv("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS")+" --autoplay-policy=no-user-gesture-required --in-process-gpu"))
+	// What decoding a page of covers takes goes back to the system after,
+	// rather than staying in the heap (20 MB).
+	if os.Getenv("GOMEMLIMIT") == "" {
+		debug.SetMemoryLimit(64 << 20)
+	}
 	mygo.App.WhenReady(func() {
 		a.settings = loadSettings()
 		a.settings.applyAppearance()

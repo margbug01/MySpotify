@@ -159,3 +159,20 @@ func TestEndRadio(t *testing.T) {
 		t.Error("asked the radio after leaving it")
 	}
 }
+
+// A session picked up shows its track where it was left, without loading
+// its audio, which would ask Spotify for a licence; playing loads it.
+func TestRestoreLoadsOnPlay(t *testing.T) {
+	p := New(func(func()) {})
+	p.Restore(Session{Queue: []spotify.Track{{ID: "1"}, {ID: "2"}}, Order: []int{0, 1}, At: 1, Position: 42000})
+	if tr := p.Current(); tr == nil || tr.ID != "2" {
+		t.Fatalf("current %v, want track 2", tr)
+	}
+	if p.Loading() || p.Playing() || p.Position() != 42*time.Second {
+		t.Fatalf("restored: loading %v playing %v at %v, want idle at 42s", p.Loading(), p.Playing(), p.Position())
+	}
+	p.TogglePlay()
+	if !p.Loading() || !p.Playing() || p.Position() != 42*time.Second {
+		t.Fatalf("after play: loading %v playing %v at %v, want loading from 42s", p.Loading(), p.Playing(), p.Position())
+	}
+}

@@ -5,14 +5,16 @@ import (
 	"encoding/binary"
 	"image"
 	"image/color"
-	_ "image/jpeg"
+	"image/jpeg"
 	_ "image/png"
 	"math"
-	"runtime"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
+	"golang.org/x/image/draw"
 	_ "golang.org/x/image/webp"
 
 	"vinyl/internal/spotify"
@@ -106,12 +108,7 @@ func (c *artCache) get(url string, backdrop bool) *artwork {
 			c.art[key] = a
 			// Shown by the frame post draws, the cover drops its pixels,
 			// which its data decodes again if they are needed.
-			//
-			// shortcut: not on Windows, where MyGo's CPU rasterizer (it draws
-			// transformed covers) samples pixels just dropped and panics
-			// (raster.sample, slice bounds out of range); revisit when MyGo
-			// past v0.6.5-0.20261025230045 fixes it.
-			if runtime.GOOS != "windows" {
+			if !keepArtPixels {
 				time.AfterFunc(artRelease, func() { mygo.RunOnMain(bmp.ReleasePixels) })
 			}
 		})
@@ -123,26 +120,61 @@ func (c *artCache) get(url string, backdrop bool) *artwork {
 // frame that first shows it, and the smaller copies it shows from there.
 const artRelease = 2 * time.Second
 
+// keepArtPixels keeps the covers' pixels, for the scenes that take
+// screenshots: CapturePage draws in software, whose helpers can sample a
+// cover as ReleasePixels drops its pixels, and panic (raster.sample, MyGo
+// v0.6.5-0.20261026). Windows draw on the GPU, which samples none.
+var keepArtPixels bool
+
 // loadArt fetches the cover at url, as a bitmap to draw and an image to
 // measure.
 func loadArt(url string) (*ui.Bitmap, image.Image, error) {
+	// spotify.Sized says the size wanted after "#".
+	url, size, _ := strings.Cut(url, "#")
+	want, _ := strconv.Atoi(size)
 	b, err := spotify.Fetch(url)
 	if err != nil {
 		return nil, nil, err
 	}
-	return decodeArt(b)
+	return decodeArt(b, want)
 }
 
 // decodeArt decodes a cover twice: as a bitmap, which keeps the data to
 // decode its pixels again after it drops them, and as an image.
-func decodeArt(b []byte) (*ui.Bitmap, image.Image, error) {
+// decodeArt decodes a cover, shrunk to want pixels across if larger: its
+// pixels take a quarter of the 640 the CDN serves for 400 a card shows.
+func decodeArt(b []byte, want int) (*ui.Bitmap, image.Image, error) {
 	b = stillCover(b)
 	img, _, err := image.Decode(bytes.NewReader(b))
 	if err != nil {
 		return nil, nil, err
 	}
+	if small := downscale(img, want); small != nil {
+		// Kept as a JPEG of its own, which the bitmap decodes again
+		// after dropping its pixels.
+		var buf bytes.Buffer
+		if jpeg.Encode(&buf, small, &jpeg.Options{Quality: 92}) == nil {
+			img, b = small, buf.Bytes()
+		}
+	}
 	bmp, err := ui.DecodeBitmap(b)
 	return bmp, img, err
+}
+
+// downscale returns img scaled to want pixels along its longer side, or nil
+// if it is no larger, or has transparency, which a JPEG would lose.
+func downscale(img image.Image, want int) *image.RGBA {
+	r := img.Bounds()
+	long := max(r.Dx(), r.Dy())
+	if want <= 0 || long <= want {
+		return nil
+	}
+	if o, ok := img.(interface{ Opaque() bool }); !ok || !o.Opaque() {
+		return nil
+	}
+	out := image.NewRGBA(image.Rect(0, 0, max(1, r.Dx()*want/long), max(1, r.Dy()*want/long)))
+	draw.CatmullRom.Scale(out, out.Bounds(), img, r, draw.Src, nil)
+	return out
 }
 
 func fetchImage(url string) (image.Image, error) {

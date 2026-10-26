@@ -555,43 +555,8 @@ func (p *Player) load(at int) {
 // loadSkipping loads the track at order[at], to play or not, from from,
 // skipping those that cannot play: skipped of them so far.
 func (p *Player) loadSkipping(at, skipped int, play bool, from time.Duration) {
-	p.stop()
-	p.gen++
-	gen := p.gen
-	p.at = at
-	t := p.queue[p.order[at]]
-	p.track = &t
-	p.loading, p.playing, p.err = true, play, ""
-	p.awaiting = false
-	p.lyrics, p.lyricsLoaded = nil, false
-	p.pending = from
-	p.announce(&t, nil)
-	p.refill()
-
-	go func() {
-		cover, err := spotify.Fetch(spotify.Sized(t.Album.PicURL, 600))
-		if err == nil {
-			p.post(func() {
-				if gen == p.gen {
-					p.announce(&t, cover)
-				}
-			})
-		}
-	}()
-
-	go func() {
-		lrc, err := spotify.Lyrics(t.ID)
-		var lines []lyrics.Line
-		if err == nil {
-			lines = lyrics.Build(lrc, "", "")
-		}
-		p.post(func() {
-			if gen == p.gen {
-				p.lyrics = lines
-				p.lyricsLoaded = true
-			}
-		})
-	}()
+	gen, t := p.cue(at, play, from)
+	p.loading = true
 	go func() {
 		m, err := spotify.ResolveMedia(t.ID)
 		p.post(func() {
@@ -646,6 +611,50 @@ func (p *Player) loadSkipping(at, skipped int, play bool, from time.Duration) {
 	}()
 }
 
+// cue makes the track at order[at] the current one, at from, to play or
+// not, and loads its cover and lyrics but not its audio, which
+// loadSkipping goes on to load. Its generation and track are returned.
+func (p *Player) cue(at int, play bool, from time.Duration) (int, spotify.Track) {
+	p.stop()
+	p.gen++
+	gen := p.gen
+	p.at = at
+	t := p.queue[p.order[at]]
+	p.track = &t
+	p.loading, p.playing, p.err = false, play, ""
+	p.awaiting = false
+	p.lyrics, p.lyricsLoaded = nil, false
+	p.pending = from
+	p.announce(&t, nil)
+	p.refill()
+
+	go func() {
+		cover, err := spotify.Fetch(spotify.Sized(t.Album.PicURL, 600))
+		if err == nil {
+			p.post(func() {
+				if gen == p.gen {
+					p.announce(&t, cover)
+				}
+			})
+		}
+	}()
+
+	go func() {
+		lrc, err := spotify.Lyrics(t.ID)
+		var lines []lyrics.Line
+		if err == nil {
+			lines = lyrics.Build(lrc, "", "")
+		}
+		p.post(func() {
+			if gen == p.gen {
+				p.lyrics = lines
+				p.lyricsLoaded = true
+			}
+		})
+	}()
+	return gen, t
+}
+
 var errNoWeb = errors.New("no web player to play in")
 
 // Session is where playback was left, to pick up again.
@@ -675,8 +684,9 @@ func (p *Player) Session() (Session, bool) {
 	}, true
 }
 
-// Restore picks up a session where it was left, paused, and loads its
-// track to play at once when asked.
+// Restore picks up a session where it was left, paused. Its track's audio
+// loads once it plays: loading asks Spotify for a licence, and starts the
+// web view's Widevine module, which takes 60 MB.
 func (p *Player) Restore(s Session) {
 	n := len(s.Queue)
 	if n == 0 || len(s.Order) != n || s.At < 0 || s.At >= n {
@@ -691,5 +701,5 @@ func (p *Player) Restore(s Session) {
 	}
 	p.queue, p.order = s.Queue, s.Order
 	p.shuffle, p.repeat = s.Shuffle, s.Repeat%3
-	p.loadSkipping(s.At, 0, false, time.Duration(s.Position)*time.Millisecond)
+	p.cue(s.At, false, time.Duration(s.Position)*time.Millisecond)
 }

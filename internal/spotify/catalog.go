@@ -3,6 +3,7 @@ package spotify
 import (
 	"encoding/json"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -73,9 +74,18 @@ const LikedURI = "spotify:collection:tracks"
 // Liked reports whether p is the listener's liked songs.
 func (p *Playlist) Liked() bool { return p.ID == LikedURI }
 
-// Sized asks the image CDN for a picture about n pixels across, where it
-// serves more than one size.
+// Sized asks the image CDN for a picture at least n pixels across, where
+// it serves more than one size, and says after "#", which no request
+// sends, the n the picture is to be shrunk to: Spotify's sizes jump from
+// 300 to 640 pixels.
 func Sized(pic string, n int) string {
+	if pic == "" {
+		return ""
+	}
+	return cdnSized(pic, n) + "#" + strconv.Itoa(n)
+}
+
+func cdnSized(pic string, n int) string {
 	if rest, ok := strings.CutPrefix(pic, "https://mosaic.scdn.co/640/"); ok {
 		size := "640"
 		switch {
