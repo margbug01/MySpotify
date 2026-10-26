@@ -8,7 +8,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"vinyl/internal/lyrics"
-	"vinyl/internal/netease"
+	"vinyl/internal/spotify"
 )
 
 var white = ui.RGB(255, 255, 255)
@@ -74,7 +74,7 @@ func (a *app) nowPlayingView(c *ui.Context) {
 	pl := a.pl
 	tr := pl.Current()
 	w, h := c.Size()
-	art := a.art.get(netease.Sized(tr.Album.PicURL, 600), true)
+	art := a.art.get(spotify.Sized(tr.Album.PicURL, 600), true)
 	// The colors stay the last song's while its cover loads, rather than
 	// going gray between the two.
 	shown := art
@@ -100,9 +100,8 @@ func (a *app) nowPlayingView(c *ui.Context) {
 	})
 }
 
-func (a *app) nowPlayingBody(c *ui.Context, tr *netease.Track, art *artwork, accent ui.Color, w, h float32, pointerIn bool) {
+func (a *app) nowPlayingBody(c *ui.Context, tr *spotify.Track, art *artwork, accent ui.Color, w, h float32, pointerIn bool) {
 	pl := a.pl
-	a.commentsFor(tr)
 	if a.npPane != paneQueue {
 		a.queueAt = -1
 	}
@@ -136,9 +135,6 @@ func (a *app) nowPlayingBody(c *ui.Context, tr *netease.Track, art *artwork, acc
 
 				ui.Row(c).Gap(8).AlignItems(ui.Center).Margin(36, 0, 18, 0).Children(func() {
 					ui.Column(c).Grow(1).Shrink(1).MinWidth(0).Gap(4).Children(func() {
-						if r := pl.Radio(); r != "" {
-							a.radioChip(c, r)
-						}
 						ui.Text(c, tr.Name).FontSize(22).FontWeight(700).LetterSpacing(-0.3).SingleLine()
 						ui.Text(c, tr.ArtistNames()+" — "+tr.Album.Name).FontSize(15).TextColor(white.Alpha(0.6)).SingleLine()
 					})
@@ -148,8 +144,6 @@ func (a *app) nowPlayingBody(c *ui.Context, tr *netease.Track, art *artwork, acc
 				a.scrubber(c.Key("np-scrub"), &a.npScrub, white.Alpha(0.18), white.Alpha(0.9), 16, accent.Mix(white, 0.35))
 				ui.Row(c).Children(func() {
 					ui.Text(c, clock(pl.Position())).FontSize(11).FontFeatures("tnum").TextColor(white.Alpha(0.5))
-					ui.Spacer(c)
-					qualityBadge(c, pl.Stream())
 					ui.Spacer(c)
 					status := "-" + clock(pl.Duration()-pl.Position())
 					if pl.Loading() {
@@ -185,8 +179,6 @@ func (a *app) nowPlayingBody(c *ui.Context, tr *netease.Track, art *artwork, acc
 				switch a.npPane {
 				case paneLyrics:
 					a.lyricsPane(c, tr, h)
-				case paneComments:
-					a.commentsPane(c, tr)
 				default:
 					a.queuePane(c)
 				}
@@ -218,56 +210,17 @@ const (
 	paneLyrics = iota
 	paneQueue
 	paneStage
-	paneComments
 )
 
 func (a *app) paneTabs(c *ui.Context) {
 	a.paneTab(c, paneLyrics, "歌词")
 	a.paneTab(c, paneStage, "律动")
 	a.paneTab(c, paneQueue, "待播清单")
-	a.paneTab(c, paneComments, a.commentsTab())
-}
-
-// radioChip says which radio plays, over the title: a click on it, or on
-// its cross, leaves the radio, playing on the song.
-func (a *app) radioChip(c *ui.Context, name string) {
-	icon, exit := iconRadio, "退出私人 FM"
-	if name == heartRadio {
-		icon, exit = iconHeartFill, "退出心动模式"
-	}
-	chip := ui.ButtonBase(c.Key("radio-chip")).Gap(5).Padding(3, 6, 3, 8).Margin(0, 0, 4, -8).Radius(999).
-		AlignItems(ui.Center).AlignSelf(ui.Start).FocusRing(false).Label(exit).Tooltip(exit)
-	bg, fg, cross := ui.Transparent, white.Alpha(0.6), float32(0.5)
-	if chip.Hovered() {
-		bg, fg, cross = white.Alpha(0.12), white.Alpha(0.85), 1
-	}
-	chip.Background(chip.AnimateColor("bg", bg, ui.Animation{Duration: 120 * time.Millisecond})).TextColor(fg)
-	chip.Children(func() {
-		ui.Icon(c, icon).Size(12, 12)
-		ui.Text(c, radioLabel(name)).FontSize(11.5).FontWeight(700).LetterSpacing(0.3)
-		ui.Icon(c, iconX).Size(11, 11).Opacity(cross)
-	})
-	if chip.Clicked() {
-		a.exitRadio()
-	}
-}
-
-// qualityBadge marks a lossless stream, as it plays.
-func qualityBadge(c *ui.Context, st *netease.Stream) {
-	if st == nil || !netease.Lossless(st.Level) {
-		return
-	}
-	label := "无损"
-	if st.Level == "hires" {
-		label = "Hi-Res"
-	}
-	ui.Text(c, label).FontSize(9.5).FontWeight(800).LetterSpacing(0.6).TextColor(ui.Hex("#f5d58a")).
-		Padding(1, 6).Radius(4).Border(1, ui.Hex("#f5d58a").Alpha(0.55))
 }
 
 // stageBar is the slim bar along the foot of the stage: what plays, where
 // it is, and the controls.
-func (a *app) stageBar(c *ui.Context, tr *netease.Track, art *artwork, accent ui.Color) {
+func (a *app) stageBar(c *ui.Context, tr *spotify.Track, art *artwork, accent ui.Color) {
 	pl := a.pl
 	ui.Column(c).Padding(0, 48, 28, 48).Gap(10).Children(func() {
 		a.scrubber(c.Key("stage-scrub"), &a.npScrub, white.Alpha(0.18), white.Alpha(0.9), 14, accent.Mix(white, 0.35))
@@ -303,17 +256,7 @@ func (a *app) paneTab(c *ui.Context, i int, label string) {
 	}
 	b.Background(b.AnimateColor("bg", bg, ui.Animation{Duration: 120 * time.Millisecond}))
 	b.Children(func() {
-		if i != paneComments {
-			ui.Text(c, label).FontSize(13).FontWeight(600).TextColor(fg)
-			return
-		}
-		// The count rolls as it changes, from one song's to the next.
-		n, text := a.commentCount(), ""
-		if n > 0 {
-			text = " " + count(n)
-		}
-		ui.Text(c, "评论").FontSize(13).FontWeight(600).TextColor(fg)
-		rollCount(c, &a.tabCount, n, text, fg)
+		ui.Text(c, label).FontSize(13).FontWeight(600).TextColor(fg)
 	})
 	if b.Clicked() {
 		a.npPane = i
@@ -324,7 +267,7 @@ func (a *app) paneTab(c *ui.Context, i int, label string) {
 	}
 }
 
-func (a *app) lyricsPane(c *ui.Context, tr *netease.Track, h float32) {
+func (a *app) lyricsPane(c *ui.Context, tr *spotify.Track, h float32) {
 	pl := a.pl
 	lines, loaded := pl.Lyrics()
 	if len(lines) == 0 {
@@ -332,16 +275,13 @@ func (a *app) lyricsPane(c *ui.Context, tr *netease.Track, h float32) {
 		if loaded {
 			col.Center()
 		}
-		dim, _ := a.quietShown(c, col, tr, lines, loaded)
-		quietUnder(col, dim)
 		col.Children(func() {
 			if !loaded {
 				lyricsSkeleton(c, npShimmer(c))
 				return
 			}
-			ui.Text(c, "纯音乐，请欣赏").FontSize(24).FontWeight(700).TextColor(white.Alpha(0.4))
+			ui.Text(c, "暂无歌词").FontSize(24).FontWeight(700).TextColor(white.Alpha(0.4))
 		})
-		a.quietCard(c, dim, h*0.18)
 		return
 	}
 	pos := pl.Position()
@@ -357,12 +297,6 @@ func (a *app) lyricsPane(c *ui.Context, tr *netease.Track, h float32) {
 	lag := a.lyricGlide.step(c, &a.lyricScroll)
 
 	scroll := ui.Scroll(c.Key("lyrics")).Grow(1).TrackScroll(&a.lyricScroll).Padding(0, 8, h*0.5, 0)
-	dim, quiet := a.quietShown(c, scroll, tr, lines, loaded)
-	if dim > 0.98 {
-		// Under the hot comment, gone, not drawn faint.
-		scroll.Invisible()
-	}
-	defer a.quietCard(c, dim, h*0.18)
 	var active ui.Element
 	// The lines, held back by how far the glide to the line sung has still
 	// to go (lyricGlide).
@@ -376,10 +310,6 @@ func (a *app) lyricsPane(c *ui.Context, tr *netease.Track, h float32) {
 					alpha = 1
 				} else if line.Hovered() {
 					alpha = 0.55
-				}
-				if quiet {
-					// Nearly gone under a hot comment.
-					alpha *= quietFaded
 				}
 				if line.Hovered() {
 					line.Background(white.Alpha(0.06))
@@ -534,7 +464,7 @@ func (a *app) queuePane(c *ui.Context) {
 		tr := &pl.Queue()[i]
 		playing := r == at
 		row := ui.ButtonBase(c.Key(i)).Height(58).PaddingX(10).Gap(14).Radius(12).AlignItems(ui.Center).FocusRing(false).Label(tr.Name).
-			ContextMenu(a.songItems(tr, 0))
+			ContextMenu(a.songItems(tr, ""))
 		switch {
 		case playing:
 			row.Background(white.Alpha(0.12))

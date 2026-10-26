@@ -7,7 +7,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"vinyl/internal/lyrics"
-	"vinyl/internal/netease"
+	"vinyl/internal/spotify"
 )
 
 // The stage shows lyrics as Folia's classic visualizer does: one line at a
@@ -82,39 +82,32 @@ func stageShapes(c *ui.Context, l *lyrics.Line, f float32) []wordShape {
 }
 
 // stage shows the lyrics of tr on the whole stage.
-func (a *app) stage(c *ui.Context, tr *netease.Track, accent ui.Color) {
+func (a *app) stage(c *ui.Context, tr *spotify.Track, accent ui.Color) {
 	pl := a.pl
 	lines, loaded := pl.Lyrics()
 	w, h := c.Size()
 	f := min(64, max(36, w*0.045))
 	box := ui.Box(c.Key("stage")).Grow(1)
-	// In a quiet part a hot comment takes the middle, the lyrics nearly
-	// gone under it (ui_quiet.go).
-	dim, quiet := a.quietShown(c, box, tr, lines, loaded)
 	if len(lines) == 0 {
 		box.Children(func() {
-			quietUnder(ui.Column(c).Absolute().Top(0).Left(0).Right(0).Bottom(0).Center(), dim).Children(func() {
+			ui.Column(c).Absolute().Top(0).Left(0).Right(0).Bottom(0).Center().Children(func() {
 				if !loaded {
 					stageSkeleton(c, npShimmer(c), f, w)
 					return
 				}
-				ui.Text(c, "纯音乐，请欣赏").FontSize(28).FontWeight(800).TextColor(white.Alpha(0.4))
+				ui.Text(c, "暂无歌词").FontSize(28).FontWeight(800).TextColor(white.Alpha(0.4))
 			})
-			a.stageQuiet(c, dim, f, w)
 		})
 		return
 	}
 	pos := pl.Position()
 	cur := lyrics.Index(lines, pos)
-	// Under a hot comment there is nothing to move: the quiet asks for
-	// the frame where it ends.
-	if pl.Playing() && !(quiet && dim > 0.98) {
+	if pl.Playing() {
 		stageNextFrame(c, lines, cur, pos)
 	}
 
 	box.Children(func() {
-		defer a.stageQuiet(c, dim, f, w)
-		quietUnder(ui.Box(c.Key("sung")).Absolute().Top(0).Left(0).Right(0).Bottom(0).PassThrough(), dim).Children(func() {
+		ui.Box(c.Key("sung")).Absolute().Top(0).Left(0).Right(0).Bottom(0).PassThrough().Children(func() {
 			// The line before goes as the new one comes.
 			if cur > 0 {
 				gone := float32((pos - lines[cur].At).Seconds()) / 0.4

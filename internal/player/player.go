@@ -1,16 +1,33 @@
 package player
 
 import (
-	"math"
+	"errors"
+	"log"
 	"math/rand/v2"
 	"time"
 
 	"github.com/egoist/mygo"
-	"github.com/egoist/mygo/audio"
 
 	"vinyl/internal/lyrics"
-	"vinyl/internal/netease"
+	"vinyl/internal/spotify"
 )
+
+// Output plays a track's audio: the web player's (see Web), or in tests
+// package audio's.
+type Output interface {
+	Play()
+	Pause()
+	Playing() bool
+	Seek(time.Duration)
+	Position() time.Duration
+	Duration() time.Duration
+	OnEnd(func()) (off func())
+	SetVolume(float64)
+	Close()
+}
+
+// Bands is how many bands of pitch Levels splits a spectrum into.
+const Bands = 24
 
 type RepeatMode int
 
@@ -24,18 +41,13 @@ const (
 // loading happens on goroutines, whose results post brings back there.
 type Player struct {
 	post func(func())
-	// Quality returns the stream level to load, as the settings say.
-	Quality func() string
-	// Normalize reports whether to even out the loudness of tracks, as
-	// the settings say.
-	Normalize func() bool
-	// Cache keeps the songs played, if set.
-	Cache *Cache
+	// Web plays what loads; without it, as in tests, nothing does.
+	Web *Web
 	// Changed, if set, hears that what plays, where it is or whether it
 	// plays changed.
 	Changed func()
 
-	queue   []netease.Track
+	queue   []spotify.Track
 	order   []int // the queue's indices in play order: shuffled or not
 	at      int   // where in order the current track is, -1 for none
 	shuffle bool
@@ -45,17 +57,14 @@ type Player struct {
 	// A radio goes on with the tracks its feed gives, as the queue nears
 	// its end, for as long as nothing else is played.
 	radio    string
-	feed     func(got func([]netease.Track))
+	feed     func(got func([]spotify.Track))
 	radioGen int  // counts radios, to drop what an old one gives
 	feeding  bool // the feed is asked
 	awaiting bool // at the queue's end, for what the feed gives
 
-	track   *netease.Track
-	out     *audio.Player
-	stream  stream
-	info    *netease.Stream // what the current track streams
+	track   *spotify.Track
+	out     Output
 	fade    fader
-	gain    float64 // the current track's normalizing gain
 	loading bool
 	playing bool // what the listener wants: false while paused
 	err     string
@@ -74,10 +83,7 @@ type Player struct {
 }
 
 func New(post func(func())) *Player {
-	p := &Player{post: post, at: -1, volume: 0.8, gain: 1}
-	// Music, mixed far enough ahead to play on while macOS keeps the app
-	// waiting, as it does while its appearance changes.
-	audio.SetLatency(audio.LatencyPlayback)
+	p := &Player{post: post, at: -1, volume: 0.8}
 	// The media keys, and the controls of Control Center.
 	mygo.NowPlaying.OnCommand(func(cmd mygo.MediaCommand, pos time.Duration) {
 		switch cmd {
@@ -114,7 +120,7 @@ func (p *Player) sync() {
 }
 
 // announce shows the system the track, and its cover once loaded.
-func (p *Player) announce(t *netease.Track, artwork []byte) {
+func (p *Player) announce(t *spotify.Track, artwork []byte) {
 	state := mygo.PlaybackPaused
 	if p.playing {
 		state = mygo.PlaybackPlaying
@@ -132,6 +138,14 @@ func (p *Player) announce(t *netease.Track, artwork []byte) {
 }
 
 func (p *Player) ended() {
+	if e, ok := p.out.(interface{ Err() string }); ok && e.Err() != "" {
+		// The page could not play it, as when the licence is turned down:
+		// the rest of the queue would fail the same way, one after another.
+		p.err = "这首歌暂时无法播放"
+		p.playing = false
+		p.sync()
+		return
+	}
 	if p.repeat == RepeatOne {
 		p.out.Seek(0)
 		p.out.Play()
@@ -150,13 +164,13 @@ func (p *Player) ended() {
 }
 
 // PlayQueue replaces the queue with tracks and plays the one at start.
-func (p *Player) PlayQueue(tracks []netease.Track, start int) {
+func (p *Player) PlayQueue(tracks []spotify.Track, start int) {
 	if len(tracks) == 0 {
 		return
 	}
 	p.endRadio()
 	start = min(max(start, 0), len(tracks)-1)
-	p.queue = append([]netease.Track(nil), tracks...)
+	p.queue = append([]spotify.Track(nil), tracks...)
 	p.order = make([]int, len(p.queue))
 	for i := range p.order {
 		p.order[i] = i
@@ -172,7 +186,7 @@ func (p *Player) PlayQueue(tracks []netease.Track, start int) {
 // PlayRadio plays tracks in their order, then goes on with those feed
 // gives as the queue nears its end, until something else is played. The
 // radio's name says which it is. feed calls got on the main thread.
-func (p *Player) PlayRadio(name string, tracks []netease.Track, feed func(got func([]netease.Track))) {
+func (p *Player) PlayRadio(name string, tracks []spotify.Track, feed func(got func([]spotify.Track))) {
 	if len(tracks) == 0 {
 		return
 	}
@@ -186,18 +200,18 @@ func (p *Player) PlayRadio(name string, tracks []netease.Track, feed func(got fu
 // RadioFrom makes the track playing the first of a radio's queue, which
 // goes on with tracks, then with those feed gives: without starting it
 // over.
-func (p *Player) RadioFrom(name string, tracks []netease.Track, feed func(got func([]netease.Track))) {
+func (p *Player) RadioFrom(name string, tracks []spotify.Track, feed func(got func([]spotify.Track))) {
 	if p.track == nil {
 		return
 	}
-	p.queue, p.order, p.at = []netease.Track{*p.track}, []int{0}, 0
+	p.queue, p.order, p.at = []spotify.Track{*p.track}, []int{0}, 0
 	p.appendTracks(tracks)
 	p.AttachRadio(name, feed)
 }
 
 // AttachRadio makes the queue the radio name's, which feed goes on with,
 // as after restoring a session that played it.
-func (p *Player) AttachRadio(name string, feed func(got func([]netease.Track))) {
+func (p *Player) AttachRadio(name string, feed func(got func([]spotify.Track))) {
 	p.endRadio()
 	p.radio, p.feed = name, feed
 	p.refill()
@@ -212,7 +226,7 @@ func (p *Player) EndRadio() {
 	awaiting := p.awaiting
 	p.endRadio()
 	if p.at >= 0 && p.at+1 < len(p.order) {
-		kept := make([]netease.Track, p.at+1)
+		kept := make([]spotify.Track, p.at+1)
 		for i, k := range p.order[:p.at+1] {
 			kept[i] = p.queue[k]
 		}
@@ -243,7 +257,7 @@ func (p *Player) refill() {
 	}
 	p.feeding = true
 	gen := p.radioGen
-	p.feed(func(more []netease.Track) {
+	p.feed(func(more []spotify.Track) {
 		if gen != p.radioGen {
 			return
 		}
@@ -270,8 +284,8 @@ func (p *Player) awaitFeed() {
 }
 
 // appendTracks adds tracks to the end of the queue, but those in it.
-func (p *Player) appendTracks(tracks []netease.Track) {
-	in := make(map[int64]bool, len(p.queue))
+func (p *Player) appendTracks(tracks []spotify.Track) {
+	in := make(map[string]bool, len(p.queue))
 	for _, t := range p.queue {
 		in[t.ID] = true
 	}
@@ -314,10 +328,10 @@ func (p *Player) ToggleShuffle() {
 func (p *Player) CycleRepeat() { p.repeat = (p.repeat + 1) % 3 }
 
 // Current returns the track playing or loading, or nil.
-func (p *Player) Current() *netease.Track { return p.track }
+func (p *Player) Current() *spotify.Track { return p.track }
 
 // Queue returns the tracks queued, in the order they were given.
-func (p *Player) Queue() []netease.Track { return p.queue }
+func (p *Player) Queue() []spotify.Track { return p.queue }
 
 // Playing reports what the listener wants: false while paused.
 func (p *Player) Playing() bool { return p.playing }
@@ -331,24 +345,11 @@ func (p *Player) Ready() bool { return p.out != nil }
 // Err returns why the current track did not play, or "".
 func (p *Player) Err() string { return p.err }
 
-// Stream returns what the current track streams, once loaded, or nil.
-func (p *Player) Stream() *netease.Stream { return p.info }
-
 func (p *Player) Shuffle() bool      { return p.shuffle }
 func (p *Player) Repeat() RepeatMode { return p.repeat }
 
 // Lyrics returns the current track's lyrics, and whether they have loaded.
 func (p *Player) Lyrics() ([]lyrics.Line, bool) { return p.lyrics, p.lyricsLoaded }
-
-// Downloaded returns the share of the current track downloaded so far, or
-// false before it has started to.
-func (p *Player) Downloaded() (float64, bool) {
-	if p.stream == nil {
-		return 0, false
-	}
-	dl, _ := p.stream.source()
-	return dl.Progress(), true
-}
 
 // PlayOrder returns the queue's indices in play order, and where the
 // current track is among them, -1 for none.
@@ -490,30 +491,9 @@ func (p *Player) SetVolume(v float64) {
 }
 
 // applyGain sets the volume of what plays: the listener's, which the ear
-// hears in powers, and the track's gain, if normalizing.
+// hears in powers.
 func (p *Player) applyGain() {
-	g := p.volume * p.volume
-	if p.Normalize != nil && p.Normalize() {
-		g *= p.gain
-	}
-	p.fade.setGain(g)
-}
-
-// normPreamp lifts normalized tracks, which NetEase brings to the quiet
-// loudness of ReplayGain, nearer to how loud music plays elsewhere.
-const normPreamp = 4
-
-// normGain is the gain that brings a track as loud as others, as NetEase
-// measured it, but never so loud that its peaks would clip.
-func normGain(st *netease.Stream) float64 {
-	if st == nil || st.Gain == 0 && st.Peak == 0 {
-		return 1
-	}
-	g := math.Pow(10, (st.Gain+normPreamp)/20)
-	if st.Peak > 0 {
-		g = min(g, 1/st.Peak)
-	}
-	return g
+	p.fade.setGain(p.volume * p.volume)
 }
 
 func (p *Player) Position() time.Duration {
@@ -533,14 +513,10 @@ func (p *Player) Duration() time.Duration {
 	return p.track.Length()
 }
 
-// Levels returns the spectrum of what plays now.
+// Levels returns the spectrum of what plays now. The page decrypts and
+// plays the audio itself, out of reach: there is none.
 func (p *Player) Levels() ([Bands]float32, bool) {
-	if p.stream == nil || p.out == nil || !p.playing {
-		return [Bands]float32{}, false
-	}
-	_, spec := p.stream.source()
-	frame := int64(p.Position().Seconds() * float64(p.stream.SampleRate()))
-	return spec.at(frame)
+	return [Bands]float32{}, false
 }
 
 func (p *Player) stop() {
@@ -550,7 +526,7 @@ func (p *Player) stop() {
 		out.Pause()
 		time.AfterFunc(100*time.Millisecond, out.Close)
 	}
-	p.out, p.stream, p.info = nil, nil, nil
+	p.out = nil
 	p.seeking = false
 	p.fade.attach(nil, 1)
 }
@@ -577,7 +553,7 @@ func (p *Player) loadSkipping(at, skipped int, play bool, from time.Duration) {
 	p.refill()
 
 	go func() {
-		cover, err := netease.Fetch(netease.Sized(t.Album.PicURL, 600))
+		cover, err := spotify.Fetch(spotify.Sized(t.Album.PicURL, 600))
 		if err == nil {
 			p.post(func() {
 				if gen == p.gen {
@@ -588,10 +564,10 @@ func (p *Player) loadSkipping(at, skipped int, play bool, from time.Duration) {
 	}()
 
 	go func() {
-		lrc, trans, yrc, err := netease.Lyrics(t.ID)
+		lrc, err := spotify.Lyrics(t.ID)
 		var lines []lyrics.Line
 		if err == nil {
-			lines = lyrics.Build(lrc, trans, yrc)
+			lines = lyrics.Build(lrc, "", "")
 		}
 		p.post(func() {
 			if gen == p.gen {
@@ -601,24 +577,18 @@ func (p *Player) loadSkipping(at, skipped int, play bool, from time.Duration) {
 		})
 	}()
 	go func() {
-		level := "exhigh"
-		if p.Quality != nil {
-			level = p.Quality()
-		}
-		info, s, err := p.open(t, level)
+		m, err := spotify.ResolveMedia(t.ID)
 		p.post(func() {
 			if gen != p.gen {
-				if s != nil {
-					s.Close()
-				}
 				return
 			}
 			p.loading = false
+			if err == nil && p.Web == nil {
+				err = errNoWeb
+			}
 			if err != nil {
-				p.err = err.Error()
-				if err == netease.ErrUnavailable {
-					p.err = "这首歌需要 VIP 才能播放"
-				}
+				log.Printf("player: %s: %v", t.URI(), err)
+				p.err = "这首歌暂时无法播放"
 				// Skip what cannot play, unless nothing in the queue can.
 				if skipped+1 < len(p.order) {
 					next := at + 1
@@ -632,9 +602,7 @@ func (p *Player) loadSkipping(at, skipped int, play bool, from time.Duration) {
 				}
 				return
 			}
-			p.stream, p.info = s, info
-			p.gain = normGain(info)
-			p.out = audio.NewPlayer(s)
+			p.out = p.Web.Open(m)
 			// From its middle, as a session picked up again, it fades in.
 			level := 1.0
 			if p.pending > 0 {
@@ -662,29 +630,11 @@ func (p *Player) loadSkipping(at, skipped int, play bool, from time.Duration) {
 	}()
 }
 
-// open opens track t's audio at level: kept in the cache, or else
-// streamed into it, and kept once it has all come in.
-func (p *Player) open(t netease.Track, level string) (*netease.Stream, stream, error) {
-	dl, info, ok := p.Cache.lookup(t.ID, level)
-	if !ok {
-		var err error
-		info, err = netease.SongURL(t.ID, level)
-		if err != nil {
-			return nil, nil, err
-		}
-		dl = p.Cache.download(t.ID, info)
-	}
-	s, err := openStream(dl, t.Duration)
-	if err != nil {
-		dl.Close()
-		return nil, nil, err
-	}
-	return info, s, nil
-}
+var errNoWeb = errors.New("no web player to play in")
 
 // Session is where playback was left, to pick up again.
 type Session struct {
-	Queue    []netease.Track `json:"queue"`
+	Queue    []spotify.Track `json:"queue"`
 	Order    []int           `json:"order"`
 	At       int             `json:"at"`
 	Shuffle  bool            `json:"shuffle"`

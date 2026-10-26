@@ -11,8 +11,8 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"vinyl/internal/netease"
 	"vinyl/internal/player"
+	"vinyl/internal/spotify"
 )
 
 // The drift eases in as the music plays and glides to a stop as it
@@ -63,11 +63,11 @@ func TestBackdropDriftFrames(t *testing.T) {
 	const w, h = 300, 420
 	var rows []*image.RGBA
 	for _, q := range []string{"春日影 MyGO", "晴天 周杰伦", "夜に駆ける"} {
-		hits, err := netease.Search(q, 1)
+		hits, err := spotify.Search(q, 1)
 		if err != nil || len(hits) == 0 {
 			t.Fatal(q, err)
 		}
-		img, err := fetchImage(netease.Sized(hits[0].Album.PicURL, 600))
+		img, err := fetchImage(spotify.Sized(hits[0].Album.PicURL, 600))
 		if err != nil {
 			t.Fatal(err)
 		}

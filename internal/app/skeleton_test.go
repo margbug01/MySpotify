@@ -9,7 +9,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"vinyl/internal/netease"
+	"vinyl/internal/spotify"
 )
 
 // skeletonScenes are the views that load, as they show while they do.
@@ -21,21 +21,12 @@ var skeletonScenes = []struct {
 	{"charts", func(a *app) { a.route = route{page: pageCharts} }},
 	{"daily", func(a *app) { a.route = route{page: pageDaily} }},
 	{"playlist", func(a *app) {
-		a.route = route{page: pagePlaylist, playlist: 7}
-		a.loadingPl[7] = true
+		a.route = route{page: pagePlaylist, playlist: "7"}
+		a.loadingPl["7"] = true
 	}},
 	{"search", func(a *app) {
 		a.route = route{page: pageSearch}
 		a.searched, a.searching = "春日影", true
-	}},
-	{"login", func(a *app) { a.login = loginState{open: true} }},
-	{"comments", func(a *app) {
-		a.nowPlaying, a.npPane = true, paneComments
-		a.comments = commentState{track: 1, loading: true}
-	}},
-	{"more-comments", func(a *app) {
-		a.nowPlaying, a.npPane = true, paneComments
-		a.comments = commentState{track: 1, loading: true, loaded: true, total: 1, latest: []netease.Comment{{ID: 1, Content: "好听"}}}
 	}},
 	{"lyrics", func(a *app) { a.nowPlaying, a.npPane = true, paneLyrics }},
 	{"stage", func(a *app) { a.nowPlaying, a.npPane = true, paneStage }},
@@ -45,7 +36,7 @@ func skeletonApp(set func(a *app)) *app {
 	a := newTestApp()
 	a.settings = defaultSettings()
 	a.homeLoading = true
-	a.pl.Cue([]netease.Track{{ID: 1, Name: "春日影"}})
+	a.pl.Cue([]spotify.Track{{ID: "1", Name: "春日影"}})
 	set(a)
 	return a
 }

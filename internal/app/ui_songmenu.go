@@ -5,16 +5,16 @@ import (
 	"github.com/egoist/mygo/transfer"
 	"github.com/egoist/mygo/ui"
 
-	"vinyl/internal/netease"
+	"vinyl/internal/spotify"
 )
 
 // copyText puts text on the clipboard; tests replace it.
 var copyText = func(text string) error { return mygo.Clipboard.Write(transfer.TextData(text)) }
 
 // songMenu is three dots that open the menu of tr.
-func (a *app) songMenu(c *ui.Context, tr *netease.Track, size float32, color ui.Color) ui.Element {
+func (a *app) songMenu(c *ui.Context, tr *spotify.Track, size float32, color ui.Color) ui.Element {
 	b := iconButton(c, iconMore, size, color, "更多")
-	b.Menu(a.songItems(tr, 0))
+	b.Menu(a.songItems(tr, ""))
 	return b
 }
 
@@ -22,7 +22,7 @@ func (a *app) songMenu(c *ui.Context, tr *netease.Track, size float32, color ui.
 // or a right click on its row: copying its title, its title with its
 // artists, or the link to its page, and, signed in, adding it to a
 // playlist or taking it out of pid, the playlist it is listed in, if set.
-func (a *app) songItems(tr *netease.Track, pid int64) func(m *ui.Menu) {
+func (a *app) songItems(tr *spotify.Track, pid string) func(m *ui.Menu) {
 	return func(m *ui.Menu) {
 		if m.Item("复制歌名").Chosen() {
 			copyText(tr.Name)
@@ -34,6 +34,5 @@ func (a *app) songItems(tr *netease.Track, pid int64) func(m *ui.Menu) {
 		if m.Item("复制链接").Chosen() {
 			copyText(tr.URL())
 		}
-		a.playlistItems(m, tr, pid)
 	}
 }

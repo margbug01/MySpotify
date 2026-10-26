@@ -4,8 +4,6 @@ import (
 	"math"
 	"sync"
 	"time"
-
-	"github.com/egoist/mygo/audio"
 )
 
 // How long pausing and resuming fade the music out and in.
@@ -21,7 +19,7 @@ const (
 // would redraw the windows with each step.
 type fader struct {
 	mu    sync.Mutex
-	out   *audio.Player
+	out   Output
 	gain  float64 // the listener's volume and the track's gain, together
 	from  float64 // the level faded from at start, to to over dur
 	to    float64
@@ -46,7 +44,7 @@ func (f *fader) apply(now time.Time) {
 }
 
 // attach makes out the player faded, at level.
-func (f *fader) attach(out *audio.Player, level float64) {
+func (f *fader) attach(out Output, level float64) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.gen++

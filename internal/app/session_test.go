@@ -6,7 +6,7 @@ import (
 
 	"github.com/egoist/mygo/audio"
 
-	"vinyl/internal/netease"
+	"vinyl/internal/spotify"
 )
 
 // The session is kept a while after playback changes and every while as
@@ -19,7 +19,7 @@ func TestSessionRestsWhilePaused(t *testing.T) {
 
 	a := newTestApp()
 	a.pl.Changed = a.keepSession
-	a.pl.Cue([]netease.Track{{ID: 7, Name: "宝船", Duration: 200000}})
+	a.pl.Cue([]spotify.Track{{ID: "7", Name: "宝船", Duration: 200000}})
 	out := audio.NewPlayer(&silence{})
 	out.SetVolume(0)
 	out.Play()

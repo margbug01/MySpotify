@@ -19,7 +19,6 @@ func (a *app) setMenu() {
 	name := mygo.App.Name()
 	appMenu := []*mygo.MenuItem{
 		{Role: mygo.RoleAbout, Label: "关于" + name},
-		{Label: "检查更新…", Click: run(checkForUpdates)},
 		mygo.Separator(),
 		{Label: "设置…", Accelerator: "CmdOrCtrl+,", Click: run(a.openSettings)},
 		mygo.Separator(),
@@ -39,13 +38,6 @@ func (a *app) setMenu() {
 	appMenu = append(appMenu, &mygo.MenuItem{Role: mygo.RoleQuit, Label: "退出" + name})
 	mygo.App.SetMenu(mygo.NewMenu([]*mygo.MenuItem{
 		{Label: name, Submenu: appMenu},
-		{Label: "文件", Submenu: []*mygo.MenuItem{
-			{Label: "新建歌单…", Accelerator: "CmdOrCtrl+N", Click: run(func() {
-				a.showMain()
-				a.nowPlaying = false
-				a.newPlaylist(nil)
-			})},
-		}},
 		{Label: "编辑", Submenu: []*mygo.MenuItem{
 			{Role: mygo.RoleUndo, Label: "撤销"},
 			{Role: mygo.RoleRedo, Label: "重做"},

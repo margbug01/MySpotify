@@ -7,7 +7,7 @@ import (
 	"github.com/egoist/mygo/audio"
 	"github.com/egoist/mygo/ui"
 
-	"vinyl/internal/netease"
+	"vinyl/internal/spotify"
 )
 
 // silence is a song of silence, to play without a stream.
@@ -28,8 +28,8 @@ func (s *silence) Read(buf []float32) (int, error) {
 func TestSpaceAfterOpeningNowPlaying(t *testing.T) {
 	a := newTestApp()
 	a.settings = defaultSettings()
-	tr := netease.Track{ID: 7, Name: "宝船", Artists: []netease.Artist{{Name: "DOUDOU"}}, Duration: 200000}
-	a.pl.Cue([]netease.Track{tr})
+	tr := spotify.Track{ID: "7", Name: "宝船", Artists: []spotify.Artist{{Name: "DOUDOU"}}, Duration: 200000}
+	a.pl.Cue([]spotify.Track{tr})
 	a.pl.SetLyrics(nil)
 	out := audio.NewPlayer(&silence{})
 	out.SetVolume(0)

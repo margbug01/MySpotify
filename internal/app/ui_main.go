@@ -1,14 +1,16 @@
 package app
 
 import (
+	"log"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/egoist/mygo/plugins/glass"
 	"github.com/egoist/mygo/ui"
 
-	"vinyl/internal/netease"
+	"vinyl/internal/spotify"
 )
 
 const sidebarWidth = 232
@@ -65,9 +67,6 @@ func (a *app) view(c *ui.Context) {
 		})
 		a.nowPlayingLayer(c, npOpen, npSettled)
 	})
-	a.loginDialog(c)
-	a.playlistNameDialog(c)
-	a.deletePlaylistDialog(c)
 	if a.toast != "" {
 		c.Toast(a.toast)
 		a.toast = ""
@@ -170,13 +169,12 @@ func (a *app) sidebar(c *ui.Context) {
 		ui.Scroll(c.Key("nav")).TrackScroll(&a.navScroll).Grow(1).Margin(0, -6).Padding(0, 6).Gap(4).Children(func() {
 			a.navItem(c, iconHome, "为你推荐", route{page: pageHome})
 			a.navItem(c, iconDaily, "每日推荐", route{page: pageDaily})
-			a.navItem(c, iconRadio, "私人 FM", route{page: pageFM})
 			a.navItem(c, iconCharts, "排行榜", route{page: pageCharts})
 			if a.searched != "" {
 				a.navItem(c, iconSearch, "搜索结果", route{page: pageSearch})
 			}
-			a.myPlaylists(c, "我的歌单", a.mine, true)
-			a.myPlaylists(c, "收藏的歌单", a.saved, false)
+			a.myPlaylists(c, "我的歌单", a.mine)
+			a.myPlaylists(c, "收藏的歌单", a.saved)
 		})
 
 		// What plays, as a card at the foot of the sidebar, over who listens.
@@ -212,7 +210,7 @@ func (a *app) navItem(c *ui.Context, icon *ui.SVG, label string, r route) {
 	}
 }
 
-func (a *app) sidebarNowPlaying(c *ui.Context, tr *netease.Track) {
+func (a *app) sidebarNowPlaying(c *ui.Context, tr *spotify.Track) {
 	p := a.pal
 	card := ui.ButtonBase(c.Key("np-card")).Gap(10).Padding(8).Radius(12).AlignItems(ui.Center).FocusRing(false).Label("正在播放")
 	bg := p.hover
@@ -330,6 +328,10 @@ func (a *app) pageTop(c *ui.Context) {
 func (a *app) content(c *ui.Context) {
 	// Pages mark where their content is, as they scroll.
 	a.underTop, a.underBottom = false, false
+	if a.profile == nil && !a.homeLoading {
+		a.signedOutPage(c)
+		return
+	}
 	switch a.route.page {
 	case pageHome:
 		a.homePage(c)
@@ -341,8 +343,6 @@ func (a *app) content(c *ui.Context) {
 		a.playlistPage(c)
 	case pageSearch:
 		a.searchPage(c)
-	case pageFM:
-		a.fmPage(c)
 	}
 }
 
@@ -362,26 +362,40 @@ func (a *app) centered(c *ui.Context, err string, retry func()) {
 
 func (a *app) loadHome() {
 	a.homeLoading, a.homeErr = true, ""
-	signedIn := a.profile != nil
 	go func() {
-		featured, err1 := netease.FeaturedPlaylists(30)
-		charts, err2 := netease.Charts()
-		daily, _ := netease.DailySongs()
-		var rec []netease.Playlist
-		if signedIn {
-			rec, _ = netease.RecommendedPlaylists()
+		var (
+			wg     sync.WaitGroup
+			charts []spotify.Playlist
+			err2   error
+		)
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			charts, err2 = spotify.Charts()
+		}()
+		home, err1 := spotify.HomeFeed()
+		var daily []spotify.Track
+		if err1 == nil && home.Daily != "" {
+			if pl, err := spotify.PlaylistDetail(home.Daily); err == nil {
+				daily = pl.Tracks
+			}
 		}
+		wg.Wait()
 		a.post(func() {
 			a.homeLoading = false
-			a.featured, a.charts, a.daily, a.recPlaylists = featured, charts, daily, rec
+			if home != nil {
+				a.featured, a.recPlaylists = home.Featured, home.ForYou
+			}
+			a.charts, a.daily = charts, daily
 			if err1 != nil && err2 != nil {
-				a.homeErr = "无法连接网易云音乐，请检查网络"
+				log.Printf("home: %v; charts: %v", err1, err2)
+				a.homeErr = "无法连接 Spotify，请检查网络"
 			}
 		})
 	}()
 }
 
-func (a *app) loadPlaylist(id int64, thenPlay bool) {
+func (a *app) loadPlaylist(id string, thenPlay bool) {
 	if pl := a.playlists[id]; pl != nil {
 		if thenPlay {
 			a.pl.PlayQueue(pl.Tracks, firstPlayable(pl.Tracks))
@@ -394,7 +408,7 @@ func (a *app) loadPlaylist(id int64, thenPlay bool) {
 	a.loadingPl[id] = true
 	delete(a.plErr, id)
 	go func() {
-		pl, err := netease.PlaylistDetail(id)
+		pl, err := spotify.PlaylistDetail(id)
 		a.post(func() {
 			delete(a.loadingPl, id)
 			if err != nil {
@@ -409,7 +423,7 @@ func (a *app) loadPlaylist(id int64, thenPlay bool) {
 	}()
 }
 
-func firstPlayable(tracks []netease.Track) int {
+func firstPlayable(tracks []spotify.Track) int {
 	for i := range tracks {
 		if tracks[i].Playable() {
 			return i
@@ -430,7 +444,7 @@ func (a *app) search(q string) {
 func (a *app) runSearch(q string) {
 	a.searched, a.searching, a.searchErr, a.results = q, true, "", nil
 	go func() {
-		res, err := netease.Search(q, 60)
+		res, err := spotify.Search(q, 60)
 		a.post(func() {
 			if q != a.searched {
 				return

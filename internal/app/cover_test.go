@@ -6,14 +6,14 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"vinyl/internal/netease"
+	"vinyl/internal/spotify"
 )
 
 // coverApp is Now Playing showing the second of three songs.
 func coverApp(t *testing.T) (*app, *ui.Tester, ui.Rect) {
 	a := newTestApp()
 	a.settings = defaultSettings()
-	a.pl.Cue([]netease.Track{{ID: 1, Name: "一"}, {ID: 2, Name: "二"}, {ID: 3, Name: "三"}})
+	a.pl.Cue([]spotify.Track{{ID: "1", Name: "一"}, {ID: "2", Name: "二"}, {ID: "3", Name: "三"}})
 	a.pl.Next()
 	a.pl.SetLyrics(nil)
 	a.nowPlaying = true
@@ -51,19 +51,19 @@ func drag(tt *ui.Tester, r ui.Rect, dx float32, hold time.Duration) {
 // right, for the one before, however far this one has played.
 func TestFlingCover(t *testing.T) {
 	a, tt, r := coverApp(t)
-	if a.pl.Current().ID != 2 {
-		t.Fatalf("playing %d", a.pl.Current().ID)
+	if a.pl.Current().ID != "2" {
+		t.Fatalf("playing %s", a.pl.Current().ID)
 	}
 	drag(tt, r, -r.W*0.8, 0)
-	if id := a.pl.Current().ID; id != 3 {
-		t.Fatalf("flung left: playing %d", id)
+	if id := a.pl.Current().ID; id != "3" {
+		t.Fatalf("flung left: playing %s", id)
 	}
 	if r2, ok := tt.Find("专辑封面"); !ok || r2.X < r.X-2 || r2.X > r.X+2 {
 		t.Errorf("the next cover rests at %v, not %v", r2, r)
 	}
 	drag(tt, r, r.W*0.8, 0)
-	if id := a.pl.Current().ID; id != 2 {
-		t.Errorf("flung right: playing %d", id)
+	if id := a.pl.Current().ID; id != "2" {
+		t.Errorf("flung right: playing %s", id)
 	}
 }
 
@@ -71,8 +71,8 @@ func TestFlingCover(t *testing.T) {
 func TestCoverSpringsBack(t *testing.T) {
 	a, tt, r := coverApp(t)
 	drag(tt, r, -r.W*0.3, 300*time.Millisecond)
-	if id := a.pl.Current().ID; id != 2 {
-		t.Fatalf("a short drag changed the song to %d", id)
+	if id := a.pl.Current().ID; id != "2" {
+		t.Fatalf("a short drag changed the song to %s", id)
 	}
 	if r2, _ := tt.Find("专辑封面"); r2.X < r.X-2 || r2.X > r.X+2 {
 		t.Errorf("the cover rests at %v, not %v", r2, r)
@@ -89,8 +89,8 @@ func TestSwipeCover(t *testing.T) {
 	}
 	tt.Advance(time.Second)
 	tt.Frame()
-	if id := a.pl.Current().ID; id != 3 {
-		t.Errorf("swiped left: playing %d", id)
+	if id := a.pl.Current().ID; id != "3" {
+		t.Errorf("swiped left: playing %s", id)
 	}
 }
 
@@ -103,15 +103,15 @@ func TestCoverSlidesWithTheSong(t *testing.T) {
 	for _, step := range []struct {
 		name string
 		play func()
-		id   int64
+		id   string
 		dir  float32
-	}{{"next", a.pl.Next, 3, 1}, {"prev", a.pl.PrevTrack, 2, -1}} {
+	}{{"next", a.pl.Next, "3", 1}, {"prev", a.pl.PrevTrack, "2", -1}} {
 		step.play()
 		tt.Frame()
 		tt.Advance(60 * time.Millisecond)
 		tt.Frame()
 		if id := a.pl.Current().ID; id != step.id {
-			t.Fatalf("%s: playing %d", step.name, id)
+			t.Fatalf("%s: playing %s", step.name, id)
 		}
 		if r2, _ := tt.Find("专辑封面"); (r2.X-r.X)*step.dir < r.W*0.1 {
 			t.Errorf("%s: the cover comes in at %v, from %v", step.name, r2.X, r.X)

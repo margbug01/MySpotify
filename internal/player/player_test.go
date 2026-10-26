@@ -1,15 +1,12 @@
 package player
 
 import (
-	"math"
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/egoist/mygo/audio"
 
-	"vinyl/internal/netease"
+	"vinyl/internal/spotify"
 )
 
 func TestPlayEmptyQueue(t *testing.T) {
@@ -34,12 +31,12 @@ func (silence) Read(b []float32) (int, error) { clear(b); return len(b), nil }
 func posted() (chan func(), *Player) {
 	ch := make(chan func(), 16)
 	p := New(func(fn func()) { ch <- fn })
-	p.Cue([]netease.Track{{ID: 1, Name: "一", Duration: 600000}})
+	p.Cue([]spotify.Track{{ID: "1", Name: "一", Duration: 600000}})
 	out := audio.NewPlayer(silence{})
 	out.SetVolume(0)
 	out.Play()
 	p.Attach(out)
-	p.fade.attach(out, 1)
+	p.fade.attach(audioOut{out}, 1)
 	return ch, p
 }
 
@@ -123,13 +120,13 @@ func TestSeekTwicePlaysOn(t *testing.T) {
 // in it already.
 func TestRadioRefills(t *testing.T) {
 	p := &Player{at: -1}
-	p.Cue([]netease.Track{{ID: 1}, {ID: 2}})
+	p.Cue([]spotify.Track{{ID: "1"}, {ID: "2"}})
 	asked := 0
-	p.AttachRadio("fm:DEFAULT", func(got func([]netease.Track)) {
+	p.AttachRadio("fm:DEFAULT", func(got func([]spotify.Track)) {
 		asked++
-		got([]netease.Track{{ID: 2}, {ID: 3}})
+		got([]spotify.Track{{ID: "2"}, {ID: "3"}})
 	})
-	if asked != 1 || len(p.Queue()) != 3 || p.Queue()[2].ID != 3 {
+	if asked != 1 || len(p.Queue()) != 3 || p.Queue()[2].ID != "3" {
 		t.Fatalf("asked %d, queue %v", asked, p.Queue())
 	}
 	if p.Radio() != "fm:DEFAULT" {
@@ -142,80 +139,19 @@ func TestRadioRefills(t *testing.T) {
 	}
 }
 
-func TestNormGain(t *testing.T) {
-	for _, c := range []struct {
-		st   *netease.Stream
-		want float64
-	}{
-		{nil, 1},
-		{&netease.Stream{}, 1},
-		{&netease.Stream{Gain: -6.6, Peak: 1}, math.Pow(10, -2.6/20)},
-		// Quiet, it is lifted, but not past its peak.
-		{&netease.Stream{Gain: 3, Peak: 0.8}, 1.25},
-		{&netease.Stream{Gain: -4, Peak: 0}, 1},
-	} {
-		if g := normGain(c.st); math.Abs(g-c.want) > 1e-9 {
-			t.Errorf("%+v: %v, want %v", c.st, g, c.want)
-		}
-	}
-}
-
-// The cache gives back what it kept, at the level asked for or a better
-// one, and drops what was played longest ago once over its limit.
-func TestCache(t *testing.T) {
-	dir := t.TempDir()
-	c := NewCache(dir, 400)
-	store := func(id int64, st *netease.Stream, n int) {
-		f := c.part(st)
-		f.Write(make([]byte, n))
-		f.Close()
-		c.keep(id, st, f.Name(), int64(n))
-	}
-	store(1, &netease.Stream{Level: "lossless", Type: "flac", Gain: -3}, 100)
-	dl, st, ok := c.lookup(1, "exhigh")
-	if !ok || dl.size != 100 || st.Type != "flac" || st.Gain != -3 {
-		t.Fatalf("lookup: %v %+v", ok, st)
-	}
-	dl.Close()
-	if _, _, ok := c.lookup(1, "hires"); ok {
-		t.Error("found a lossless song for Hi-Res")
-	}
-	old := time.Now().Add(-time.Hour)
-	os.Chtimes(filepath.Join(dir, "1-lossless.flac"), old, old)
-	store(2, &netease.Stream{Level: "exhigh", Type: "mp3"}, 100)
-	store(3, &netease.Stream{Level: "exhigh", Type: "mp3"}, 100)
-	store(4, &netease.Stream{Level: "exhigh", Type: "mp3"}, 100)
-	store(5, &netease.Stream{Level: "exhigh", Type: "mp3"}, 100)
-	if _, _, ok := c.lookup(1, "standard"); ok {
-		t.Error("kept the song played longest ago")
-	}
-	if dl, _, ok := c.lookup(5, "standard"); !ok {
-		t.Error("dropped the song just kept")
-	} else {
-		dl.Close()
-	}
-	if n := c.Size(); n > 400 {
-		t.Errorf("takes %d of 400", n)
-	}
-	c.Clear()
-	if n := c.Size(); n != 0 {
-		t.Errorf("cleared to %d", n)
-	}
-}
-
 // Leaving a radio keeps the song playing and those before it, drops those
 // it queued after, and asks it for no more.
 func TestEndRadio(t *testing.T) {
 	p := &Player{at: -1}
-	p.Cue([]netease.Track{{ID: 1}, {ID: 2}, {ID: 3}, {ID: 4}})
+	p.Cue([]spotify.Track{{ID: "1"}, {ID: "2"}, {ID: "3"}, {ID: "4"}})
 	p.at, p.track = 1, &p.queue[1]
 	asked := 0
-	p.AttachRadio("heart", func(got func([]netease.Track)) { asked++ })
+	p.AttachRadio("heart", func(got func([]spotify.Track)) { asked++ })
 	p.EndRadio()
-	if p.Radio() != "" || p.Current().ID != 2 {
+	if p.Radio() != "" || p.Current().ID != "2" {
 		t.Fatalf("radio %q, current %v", p.Radio(), p.Current())
 	}
-	if q := p.Queue(); len(q) != 2 || q[0].ID != 1 || q[1].ID != 2 {
+	if q := p.Queue(); len(q) != 2 || q[0].ID != "1" || q[1].ID != "2" {
 		t.Fatalf("queue %v", q)
 	}
 	p.refill()

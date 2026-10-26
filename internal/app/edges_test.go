@@ -4,19 +4,20 @@ import (
 	"bytes"
 	"image"
 	"image/draw"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/egoist/mygo/ui"
 
-	"vinyl/internal/netease"
+	"vinyl/internal/spotify"
 )
 
 func TestScrollEdgesFollowContent(t *testing.T) {
 	a := newTestApp()
 	a.settings = defaultSettings()
 	for i := range 40 {
-		a.featured = append(a.featured, netease.Playlist{ID: int64(i + 1), Name: "歌单"})
+		a.featured = append(a.featured, spotify.Playlist{ID: strconv.Itoa(i + 1), Name: "歌单"})
 	}
 	tt := ui.NewTester(a.view, 1200, 800)
 	tt.Frame()
@@ -41,7 +42,7 @@ func TestScrollEdgesFollowContent(t *testing.T) {
 func TestShortPageHasNoEdges(t *testing.T) {
 	a := newTestApp()
 	a.settings = defaultSettings()
-	a.featured = []netease.Playlist{{ID: 1, Name: "歌单"}}
+	a.featured = []spotify.Playlist{{ID: "1", Name: "歌单"}}
 	tt := ui.NewTester(a.view, 1200, 1400)
 	tt.Frame()
 	if a.underTop || a.underBottom {
@@ -56,9 +57,9 @@ func TestShortPageHasNoEdges(t *testing.T) {
 func TestAccountMenuKeepsPlayerEdge(t *testing.T) {
 	a := newTestApp()
 	a.settings = defaultSettings()
-	a.profile = &netease.Profile{UserID: 1, Nickname: "小明"}
+	a.profile = &spotify.Profile{UserID: "1", Nickname: "小明"}
 	for i := range 40 {
-		a.featured = append(a.featured, netease.Playlist{ID: int64(i + 1), Name: "歌单"})
+		a.featured = append(a.featured, spotify.Playlist{ID: strconv.Itoa(i + 1), Name: "歌单"})
 	}
 	tt := ui.NewTester(a.view, 1000, 700)
 	tt.Frame()

@@ -6,14 +6,14 @@ import (
 	"github.com/egoist/mygo/audio"
 
 	"vinyl/internal/lyrics"
-	"vinyl/internal/netease"
+	"vinyl/internal/spotify"
 )
 
 // These set a player up as it would be after loading, without loading
 // anything, for the tests of the views that show it.
 
 // Cue makes tracks the queue, in order, with the first current.
-func (p *Player) Cue(tracks []netease.Track) {
+func (p *Player) Cue(tracks []spotify.Track) {
 	p.queue = tracks
 	p.order = make([]int, len(tracks))
 	for i := range p.order {
@@ -37,6 +37,11 @@ func (p *Player) Hold(pos time.Duration) {
 
 // Attach makes out the current track's audio, playing.
 func (p *Player) Attach(out *audio.Player) {
-	p.out = out
+	p.out = audioOut{out}
 	p.playing = true
 }
+
+// audioOut is package audio's player as an Output.
+type audioOut struct{ *audio.Player }
+
+func (o audioOut) SetVolume(v float64) { o.Player.SetVolume(v) }

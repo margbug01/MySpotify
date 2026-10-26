@@ -8,13 +8,14 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"math"
+	"runtime"
 	"time"
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 	_ "golang.org/x/image/webp"
 
-	"vinyl/internal/netease"
+	"vinyl/internal/spotify"
 )
 
 // artwork is a cover, decoded and ready to draw, with what the player
@@ -105,7 +106,14 @@ func (c *artCache) get(url string, backdrop bool) *artwork {
 			c.art[key] = a
 			// Shown by the frame post draws, the cover drops its pixels,
 			// which its data decodes again if they are needed.
-			time.AfterFunc(artRelease, func() { mygo.RunOnMain(bmp.ReleasePixels) })
+			//
+			// shortcut: not on Windows, where MyGo's CPU rasterizer (it draws
+			// transformed covers) samples pixels just dropped and panics
+			// (raster.sample, slice bounds out of range); revisit when MyGo
+			// past v0.6.5-0.20261025230045 fixes it.
+			if runtime.GOOS != "windows" {
+				time.AfterFunc(artRelease, func() { mygo.RunOnMain(bmp.ReleasePixels) })
+			}
 		})
 	}()
 	return nil
@@ -118,7 +126,7 @@ const artRelease = 2 * time.Second
 // loadArt fetches the cover at url, as a bitmap to draw and an image to
 // measure.
 func loadArt(url string) (*ui.Bitmap, image.Image, error) {
-	b, err := netease.Fetch(url)
+	b, err := spotify.Fetch(url)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -138,7 +146,7 @@ func decodeArt(b []byte) (*ui.Bitmap, image.Image, error) {
 }
 
 func fetchImage(url string) (image.Image, error) {
-	b, err := netease.Fetch(url)
+	b, err := spotify.Fetch(url)
 	if err != nil {
 		return nil, err
 	}

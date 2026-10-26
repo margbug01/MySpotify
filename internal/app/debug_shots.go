@@ -157,13 +157,17 @@ func init() {
 				mygo.RunOnMain(mygo.App.Quit)
 				return
 			}
-			time.Sleep(5 * time.Second)
-			mygo.RunOnMain(func() {
-				x, y, w, h := windowFrame(a.notch.win.NativeHandle())
-				println("notch frame", int(x), int(y), int(w), int(h))
-			})
+			// Signing in and the home's lists take a few seconds.
+			for range 120 {
+				var n int
+				mygo.RunOnMain(func() { n = len(a.charts) })
+				if n > 0 {
+					break
+				}
+				time.Sleep(250 * time.Millisecond)
+			}
+			time.Sleep(2 * time.Second)
 			shot("1-home", a.win)
-			shot("1-notch-idle", a.notch.win)
 			step(0, func() { a.open(route{page: pageCharts}) })
 			time.Sleep(time.Second)
 			shot("2-charts", a.win)
@@ -172,23 +176,20 @@ func init() {
 			shot("3-playlist", a.win)
 			step(0, func() {
 				pl := a.playlists[a.charts[1].ID]
-				a.volume = 0.15
+				a.volume = 0
 				a.pl.SetVolume(a.volume)
 				a.pl.PlayQueue(pl.Tracks, firstPlayable(pl.Tracks))
 			})
 			time.Sleep(5 * time.Second)
 			shot("4-playing", a.win)
-			shot("4-notch-compact", a.notch.win)
-			step(0, func() { a.notch.open = true; a.notch.lastInside = time.Now().Add(time.Hour) })
-			time.Sleep(2 * time.Second)
-			shot("5-notch-open", a.notch.win)
+			mygo.RunOnMain(func() { println("playing", a.pl.Playing(), "at", a.pl.Position().String(), "err", a.pl.Err()) })
 			step(0, func() { a.nowPlaying = true })
 			time.Sleep(4 * time.Second)
 			shot("6-now-playing", a.win)
 			step(0, func() { a.npPane = paneQueue })
 			time.Sleep(2 * time.Second)
 			shot("7-queue", a.win)
-			step(0, func() { a.search("周杰伦") })
+			step(0, func() { a.search("陈奕迅") })
 			time.Sleep(4 * time.Second)
 			shot("8-search", a.win)
 			mygo.RunOnMain(mygo.App.Quit)

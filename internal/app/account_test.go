@@ -11,7 +11,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"vinyl/internal/netease"
+	"vinyl/internal/spotify"
 )
 
 // Clicking the account row drops its menu, which takes the focus so the
@@ -19,7 +19,7 @@ import (
 func TestAccountMenu(t *testing.T) {
 	a := newTestApp()
 	a.settings = defaultSettings()
-	a.profile = &netease.Profile{UserID: 1, Nickname: "小明"}
+	a.profile = &spotify.Profile{UserID: "1", Nickname: "小明"}
 	tt := ui.NewTester(a.view, 1000, 700)
 	tt.Frame()
 
@@ -63,7 +63,7 @@ func TestAccountMenuFrames(t *testing.T) {
 	for _, dark := range []bool{false, true} {
 		a := newTestApp()
 		a.settings = defaultSettings()
-		a.profile = &netease.Profile{UserID: 1, Nickname: "小明"}
+		a.profile = &spotify.Profile{UserID: "1", Nickname: "小明"}
 		tt := ui.NewTester(a.view, 1000, 600)
 		tt.SetDark(dark)
 		tt.Frame()

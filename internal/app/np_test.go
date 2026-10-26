@@ -2,19 +2,20 @@ package app
 
 import (
 	"fmt"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/egoist/mygo/ui"
 
-	"vinyl/internal/netease"
+	"vinyl/internal/spotify"
 )
 
 func TestNowPlayingClosesAsOneLayer(t *testing.T) {
 	a := newTestApp()
 	a.settings = defaultSettings()
-	tr := netease.Track{ID: 1, Name: "宝船", Artists: []netease.Artist{{Name: "DOUDOU"}}, Duration: 200000}
-	a.pl.Cue([]netease.Track{tr})
+	tr := spotify.Track{ID: "1", Name: "宝船", Artists: []spotify.Artist{{Name: "DOUDOU"}}, Duration: 200000}
+	a.pl.Cue([]spotify.Track{tr})
 	a.pl.SetLyrics(nil)
 	tt := ui.NewTester(a.view, 1200, 800)
 	tt.SetDark(false)
@@ -48,9 +49,9 @@ func TestNowPlayingClosesAsOneLayer(t *testing.T) {
 
 func TestQueueStaysAsATrackIsPlayed(t *testing.T) {
 	a := newTestApp()
-	var tracks []netease.Track
+	var tracks []spotify.Track
 	for i := range 12 {
-		tracks = append(tracks, netease.Track{ID: int64(i + 1), Name: fmt.Sprintf("歌%02d", i), Duration: 200000})
+		tracks = append(tracks, spotify.Track{ID: strconv.Itoa(i + 1), Name: fmt.Sprintf("歌%02d", i), Duration: 200000})
 	}
 	a.pl.Cue(tracks)
 	a.nowPlaying, a.npPane = true, paneQueue

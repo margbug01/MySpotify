@@ -8,8 +8,8 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"vinyl/internal/netease"
 	"vinyl/internal/player"
+	"vinyl/internal/spotify"
 )
 
 // dailyArt is the cover of the day's songs: their first cover, blurred,
@@ -17,7 +17,7 @@ import (
 func (a *app) dailyArt(c *ui.Context, now time.Time, size float32) {
 	var art *artwork
 	if len(a.daily) > 0 {
-		art = a.art.get(netease.Sized(a.daily[0].Album.PicURL, 600), true)
+		art = a.art.get(spotify.Sized(a.daily[0].Album.PicURL, 600), true)
 	}
 	radius := size * 0.07
 	box := ui.Box(c).Size(size, size).Radius(radius).Background(ui.Hex("#3a3a40")).
@@ -51,7 +51,7 @@ func (a *app) dailyCard(c *ui.Context, now time.Time) {
 	w, _ := c.Size()
 	inner := w - sidebarWidth - 2*pagePad
 	still := c.Preferences().ReduceMotion
-	art := a.art.get(netease.Sized(songs[0].Album.PicURL, 600), true)
+	art := a.art.get(spotify.Sized(songs[0].Album.PicURL, 600), true)
 	card := ui.ButtonBase(c.Key("daily")).Height(dailyHeight).Radius(dailyRadius).FocusRing(false).Label("每日推荐").TextColor(white)
 	hovered := card.Hovered()
 	ours, playing := a.dailyPlaying()
@@ -265,7 +265,7 @@ func (s *spinState) step(now time.Time, to float64) bool {
 }
 
 // dailyArtists names the first few singers of songs, and how many songs.
-func dailyArtists(songs []netease.Track) string {
+func dailyArtists(songs []spotify.Track) string {
 	var names []string
 	seen := map[string]bool{}
 	for i := range songs {
@@ -290,7 +290,7 @@ func dailyArtists(songs []netease.Track) string {
 
 // dailyPlayButton plays the day's songs; while they play it says so, its
 // bars dancing, and pauses them; paused, it goes on.
-func (a *app) dailyPlayButton(c *ui.Context, songs []netease.Track, ours, playing bool) {
+func (a *app) dailyPlayButton(c *ui.Context, songs []spotify.Track, ours, playing bool) {
 	ink := ui.Hex("#1d1d1f")
 	b := ui.ButtonBase(c).Height(38).PaddingX(20).Gap(8).Radius(999).AlignItems(ui.Center).TextColor(ink).
 		Shadow(0, 6, 16, -6, ui.RGBA(0, 0, 0, 0.35))
@@ -347,13 +347,13 @@ func (a *app) dailyPlayButton(c *ui.Context, songs []netease.Track, ours, playin
 
 // dailyPicks lists the day's first songs, numbered, the one playing with
 // its bars; each plays the day's songs from it.
-func (a *app) dailyPicks(c *ui.Context, songs []netease.Track, ours bool) {
+func (a *app) dailyPicks(c *ui.Context, songs []spotify.Track, ours bool) {
 	cur := a.pl.Current()
 	ui.Column(c.Key("picks")).Width(236).Shrink(0).Gap(2).Children(func() {
 		for i := range min(3, len(songs)) {
 			tr := &songs[i]
 			row := ui.ButtonBase(c.Key(tr.ID)).Row().Gap(12).Padding(7, 12).Radius(12).AlignItems(ui.Center).FocusRing(false).Label(tr.Name).
-				ContextMenu(a.songItems(tr, 0))
+				ContextMenu(a.songItems(tr, ""))
 			bg := white.Alpha(0)
 			if row.Hovered() {
 				bg = white.Alpha(0.1)
@@ -382,7 +382,7 @@ func (a *app) dailyPicks(c *ui.Context, songs []netease.Track, ours bool) {
 
 // dailyStack is the day's first cover, as a sleeve with its record out as
 // far as out, the two covers after it behind; fanned, they spread.
-func (a *app) dailyStack(c *ui.Context, songs []netease.Track, fanned bool, out float32) {
+func (a *app) dailyStack(c *ui.Context, songs []spotify.Track, fanned bool, out float32) {
 	spring := ui.Animation{Spring: ui.SpringOptions{Duration: 600 * time.Millisecond, Bounce: 0.3}}
 	ui.Box(c.Key("stack")).Size(stackWidth, sleeveSize).Shrink(0).Children(func() {
 		// The covers behind, the farthest first.
@@ -402,7 +402,7 @@ func (a *app) dailyStack(c *ui.Context, songs []netease.Track, fanned bool, out 
 		ui.Box(c.Key("record")).Absolute().Left(mid+recordOut(out)-recordSize/2).Top((sleeveSize-recordSize)/2).
 			Size(recordSize, recordSize).Radius(recordSize/2).Shadow(0, 8, 20, -4, ui.RGBA(0, 0, 0, 0.5)).
 			Draw(func(p *ui.Painter, r ui.Rect) {
-				drawRecord(p, r, bitmap(a.art.get(netease.Sized(songs[0].Album.PicURL, 240), false)), float32(a.dailySpin.angle))
+				drawRecord(p, r, bitmap(a.art.get(spotify.Sized(songs[0].Album.PicURL, 240), false)), float32(a.dailySpin.angle))
 			})
 		// The sleeve.
 		sleeve := ui.Box(c.Key("sleeve")).Absolute().Left(sleeveLeft).Top(0).Size(sleeveSize, sleeveSize).Radius(12).

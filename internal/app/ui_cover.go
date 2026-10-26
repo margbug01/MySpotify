@@ -8,7 +8,7 @@ import (
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/shader"
 
-	"vinyl/internal/netease"
+	"vinyl/internal/spotify"
 )
 
 // The cover of Now Playing is a thing to touch. It tilts toward the
@@ -34,13 +34,13 @@ type coverState struct {
 	decided bool
 	// The song the cover shows, where it is in the play order, and where
 	// its cover goes as another comes (exit).
-	track int64
+	track string
 	at    int
 	exit  *ui.Motion
 }
 
 type coverKey struct {
-	id  int64
+	id  string
 	gen int
 }
 
@@ -88,7 +88,7 @@ const swipeRest = 140 * time.Millisecond
 
 // npCover shows the cover of tr, size across, which the pointer tilts,
 // drags and flings.
-func (a *app) npCover(c *ui.Context, tr *netease.Track, art *artwork, size float32) {
+func (a *app) npCover(c *ui.Context, tr *spotify.Track, art *artwork, size float32) {
 	cs, pl := &a.npCoverState, a.pl
 	far := size * 1.5 // where a cover flies off to
 	fling := func(dir int) {

@@ -87,10 +87,6 @@ func (a *app) scrubber(c *ui.Context, st *scrubState, track, fill ui.Color, heig
 		y := r.Y + (r.H-thick)/2
 		head, cy := r.X+r.W*frac, r.Y+r.H/2
 		p.Fill(ui.Rect{X: r.X, Y: y, W: r.W, H: thick}, track, thick/2)
-		// What has downloaded, a shade lighter.
-		if got, ok := pl.Downloaded(); ok && float32(got) < 1 {
-			p.Fill(ui.Rect{X: r.X, Y: y, W: r.W * float32(got), H: thick}, track, thick/2)
-		}
 		played := ui.Rect{X: r.X, Y: y, W: max(thick, head-r.X), H: thick}
 		if smoking > 0.01 {
 			// A streak of light, brightest at the head.
@@ -349,10 +345,6 @@ func (a *app) playerBar(c *ui.Context) {
 	pl := a.pl
 	tr := pl.Current()
 	a.tickTimes(c)
-	if a.picked.id != 0 && (tr == nil || tr.ID != a.picked.id || pl.Playing()) {
-		// Played, or gone: it says what it is again.
-		a.picked = pickedUp{}
-	}
 	// Over the foot of the page: while content is under it, its edge frosts
 	// it, with a hairline along the top.
 	edge := ui.Box(c.Key("bottom-edge")).Absolute().Left(0).Right(0).Bottom(0).Height(playerBarHeight).
@@ -391,8 +383,6 @@ func (a *app) playerBar(c *ui.Context) {
 					sub := tr.ArtistNames()
 					color := p.muted
 					switch {
-					case a.picked.id == tr.ID:
-						sub = a.picked.heard
 					case pl.Loading():
 						sub = "正在缓冲…"
 					case pl.Err() != "":

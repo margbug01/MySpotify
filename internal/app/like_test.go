@@ -13,19 +13,19 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"vinyl/internal/lyrics"
-	"vinyl/internal/netease"
+	"vinyl/internal/spotify"
 )
 
 func TestLikeFromPlayerBar(t *testing.T) {
 	calls := make(chan bool, 4)
-	likeSong = func(id int64, like bool) error { calls <- like; return nil }
-	defer func() { likeSong = netease.Like }()
+	likeSong = func(id string, like bool) error { calls <- like; return nil }
+	defer func() { likeSong = spotify.Like }()
 
 	a := newTestApp()
 	a.settings = defaultSettings()
-	a.profile = &netease.Profile{UserID: 1, Nickname: "小明"}
-	tr := netease.Track{ID: 7, Name: "宝船", Artists: []netease.Artist{{Name: "DOUDOU"}}, Duration: 200000}
-	a.pl.Cue([]netease.Track{tr})
+	a.profile = &spotify.Profile{UserID: "1", Nickname: "小明"}
+	tr := spotify.Track{ID: "7", Name: "宝船", Artists: []spotify.Artist{{Name: "DOUDOU"}}, Duration: 200000}
+	a.pl.Cue([]spotify.Track{tr})
 	a.pl.SetLyrics(nil)
 	tt := ui.NewTester(a.view, 1200, 800)
 	tt.Advance(time.Second)
@@ -34,7 +34,7 @@ func TestLikeFromPlayerBar(t *testing.T) {
 	if err := tt.Click("喜欢"); err != nil {
 		t.Fatal(err)
 	}
-	if !a.liked[7] {
+	if !a.liked["7"] {
 		t.Fatal("the heart did not fill at once")
 	}
 	if like := <-calls; !like {
@@ -44,7 +44,7 @@ func TestLikeFromPlayerBar(t *testing.T) {
 	if err := tt.Click("取消喜欢"); err != nil {
 		t.Fatal(err)
 	}
-	if a.liked[7] {
+	if a.liked["7"] {
 		t.Error("still liked after unliking")
 	}
 	if like := <-calls; like {
@@ -59,13 +59,13 @@ func TestLikeBurstFrames(t *testing.T) {
 	if dir == "" {
 		t.Skip()
 	}
-	likeSong = func(int64, bool) error { return nil }
-	defer func() { likeSong = netease.Like }()
+	likeSong = func(string, bool) error { return nil }
+	defer func() { likeSong = spotify.Like }()
 	a := newTestApp()
 	a.settings = defaultSettings()
-	a.profile = &netease.Profile{UserID: 1}
-	tr := netease.Track{ID: 7, Name: "宝船", Duration: 200000}
-	a.pl.Cue([]netease.Track{tr})
+	a.profile = &spotify.Profile{UserID: "1"}
+	tr := spotify.Track{ID: "7", Name: "宝船", Duration: 200000}
+	a.pl.Cue([]spotify.Track{tr})
 	tt := ui.NewTester(a.view, 1200, 800)
 	tt.SetDark(true)
 	tt.Advance(time.Second)
@@ -102,8 +102,8 @@ func TestStageFrames(t *testing.T) {
 	}
 	a := newTestApp()
 	a.settings = defaultSettings()
-	tr := netease.Track{ID: 7, Name: "海屿你", Artists: []netease.Artist{{Name: "马也_Crabbit"}}, Duration: 200000}
-	a.pl.Cue([]netease.Track{tr})
+	tr := spotify.Track{ID: "7", Name: "海屿你", Artists: []spotify.Artist{{Name: "马也_Crabbit"}}, Duration: 200000}
+	a.pl.Cue([]spotify.Track{tr})
 	a.pl.SetLyrics(lyrics.Build("[00:13.00]我从不主动示弱\n[00:30.56]曾经的那些发生过的开心和难过",
 		"[00:13.00]I never show weakness first\n[00:30.56]The joy and sorrow that once happened",
 		`[13010,4780](13010,660,0)从(13670,670,0)不(14340,30,0) (14370,480,0)主(14850,610,0)动(15460,30,0) (15490,330,0)示(15820,1070,0)弱
@@ -142,7 +142,7 @@ func TestBackdropFrame(t *testing.T) {
 	if dir == "" {
 		t.Skip()
 	}
-	hits, err := netease.Search("春日影 MyGO", 1)
+	hits, err := spotify.Search("春日影 MyGO", 1)
 	if err != nil || len(hits) == 0 {
 		t.Fatal(err)
 	}
@@ -150,21 +150,21 @@ func TestBackdropFrame(t *testing.T) {
 	a := newTestApp()
 	a.settings = defaultSettings()
 	for _, size := range []int{600, 120, 96} {
-		img, err := fetchImage(netease.Sized(tr.Album.PicURL, size))
+		img, err := fetchImage(spotify.Sized(tr.Album.PicURL, size))
 		if err != nil {
 			t.Fatal(err)
 		}
 		art := &artwork{bmp: ui.NewBitmap(img), tint: dominantColor(img)}
 		top, foot := backdropColors(art.tint)
 		t.Logf("tint %v, backdrop %v to %v", art.tint, top, foot)
-		a.art.art[netease.Sized(tr.Album.PicURL, size)] = art
+		a.art.art[spotify.Sized(tr.Album.PicURL, size)] = art
 		if size == 600 {
 			bd := *art
 			bd.backdrop = ui.NewBitmap(blurImage(img))
-			a.art.art[netease.Sized(tr.Album.PicURL, size)+"#backdrop"] = &bd
+			a.art.art[spotify.Sized(tr.Album.PicURL, size)+"#backdrop"] = &bd
 		}
 	}
-	a.pl.Cue([]netease.Track{tr})
+	a.pl.Cue([]spotify.Track{tr})
 	a.pl.SetLyrics(lyrics.Build("[00:00.00]作词: 織田あすか\n[00:01.00]作曲: 藤田淳平(Elements Garden)\n[00:02.00]编曲: 藤田淳平(Elements Garden)\n[00:15.00]悴んだ心 ふるえる眼差し\n[00:20.00]世界で 僕は ひとりぼっちだった\n[00:25.00]散ることしか知らない春は\n[00:30.00]毎年 冷たくあしらう",
 		"[00:15.00]内心满是憔悴 眼神颤抖不止\n[00:20.00]我在这世界孤独一人\n[00:25.00]在不断凋零的春季中\n[00:30.00]每年都只感受到冰冷", ""))
 	a.pl.Seek(2500 * time.Millisecond)
@@ -185,7 +185,7 @@ func TestSmokeFrames(t *testing.T) {
 	if dir == "" {
 		t.Skip()
 	}
-	hits, err := netease.Search("春日影 MyGO", 1)
+	hits, err := spotify.Search("春日影 MyGO", 1)
 	if err != nil || len(hits) == 0 {
 		t.Fatal(err)
 	}
@@ -193,19 +193,19 @@ func TestSmokeFrames(t *testing.T) {
 	a := newTestApp()
 	a.settings = defaultSettings()
 	for _, size := range []int{600, 120, 96} {
-		img, err := fetchImage(netease.Sized(tr.Album.PicURL, size))
+		img, err := fetchImage(spotify.Sized(tr.Album.PicURL, size))
 		if err != nil {
 			t.Fatal(err)
 		}
 		art := &artwork{bmp: ui.NewBitmap(img), tint: dominantColor(img)}
-		a.art.art[netease.Sized(tr.Album.PicURL, size)] = art
+		a.art.art[spotify.Sized(tr.Album.PicURL, size)] = art
 		if size == 600 {
 			bd := *art
 			bd.backdrop = ui.NewBitmap(blurImage(img))
-			a.art.art[netease.Sized(tr.Album.PicURL, size)+"#backdrop"] = &bd
+			a.art.art[spotify.Sized(tr.Album.PicURL, size)+"#backdrop"] = &bd
 		}
 	}
-	a.pl.Cue([]netease.Track{tr})
+	a.pl.Cue([]spotify.Track{tr})
 	a.pl.SetLyrics(nil)
 	a.pl.Hold(75 * time.Second)
 	a.settings.Smoke = true
@@ -249,8 +249,8 @@ func TestPlayerBarWidths(t *testing.T) {
 	}
 	a := newTestApp()
 	a.settings = defaultSettings()
-	tr := netease.Track{ID: 7, Name: "那些你很冒险的梦 (Live)", Artists: []netease.Artist{{Name: "林俊杰"}, {Name: "JJ Lin"}}, Duration: 199000}
-	a.pl.Cue([]netease.Track{tr})
+	tr := spotify.Track{ID: "7", Name: "那些你很冒险的梦 (Live)", Artists: []spotify.Artist{{Name: "林俊杰"}, {Name: "JJ Lin"}}, Duration: 199000}
+	a.pl.Cue([]spotify.Track{tr})
 	a.pl.Seek(25 * time.Second)
 	widths := []int{880, 1000, 1180}
 	var strip *image.RGBA
@@ -282,8 +282,8 @@ func TestVolumePopoverFrames(t *testing.T) {
 	for _, dark := range []bool{false, true} {
 		a := newTestApp()
 		a.settings = defaultSettings()
-		tr := netease.Track{ID: 7, Name: "春日影", Artists: []netease.Artist{{Name: "MyGO!!!!!"}}, Duration: 199000}
-		a.pl.Cue([]netease.Track{tr})
+		tr := spotify.Track{ID: "7", Name: "春日影", Artists: []spotify.Artist{{Name: "MyGO!!!!!"}}, Duration: 199000}
+		a.pl.Cue([]spotify.Track{tr})
 		a.volume = 0.63
 		tt := ui.NewTester(a.view, 1000, 600)
 		tt.SetDark(dark)
@@ -349,17 +349,17 @@ func TestSegmentedFrames(t *testing.T) {
 
 // ⌘D likes the song playing, and again unlikes it, saying so in a toast.
 func TestLikeCurrent(t *testing.T) {
-	likeSong = func(int64, bool) error { return nil }
-	defer func() { likeSong = netease.Like }()
+	likeSong = func(string, bool) error { return nil }
+	defer func() { likeSong = spotify.Like }()
 	a := newTestApp()
-	a.pl.Cue([]netease.Track{{ID: 7, Name: "宝船"}})
-	a.profile = &netease.Profile{UserID: 1}
+	a.pl.Cue([]spotify.Track{{ID: "7", Name: "宝船"}})
+	a.profile = &spotify.Profile{UserID: "1"}
 	a.likeCurrent()
-	if !a.liked[7] || a.toast != "已添加到我喜欢的音乐" {
-		t.Fatalf("liked %v, toast %q", a.liked[7], a.toast)
+	if !a.liked["7"] || a.toast != "已添加到我喜欢的音乐" {
+		t.Fatalf("liked %v, toast %q", a.liked["7"], a.toast)
 	}
 	a.likeCurrent()
-	if a.liked[7] || a.toast != "已取消喜欢" {
-		t.Fatalf("unliked: liked %v, toast %q", a.liked[7], a.toast)
+	if a.liked["7"] || a.toast != "已取消喜欢" {
+		t.Fatalf("unliked: liked %v, toast %q", a.liked["7"], a.toast)
 	}
 }

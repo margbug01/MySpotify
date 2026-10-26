@@ -1,14 +1,17 @@
 package app
 
 import (
+	"log"
+	"os"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
-	"vinyl/internal/netease"
 	"vinyl/internal/player"
+	"vinyl/internal/spotify"
 )
 
 type pageKind int
@@ -19,12 +22,11 @@ const (
 	pageCharts
 	pagePlaylist
 	pageSearch
-	pageFM
 )
 
 type route struct {
 	page     pageKind
-	playlist int64
+	playlist string
 }
 
 // app is the state both windows show. Everything in it is read and changed
@@ -40,28 +42,25 @@ type app struct {
 	history []route
 	forward []route // the pages gone back from, the last first to go to
 
-	profile      *netease.Profile
-	mine, saved  []netease.Playlist // the listener's playlists: made, and saved
-	recPlaylists []netease.Playlist // the day's playlists picked for the listener
-	login        loginState
-	accountOpen  bool           // the dropdown of the account row shows
-	naming       nameDialog     // the name of a playlist asked for
-	deleting     deleteDialog   // whether to delete a playlist, asked
-	liked        map[int64]bool // the songs the listener likes
-	toast        string         // a message to show once
-	picked       pickedUp       // the song a login picked up, waiting to play
+	profile      *spotify.Profile
+	mine, saved  []spotify.Playlist // the listener's playlists: made, and saved
+	recPlaylists []spotify.Playlist // the day's playlists picked for the listener
+	signin       signin             // the web player's window, which signs the listener in
+	accountOpen  bool               // the dropdown of the account row shows
+	liked        map[string]bool    // the songs the listener likes
+	toast        string             // a message to show once
 
-	daily       []netease.Track
+	daily       []spotify.Track
 	dailySpin   spinState // the record on the daily card
 	dailyBars   barState  // the bars on its play button
-	featured    []netease.Playlist
-	charts      []netease.Playlist
+	featured    []spotify.Playlist
+	charts      []spotify.Playlist
 	homeErr     string
 	homeLoading bool
 
-	playlists map[int64]*netease.Playlist
-	loadingPl map[int64]bool
-	plErr     map[int64]string
+	playlists map[string]*spotify.Playlist
+	loadingPl map[string]bool
+	plErr     map[string]string
 	trackList ui.ListState
 	// Where the page and the sidebar are scrolled, kept while Now Playing
 	// covers them, unbuilt.
@@ -70,7 +69,7 @@ type app struct {
 
 	query     string
 	searched  string
-	results   []netease.Track
+	results   []spotify.Track
 	searching bool
 	searchErr string
 	searchBox ui.Handle
@@ -78,19 +77,14 @@ type app struct {
 	nowPlaying  bool
 	npOpen      bool      // Now Playing as it last showed: open or not
 	npChangedAt time.Time // when it last opened or closed
-	npPane      int       // paneLyrics, paneQueue, paneStage or paneComments
+	npPane      int       // paneLyrics, paneQueue or paneStage
 	npPaneTop   float32   // how far the cover beside the pane starts below its top
 	lyricScroll ui.ScrollState
 	lyricGlide  lyricGlide
 	lyricAt     int
-	lyricTrack  int64
+	lyricTrack  string
 	queueList   ui.ListState
 	queueAt     int // the row of the queue pane last scrolled to, -1 while it is hidden
-	comments    commentState
-	tabCount    rollState // the count on the comments' tab, as it rolls
-
-	fmMode        int    // the FM mode chosen, in fmModes
-	radioStarting string // the radio asked for its first songs, or ""
 
 	scrub      float64
 	scrubbing  bool
@@ -107,14 +101,11 @@ type app struct {
 	backdropCache         backdropCache // the backdrop of Now Playing, as last painted
 	npArt                 *artwork      // the cover whose colors Now Playing shows
 	npCoverState          coverState    // the cover of Now Playing, as it is tilted and flicked
-	quiet                 quietState    // the quiet parts of the song playing, for its hot comments
 	sig                   playerSig
 	quitting              bool
 
 	settings    settings
 	settingsWin *mygo.Window
-	cacheUsed   int64 // the bytes the song cache takes, -1 until measured
-	updates     bool  // the update plugin is used (useUpdater)
 
 	restored     bool   // playback picked up where it was left
 	savedSession string // the session as last kept
@@ -155,15 +146,17 @@ func (a *app) showMain() {
 // Run runs the app until it quits.
 func Run() error {
 	a := &app{
-		playlists: map[int64]*netease.Playlist{},
-		loadingPl: map[int64]bool{},
-		plErr:     map[int64]string{},
+		playlists: map[string]*spotify.Playlist{},
+		loadingPl: map[string]bool{},
+		plErr:     map[string]string{},
 		lyricAt:   -1,
 		queueAt:   -1,
-		cacheUsed: -1,
 	}
-	moveOldData()
-	a.useUpdater()
+	// Its data, the web player's sign-in among it, lives under this name,
+	// whatever the executable is called.
+	mygo.App.SetName("Vinyl")
+	// Without it, the page that plays waits for a click to start.
+	os.Setenv("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", strings.TrimSpace(os.Getenv("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS")+" --autoplay-policy=no-user-gesture-required"))
 	mygo.App.WhenReady(func() {
 		a.settings = loadSettings()
 		a.settings.applyAppearance()
@@ -172,9 +165,11 @@ func Run() error {
 		// made, and the view asks the player what plays.
 		a.art = newArtCache(a.post)
 		a.pl = player.New(a.post)
-		a.pl.Quality = func() string { return a.settings.Quality }
-		a.pl.Normalize = func() bool { return a.settings.Normalize }
-		a.pl.Cache = newSongCache(a.settings.CacheMB)
+		if web, err := player.NewWeb(); err == nil {
+			a.pl.Web = web
+		} else {
+			log.Printf("player: %v", err)
+		}
 		a.pl.Changed = a.keepSession
 		a.volume = a.settings.Volume
 		a.pl.SetVolume(a.volume)
@@ -191,7 +186,7 @@ func Run() error {
 			// Inset from the corner, within the sidebar, as macOS 26's
 			// apps with a sidebar place them.
 			TrafficLightPosition: &mygo.Point{X: 20, Y: 20},
-			Vibrancy:             mygo.VibrancySidebar,
+			Vibrancy:             sidebarVibrancy(),
 			BackgroundColor:      "light-dark(#ffffff, #141416)",
 			Content:              ui.View(a.view),
 		})
@@ -229,4 +224,14 @@ func Run() error {
 	mygo.App.OnWindowAllClosed(func() {})
 	mygo.App.OnActivate(func(bool) { a.showMain() })
 	return mygo.App.Run()
+}
+
+// sidebarVibrancy is the material behind the sidebar: macOS's. Windows'
+// stays light under a dark theme, the sidebar's text unreadable on it, so
+// the sidebar is painted there.
+func sidebarVibrancy() mygo.Vibrancy {
+	if runtime.GOOS == "darwin" {
+		return mygo.VibrancySidebar
+	}
+	return mygo.VibrancyNone
 }

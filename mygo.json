@@ -1,22 +1,7 @@
 {
-  "name": "MyGo 云音乐",
-  "identifier": "dev.egoist.cloudmusic",
-  "slug": "mygo-cloudmusic",
-  "version": "0.1.13",
-  "out": "build",
-  "updates": {
-    "publicKey": "WzJsOGNIuf6mcEqo5ff8jub+NoQQOEk4JXreLPYjgyQ=",
-    "github": "egoist/mygo-cloudmusic"
-  },
-  "macos": {
-    "icon": "icon/AppIcon.icon",
-    "minimumSystemVersion": "13.0",
-    "signingIdentity": "Developer ID Application: xinyu zeng (GJE9R5VE87)",
-    "notarize": { "keychainProfile": "notary" }
-  },
-  "linux": {
-    "comment": "第三方网易云音乐桌面客户端",
-    "categories": ["AudioVideo", "Audio", "Player"],
-    "webview": false
-  }
+  "name": "Vinyl",
+  "identifier": "dev.margbug.vinyl",
+  "slug": "vinyl",
+  "version": "0.1.0",
+  "out": "build"
 }

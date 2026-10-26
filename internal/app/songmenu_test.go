@@ -7,7 +7,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"vinyl/internal/netease"
+	"vinyl/internal/spotify"
 )
 
 func TestSongMenuCopies(t *testing.T) {
@@ -18,8 +18,8 @@ func TestSongMenuCopies(t *testing.T) {
 
 	a := newTestApp()
 	a.settings = defaultSettings()
-	tr := netease.Track{ID: 1859245776, Name: "宝船", Artists: []netease.Artist{{Name: "DOUDOU"}, {Name: "小明"}}, Duration: 200000}
-	a.pl.Cue([]netease.Track{tr})
+	tr := spotify.Track{ID: "1859245776", Name: "宝船", Artists: []spotify.Artist{{Name: "DOUDOU"}, {Name: "小明"}}, Duration: 200000}
+	a.pl.Cue([]spotify.Track{tr})
 	a.pl.SetLyrics(nil)
 	a.nowPlaying = true
 	tt := ui.NewTester(a.view, 1200, 800)
@@ -29,7 +29,7 @@ func TestSongMenuCopies(t *testing.T) {
 	for _, c := range []struct{ item, want string }{
 		{"复制歌名", "宝船"},
 		{"复制歌名和歌手", "宝船 - DOUDOU, 小明"},
-		{"复制链接", "https://music.163.com/song?id=1859245776"},
+		{"复制链接", "https://open.spotify.com/track/1859245776"},
 	} {
 		if err := tt.Click("更多"); err != nil {
 			t.Fatal(err)
@@ -52,11 +52,11 @@ func TestSongMenuOnRightClick(t *testing.T) {
 
 	a := newTestApp()
 	a.settings = defaultSettings()
-	a.playlists[42] = &netease.Playlist{ID: 42, Name: "飙升榜", Tracks: []netease.Track{
-		{ID: 1, Name: "一张相片", Artists: []netease.Artist{{Name: "林宥嘉"}}, Duration: 200000},
-		{ID: 2, Name: "宝船", Artists: []netease.Artist{{Name: "DOUDOU"}}, Duration: 200000},
+	a.playlists["42"] = &spotify.Playlist{ID: "42", Name: "飙升榜", Tracks: []spotify.Track{
+		{ID: "1", Name: "一张相片", Artists: []spotify.Artist{{Name: "林宥嘉"}}, Duration: 200000},
+		{ID: "2", Name: "宝船", Artists: []spotify.Artist{{Name: "DOUDOU"}}, Duration: 200000},
 	}}
-	a.route = route{page: pagePlaylist, playlist: 42}
+	a.route = route{page: pagePlaylist, playlist: "42"}
 	tt := ui.NewTester(a.view, 1200, 800)
 	tt.Frame()
 
@@ -70,7 +70,7 @@ func TestSongMenuOnRightClick(t *testing.T) {
 		t.Fatal(err)
 	}
 	tt.Frame()
-	if want := "https://music.163.com/song?id=2"; copied != want {
+	if want := "https://open.spotify.com/track/2"; copied != want {
 		t.Errorf("copied %q, want %q", copied, want)
 	}
 	if a.pl.Current() != nil {
