@@ -5,3 +5,4 @@ mygo_windows_*.syso
 outputs/
 *.exe
 .alma-snapshots/
+进度.md
