@@ -135,6 +135,9 @@ func (a *app) nowPlayingBody(c *ui.Context, tr *spotify.Track, art *artwork, acc
 
 				ui.Row(c).Gap(8).AlignItems(ui.Center).Margin(36, 0, 18, 0).Children(func() {
 					ui.Column(c).Grow(1).Shrink(1).MinWidth(0).Gap(4).Children(func() {
+						if r := pl.Radio(); r != "" {
+							a.radioChip(c, r)
+						}
 						ui.Text(c, tr.Name).FontSize(22).FontWeight(700).LetterSpacing(-0.3).SingleLine()
 						ui.Row(c).AlignItems(ui.Center).Children(func() {
 							a.artistLinks(c.Key("by"), tr.Artists, 15, white.Alpha(0.6), white)

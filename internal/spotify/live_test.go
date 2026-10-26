@@ -34,11 +34,22 @@ func TestLive(t *testing.T) {
 		t.Fatal("home:", err)
 	}
 	t.Logf("home: %q daily=%s forYou=%d featured=%d", home.Greeting, home.Daily, len(home.ForYou), len(home.Featured))
-	if home.Daily == "" || len(home.Featured) == 0 {
-		t.Error("home lacks a daily mix or featured lists")
+	if len(home.Featured) == 0 {
+		t.Error("home lacks featured lists")
+	}
+	// A new account has no daily mix, until it has listened a while: a
+	// featured list stands in.
+	first := home.Daily
+	if first == "" {
+		for _, pl := range home.Featured {
+			if strings.HasPrefix(pl.ID, "spotify:playlist:") {
+				first = pl.ID
+				break
+			}
+		}
 	}
 
-	daily, err := PlaylistDetail(home.Daily)
+	daily, err := PlaylistDetail(first)
 	if err != nil {
 		t.Fatal("daily:", err)
 	}
@@ -121,6 +132,18 @@ func TestLive(t *testing.T) {
 		t.Fatal("lyrics:", err)
 	}
 	t.Logf("lyrics of %s: %d bytes, %q", daily.Tracks[0].Name, len(lrc), lrc[:min(60, len(lrc))])
+
+	for _, seed := range []string{daily.Tracks[0].URI(), "spotify:artist:2QcZxAgcs2I1q7CtCkl6MI"} {
+		uri, err := Radio(seed)
+		if err != nil {
+			t.Fatal("radio:", err)
+		}
+		radio, err := PlaylistDetail(uri)
+		if err != nil || len(radio.Tracks) == 0 {
+			t.Fatalf("radio %s: %v", uri, err)
+		}
+		t.Logf("radio of %s: %s %q, %d tracks, first %s", seed, uri, radio.Name, len(radio.Tracks), radio.Tracks[0].Name)
+	}
 
 	m, err := ResolveMedia(daily.Tracks[0].ID)
 	if err != nil {

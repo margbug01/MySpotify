@@ -111,3 +111,24 @@ func spPost(url string, body any) ([]byte, error) {
 		return req, err
 	})
 }
+
+// Radio returns the playlist of Spotify's radio of seed, a track's or an
+// artist's URI: songs like it, fifty of them.
+func Radio(seed string) (string, error) {
+	raw, err := spGet("/inspiredby-mix/v2/seed_to_playlist/"+seed+"?response-format=json", "application/json")
+	if err != nil {
+		return "", err
+	}
+	var v struct {
+		MediaItems []struct {
+			URI string `json:"uri"`
+		} `json:"mediaItems"`
+	}
+	if err := json.Unmarshal(raw, &v); err != nil {
+		return "", err
+	}
+	if len(v.MediaItems) == 0 || v.MediaItems[0].URI == "" {
+		return "", ErrNotFound
+	}
+	return v.MediaItems[0].URI, nil
+}

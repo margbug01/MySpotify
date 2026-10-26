@@ -89,4 +89,7 @@ func (a *app) restoreSession() {
 	}
 	a.savedSession = string(b)
 	a.pl.Restore(s)
+	if s.Radio != "" && a.pl.Current() != nil {
+		a.pl.AttachRadio(s.Radio, a.radioFeed())
+	}
 }

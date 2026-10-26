@@ -188,6 +188,13 @@ func (a *app) artistHeader(c *ui.Context, pg *spotify.ArtistPage) {
 				}
 				a.pl.PlayQueue(pg.TopTracks, firstPlayable(pg.TopTracks))
 			}
+			label := "电台"
+			if a.radioStarting == radioName(pg.ID, pg.Name) {
+				label = "正在开启…"
+			}
+			if pillButton(c.Key("radio"), iconRadio, label, p.hover.Over(p.bg), p.text).Clicked() {
+				a.startRadio(pg.ID, pg.Name)
+			}
 		}
 		icon, label := iconPlus, "关注"
 		if pg.Followed {

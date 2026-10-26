@@ -43,6 +43,9 @@ func (a *app) songItems(tr *spotify.Track, pid string) func(m *ui.Menu) {
 					a.toast = "已添加到待播清单"
 				}
 			}
+			if m.Item("开启电台").Chosen() {
+				a.startRadio(tr.URI(), tr.Name)
+			}
 			m.Separator()
 		}
 		if m.Item("复制歌名").Chosen() {
