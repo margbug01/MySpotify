@@ -4,7 +4,6 @@ import (
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/transfer"
 	"github.com/egoist/mygo/ui"
-	"slices"
 
 	"vinyl/internal/spotify"
 )
@@ -58,8 +57,9 @@ func (a *app) songItems(tr *spotify.Track, pid string) func(m *ui.Menu) {
 		if m.Item("复制链接").Chosen() {
 			copyText(tr.URL())
 		}
-		if tr.Album.ID != "" || slices.ContainsFunc(tr.Artists, func(ar spotify.Artist) bool { return ar.ID != "" }) {
-			m.Separator()
+		m.Separator()
+		if here := (route{page: pageTrack, track: tr.ID}); a.route != here && m.Item("查看歌曲").Chosen() {
+			a.goTo(here)
 		}
 		for _, ar := range tr.Artists {
 			if ar.ID != "" && m.Item("查看歌手："+ar.Name).Chosen() {

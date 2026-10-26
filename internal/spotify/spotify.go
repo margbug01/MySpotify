@@ -261,6 +261,9 @@ var ops = map[string]string{
 	"fetchEntitiesForRecentlyPlayed":     "cf5d2e94ffd82788470788ae1f6090cc3e9e774fb8fd383580634c6e6f50f7be",
 	"searchAlbums":                       "202cb3305e31e5a0767ba7925f28bd728cf8f8b0217e6da43909056071cd70e9",
 	"searchPlaylists":                    "d520014e748f9ea44f7707d8df1819867ac1205e8b7f3e28f22fe5fc858921b1",
+	"getTrack":                           "fe16b8083eec2305854db612ca75589bcb71e009dc7a4d014f29bd534a4c01f5",
+	"internalLinkRecommenderTrack":       "642923b2e705fceb9984697c1620fecd42615fd8b116b8a9faf2786b389d3e4a",
+	"queryTrackCreditsGroupedModal":      "f135fb9be58a72d041ab5d214d817021a272405d883860468e2627afb01a3ca9",
 }
 
 // query runs the web player's GraphQL operation op with vars, decoding its

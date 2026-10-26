@@ -27,12 +27,14 @@ const (
 	pageSearch
 	pageArtist
 	pageRecent
+	pageTrack
 )
 
 type route struct {
 	page     pageKind
 	playlist string
 	artist   string // its URI
+	track    string // its ID
 }
 
 // app is the state both windows show. Everything in it is read and changed
@@ -83,7 +85,11 @@ type app struct {
 	loadingAr  map[string]bool
 	arErr      map[string]string
 	loadingRel map[string]bool // an artist's releases of a kind, all asked for
-	trackList  ui.ListState
+
+	tracks    map[string]*spotify.TrackPage
+	loadingTr map[string]bool
+	trErr     map[string]string
+	trackList ui.ListState
 	// Where the page and the sidebar are scrolled, kept while Now Playing
 	// covers them, unbuilt.
 	pageScroll ui.ScrollState

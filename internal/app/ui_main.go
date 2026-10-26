@@ -123,6 +123,8 @@ func (a *app) show(r route) {
 		a.loadArtist(r.artist)
 	case pageRecent:
 		a.loadRecent()
+	case pageTrack:
+		a.loadTrack(r.track)
 	}
 }
 
@@ -366,6 +368,8 @@ func (a *app) content(c *ui.Context) {
 		a.artistPage(c)
 	case pageRecent:
 		a.recentPage(c)
+	case pageTrack:
+		a.trackPage(c)
 	}
 }
 

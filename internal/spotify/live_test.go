@@ -150,6 +150,16 @@ func TestLive(t *testing.T) {
 		t.Logf("radio of %s: %s %q, %d tracks, first %s", seed, uri, radio.Name, len(radio.Tracks), radio.Tracks[0].Name)
 	}
 
+	tp, err := TrackDetail("3cthRwQ2X0SNTaauD7tjn5")
+	if err != nil {
+		t.Fatal("track:", err)
+	}
+	t.Logf("track %s by %v: %d plays, %d, %d like it, %d credits (%+v), %d popular of %s", tp.Track.Name, tp.Track.Artists, tp.Plays, tp.Year,
+		len(tp.Recommended), len(tp.Credits), tp.Credits[:min(2, len(tp.Credits))], len(tp.Popular), tp.Artist.Name)
+	if tp.Plays == 0 || len(tp.Recommended) == 0 || len(tp.Credits) == 0 || tp.Track.Album.PicURL == "" {
+		t.Error("track page incomplete")
+	}
+
 	m, err := ResolveMedia(daily.Tracks[0].ID)
 	if err != nil {
 		t.Fatal("media:", err)
