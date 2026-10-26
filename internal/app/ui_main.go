@@ -415,22 +415,33 @@ func (a *app) loadHome() {
 		}()
 		home, err1 := spotify.HomeFeed()
 		var daily []spotify.Track
-		if err1 == nil && home.Daily != "" {
+		dailyOK := err1 == nil
+		if dailyOK && home.Daily != "" {
 			if pl, err := spotify.PlaylistDetail(home.Daily); err == nil {
 				daily = pl.Tracks
+			} else {
+				dailyOK = false
 			}
 		}
 		wg.Wait()
 		a.post(func() {
 			a.homeLoading = false
+			// What failed to load again shows as it did, as restoreHome
+			// had it.
 			if home != nil {
 				a.featured, a.recPlaylists, a.homeArtists = home.Featured, home.ForYou, home.Artists
 			}
-			a.charts, a.daily = charts, daily
+			if err2 == nil {
+				a.charts = charts
+			}
+			if dailyOK {
+				a.daily = daily
+			}
 			if err1 != nil && err2 != nil {
 				log.Printf("home: %v; charts: %v", err1, err2)
 				a.homeErr = "无法连接 Spotify，请检查网络"
 			}
+			a.keepHome()
 		})
 	}()
 }

@@ -128,6 +128,12 @@ Vinyl 用 Windows 的系统代理（设置 › 网络和 Internet › 代理）�
 左下角头像 › 退出登录，会清掉 WebView 里的 Spotify 登录态。
 </details>
 
+<details>
+<summary>关掉窗口怎么还在放歌？怎么真正退出？</summary>
+
+关窗口只是收进托盘，音乐照常放，点托盘图标或者再打开一次 Vinyl 就回来。要退出：右键托盘图标 › 退出 Vinyl。
+</details>
+
 ## 怎么做到的
 
 - **登录**：一个平时隐藏的窗口打开 open.spotify.com，`internal/spotify/capture.js` 记下网页播放器自己拿到的 token 和 client-token；没登录就把这个窗口显示成 Spotify 的登录页。token 快过期时在后台重新加载一次。

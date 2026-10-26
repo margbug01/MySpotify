@@ -38,15 +38,26 @@ func (a *app) boot() {
 	a.homeLoading = true
 	spotify.Renew = a.renewIdentity
 	go func() {
-		id, err := a.renewIdentity()
+		// Through package spotify, so that a page opened meanwhile, from
+		// what restoreHome shows, waits on this renewal rather than
+		// loading the web player a second time.
+		_, err := spotify.RenewedIdentity()
 		var prof *spotify.Profile
-		if err == nil && !id.Anonymous {
-			spotify.SetIdentity(id)
+		if err == nil {
 			if prof, err = spotify.Account(); err != nil {
 				log.Printf("account: %v", err)
 			}
 		}
-		a.post(func() { a.signedIn(prof) })
+		a.post(func() {
+			// Signed in still, as far as anyone knows, but offline, say:
+			// what showed last time stays rather than the sign-in page.
+			if prof == nil && a.profile != nil && !errors.Is(err, spotify.ErrSignedOut) {
+				log.Printf("sign in: %v", err)
+				a.homeLoading = false
+				return
+			}
+			a.signedIn(prof)
+		})
 	}()
 }
 
@@ -186,9 +197,19 @@ func (a *app) openLogin() {
 
 // signedIn shows what is personal to prof, or to nobody.
 func (a *app) signedIn(prof *spotify.Profile) {
+	// The one restoreHome showed: what showed stays until it loads again.
+	same := prof != nil && a.profile != nil && a.profile.UserID == prof.UserID
+	if same && prof.Email == "" {
+		// Until loadEmail asks again, for the picture it finds.
+		prof.Email = a.profile.Email
+	}
 	a.profile = prof
-	a.mine, a.saved, a.recPlaylists, a.liked = nil, nil, nil, nil
-	a.followed, a.homeArtists = nil, nil
+	a.liked = nil
+	if !same {
+		a.mine, a.saved, a.recPlaylists = nil, nil, nil
+		a.followed, a.homeArtists = nil, nil
+		a.featured, a.daily = nil, nil
+	}
 	a.artists = map[string]*spotify.ArtistPage{}
 	a.arErr = map[string]string{}
 	// Who listens changed: load the lists again.
@@ -198,6 +219,7 @@ func (a *app) signedIn(prof *spotify.Profile) {
 		// Spotify plays nothing to nobody.
 		a.homeLoading, a.homeErr = false, ""
 		a.daily, a.featured, a.charts = nil, nil, nil
+		a.keepHome()
 		return
 	}
 	// Playback picks up where it was left, once there is someone to play to.
@@ -230,7 +252,12 @@ func (a *app) loadEmail(prof *spotify.Profile) {
 			log.Printf("account email: %v", err)
 			return
 		}
-		a.post(func() { prof.Email = email })
+		a.post(func() {
+			prof.Email = email
+			if a.profile == prof {
+				a.keepHome()
+			}
+		})
 	}()
 }
 
@@ -413,6 +440,7 @@ func (a *app) loadMine(uid string) {
 		a.post(func() {
 			if err == nil && a.profile != nil && a.profile.UserID == uid {
 				a.mine, a.saved, a.followed = lib.Made, lib.Saved, lib.Artists
+				a.keepHome()
 			}
 		})
 	}()

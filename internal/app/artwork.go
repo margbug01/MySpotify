@@ -41,6 +41,7 @@ type artCache struct {
 	post  func(func())
 	now   func() time.Time
 	swept time.Time
+	dir   string // where the covers fetched are kept on disk, "" to keep none
 }
 
 // artKeep is how long a cover not asked for stays: the pages scrolled
@@ -85,7 +86,7 @@ func (c *artCache) get(url string, backdrop bool) *artwork {
 	c.busy[key] = true
 	go func() {
 		c.sem <- struct{}{}
-		bmp, img, err := loadArt(url)
+		bmp, img, err := loadArt(c.dir, url)
 		<-c.sem
 		var blurred *image.RGBA
 		var tint ui.Color
@@ -126,13 +127,13 @@ const artRelease = 2 * time.Second
 // v0.6.5-0.20261026). Windows draw on the GPU, which samples none.
 var keepArtPixels bool
 
-// loadArt fetches the cover at url, as a bitmap to draw and an image to
-// measure.
-func loadArt(url string) (*ui.Bitmap, image.Image, error) {
+// loadArt fetches the cover at url, kept in dir or not, as a bitmap to draw
+// and an image to measure.
+func loadArt(dir, url string) (*ui.Bitmap, image.Image, error) {
 	// spotify.Sized says the size wanted after "#".
 	url, size, _ := strings.Cut(url, "#")
 	want, _ := strconv.Atoi(size)
-	b, err := spotify.Fetch(url)
+	b, err := fetchCover(dir, url)
 	if err != nil {
 		return nil, nil, err
 	}

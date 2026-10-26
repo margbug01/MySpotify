@@ -47,6 +47,7 @@ type route struct {
 type app struct {
 	win   *mygo.Window
 	notch *notch
+	tray  *mygo.Tray // the icon in the notification area, where there is one
 	art   *artCache
 	pl    *player.Player
 	pal   palette
@@ -152,6 +153,7 @@ type app struct {
 	restored     bool   // playback picked up where it was left
 	savedSession string // the session as last kept
 	sessionDue   bool   // a save of the session is due
+	homeFile     string // where what the home page shows is kept, "" to keep none
 }
 
 // post runs fn on the main thread and redraws both windows. Without a
@@ -181,6 +183,9 @@ var shotHook func(a *app)
 func (a *app) showMain() {
 	if a.win != nil {
 		a.win.Show()
+		if a.win.IsMinimized() {
+			a.win.Restore()
+		}
 		a.win.Focus()
 	}
 }
@@ -202,6 +207,11 @@ func Run() error {
 	// Its data, the web player's sign-in among it, lives under this name,
 	// whatever the executable is called.
 	mygo.App.SetName("Vinyl")
+	// One runs: launched again, it shows the window of the one running,
+	// hidden in the notification area perhaps. The scenes run beside it.
+	if shotHook == nil && !mygo.App.RequestSingleInstanceLock() {
+		return nil
+	}
 	if dir, err := mygo.App.Path(mygo.PathUserData); err == nil {
 		log.SetOutput(io.MultiWriter(&logFile{path: filepath.Join(dir, "vinyl.log")}, os.Stderr))
 		spotify.OpsFile = filepath.Join(dir, "queries.json")
@@ -224,6 +234,10 @@ func Run() error {
 		// Before the window: on Windows it lays out its content as it is
 		// made, and the view asks the player what plays.
 		a.art = newArtCache(a.post)
+		if dir, err := mygo.App.Path(mygo.PathCache); err == nil {
+			a.art.dir = filepath.Join(dir, "covers")
+			go pruneCovers(a.art.dir, coversMax)
+		}
 		a.pl = player.New(a.post)
 		if web, err := player.NewWeb(); err == nil {
 			a.pl.Web = web
@@ -255,25 +269,38 @@ func Run() error {
 			BackgroundColor:      "light-dark(#ffffff, #141416)",
 			Content:              ui.View(a.view),
 		})
+		// What the home page and the sidebar showed last time shows at
+		// once, while the app signs in and loads them again. Not before the
+		// window: their covers, from disk, would load as it lays out its
+		// content, before a.win is set, and post would drop them. The
+		// scenes show what loads.
+		if dir, err := mygo.App.Path(mygo.PathUserData); err == nil && shotHook == nil {
+			a.homeFile = filepath.Join(dir, "home.json")
+			a.restoreHome()
+			a.redraw()
+		}
 		a.setMenu()
 		a.boot()
 		// The notch player is macOS's, over its menu bar: elsewhere it would
-		// hang at the top of the screen as a black box.
+		// hang at the top of the screen as a black box, and the app sits in
+		// the notification area instead.
 		if runtime.GOOS == "darwin" {
 			a.notch = newNotch(a)
+		} else {
+			a.tray = a.newTray()
 		}
 		if shotHook != nil {
 			shotHook(a)
 		}
-		// On macOS closing the window hides it: music plays on, under the
-		// notch, and the Dock icon brings it back. Elsewhere nothing would
-		// bring it back, so closing it quits.
+		// Closing the window hides it: music plays on, and the Dock icon
+		// (macOS) or the one in the notification area brings it back.
+		// Without either, nothing would bring it back, so closing it quits.
 		a.win.OnClose(func(e *mygo.CloseEvent) {
 			if a.quitting {
 				return
 			}
 			e.PreventDefault()
-			if runtime.GOOS == "darwin" {
+			if runtime.GOOS == "darwin" || a.tray != nil {
 				a.win.Hide()
 			} else {
 				mygo.App.Quit()
@@ -288,6 +315,7 @@ func Run() error {
 	})
 	mygo.App.OnWindowAllClosed(func() {})
 	mygo.App.OnActivate(func(bool) { a.showMain() })
+	mygo.App.OnSecondInstance(func([]string, string) { a.showMain() })
 	return mygo.App.Run()
 }
 

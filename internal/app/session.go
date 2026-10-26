@@ -9,6 +9,7 @@ import (
 	"github.com/egoist/mygo"
 
 	"vinyl/internal/player"
+	"vinyl/internal/spotify"
 )
 
 // Where playback was left is kept in session.json in the user data
@@ -92,4 +93,55 @@ func (a *app) restoreSession() {
 	if s.Radio != "" && a.pl.Current() != nil {
 		a.pl.AttachRadio(s.Radio, a.radioFeed())
 	}
+}
+
+// homeSnapshot is what the home page and the sidebar showed, kept in
+// home.json to show at once as the app starts again, while it signs in and
+// loads them anew: that takes seconds, ten and more on the first start of
+// the web player.
+type homeSnapshot struct {
+	Profile  *spotify.Profile
+	Featured []spotify.Playlist
+	ForYou   []spotify.Playlist
+	Artists  []spotify.ArtistCard
+	Charts   []spotify.Playlist
+	Daily    []spotify.Track
+	Mine     []spotify.Playlist
+	Saved    []spotify.Playlist
+	Followed []spotify.ArtistCard
+}
+
+// keepHome saves what the home page and the sidebar show; signed out, it
+// forgets what they showed.
+func (a *app) keepHome() {
+	if a.homeFile == "" {
+		return
+	}
+	if a.profile == nil {
+		os.Remove(a.homeFile)
+		return
+	}
+	b, err := json.Marshal(homeSnapshot{a.profile, a.featured, a.recPlaylists, a.homeArtists, a.charts, a.daily, a.mine, a.saved, a.followed})
+	if err != nil {
+		return
+	}
+	if os.WriteFile(a.homeFile+".part", b, 0o600) == nil {
+		os.Rename(a.homeFile+".part", a.homeFile)
+	}
+}
+
+// restoreHome shows what keepHome saved, until it loads again.
+func (a *app) restoreHome() {
+	b, err := os.ReadFile(a.homeFile)
+	if err != nil {
+		return
+	}
+	var s homeSnapshot
+	if json.Unmarshal(b, &s) != nil || s.Profile == nil {
+		return
+	}
+	a.profile = s.Profile
+	a.featured, a.recPlaylists, a.homeArtists = s.Featured, s.ForYou, s.Artists
+	a.charts, a.daily = s.Charts, s.Daily
+	a.mine, a.saved, a.followed = s.Mine, s.Saved, s.Followed
 }
