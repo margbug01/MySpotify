@@ -31,6 +31,7 @@ const (
 	pageBrowse
 	pageCategory
 	pageUser
+	pageSection
 )
 
 type route struct {
@@ -40,6 +41,7 @@ type route struct {
 	track    string // its ID
 	category string // its page's URI
 	user     string // their username
+	section  string // a home section's key (sectionKey)
 }
 
 // app is the state both windows show. Everything in it is read and changed
@@ -60,7 +62,6 @@ type app struct {
 	mine, saved                         []spotify.Playlist   // the listener's playlists: made, and saved
 	followed                            []spotify.ArtistCard // the artists the listener follows
 	next                                *route               // the page to open once the frame is built (goTo)
-	recPlaylists                        []spotify.Playlist   // the day's playlists picked for the listener
 	signin                              signin               // the web player's window, which signs the listener in
 	accountOpen                         bool                 // the dropdown of the account row shows
 	liked                               map[string]bool      // the songs the listener likes
@@ -77,11 +78,16 @@ type app struct {
 	daily       []spotify.Track
 	dailySpin   spinState // the record on the daily card
 	dailyBars   barState  // the bars on its play button
-	featured    []spotify.Playlist
-	homeArtists []spotify.ArtistCard
 	charts      []spotify.Playlist
 	homeErr     string
 	homeLoading bool
+
+	homeSections  []spotify.HomeSection            // what the home page shows: Spotify's sections
+	homeShortcuts []spotify.HomeItem               // what the listener played lately, for the grid over them
+	homeFacet     string                           // the chip chosen over the home page, "" for all
+	facets        map[string][]spotify.HomeSection // the home's sections with a chip chosen, by chip
+	sectionAll    map[string][]spotify.HomeItem    // all of a section's cards, by its URI
+	homeTint      ui.Color                         // the color over the top of the home page
 
 	playlists map[string]*spotify.Playlist
 	loadingPl map[string]bool

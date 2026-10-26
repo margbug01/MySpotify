@@ -131,6 +131,8 @@ func (a *app) show(r route) {
 		a.loadCategory(r.category)
 	case pageUser:
 		a.loadUser(r.user)
+	case pageSection:
+		a.loadSection(r.section)
 	}
 }
 
@@ -383,6 +385,8 @@ func (a *app) content(c *ui.Context) {
 		a.categoryPage(c)
 	case pageUser:
 		a.userPage(c)
+	case pageSection:
+		a.sectionPage(c)
 	}
 }
 
@@ -413,7 +417,7 @@ func (a *app) loadHome() {
 			defer wg.Done()
 			charts, err2 = spotify.Charts()
 		}()
-		home, err1 := spotify.HomeFeed()
+		home, err1 := homeFeed("")
 		var daily []spotify.Track
 		dailyOK := err1 == nil
 		if dailyOK && home.Daily != "" {
@@ -429,7 +433,9 @@ func (a *app) loadHome() {
 			// What failed to load again shows as it did, as restoreHome
 			// had it.
 			if home != nil {
-				a.featured, a.recPlaylists, a.homeArtists = home.Featured, home.ForYou, home.Artists
+				a.homeSections, a.homeShortcuts = home.Sections, home.Shortcuts
+				// The chips' and the sections' pages load again as asked.
+				a.facets, a.sectionAll = nil, nil
 			}
 			if err2 == nil {
 				a.charts = charts

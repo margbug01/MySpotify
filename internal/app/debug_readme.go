@@ -40,7 +40,15 @@ func readmeScene(a *app, shot func(string, *mygo.Window), step func(time.Duratio
 
 	al, _ := spotify.PlaylistDetail(album)
 	var featured []spotify.Playlist
-	mygo.RunOnMain(func() { featured = a.featured })
+	mygo.RunOnMain(func() {
+		for _, s := range a.homeSections {
+			for _, it := range s.Items {
+				if it.List != nil {
+					featured = append(featured, *it.List)
+				}
+			}
+		}
+	})
 	var daily []spotify.Track
 	for _, f := range featured {
 		if pl, err := spotify.PlaylistDetail(f.ID); err == nil && len(pl.Tracks) >= 10 {

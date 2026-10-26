@@ -206,9 +206,9 @@ func (a *app) signedIn(prof *spotify.Profile) {
 	a.profile = prof
 	a.liked = nil
 	if !same {
-		a.mine, a.saved, a.recPlaylists = nil, nil, nil
-		a.followed, a.homeArtists = nil, nil
-		a.featured, a.daily = nil, nil
+		a.mine, a.saved, a.followed = nil, nil, nil
+		a.homeSections, a.homeShortcuts, a.daily = nil, nil, nil
+		a.facets, a.sectionAll = nil, nil
 	}
 	a.artists = map[string]*spotify.ArtistPage{}
 	a.arErr = map[string]string{}
@@ -218,7 +218,8 @@ func (a *app) signedIn(prof *spotify.Profile) {
 	if prof == nil {
 		// Spotify plays nothing to nobody.
 		a.homeLoading, a.homeErr = false, ""
-		a.daily, a.featured, a.charts = nil, nil, nil
+		a.daily, a.homeSections, a.homeShortcuts, a.charts = nil, nil, nil, nil
+		a.facets, a.sectionAll = nil, nil
 		a.keepHome()
 		return
 	}

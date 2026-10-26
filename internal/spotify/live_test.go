@@ -29,19 +29,49 @@ func TestLive(t *testing.T) {
 	}
 	t.Logf("account: %+v", *me)
 
-	home, err := HomeFeed()
+	home, err := HomeFeed("")
 	if err != nil {
 		t.Fatal("home:", err)
 	}
-	t.Logf("home: %q daily=%s forYou=%d featured=%d", home.Greeting, home.Daily, len(home.ForYou), len(home.Featured))
-	if len(home.Featured) == 0 {
-		t.Error("home lacks featured lists")
+	var featured []Playlist
+	for _, s := range home.Sections {
+		t.Logf("home section %q %s: %d of %d", s.Title, s.URI, len(s.Items), s.Total)
+		for _, it := range s.Items {
+			if it.List != nil {
+				featured = append(featured, *it.List)
+			}
+		}
+	}
+	t.Logf("home: %q daily=%s shortcuts=%d sections=%d", home.Greeting, home.Daily, len(home.Shortcuts), len(home.Sections))
+	if len(featured) == 0 {
+		t.Error("home lacks lists")
+	}
+	for _, s := range home.Sections {
+		if s.URI != "" && s.Total > len(s.Items) {
+			all, err := HomeSectionItems(s.URI)
+			if err != nil {
+				t.Fatal("home section:", err)
+			}
+			t.Logf("home section %q, all: %d of %d", s.Title, len(all), s.Total)
+			if len(all) <= len(s.Items) {
+				t.Errorf("all of %q: %d, home showed %d", s.Title, len(all), len(s.Items))
+			}
+			break
+		}
+	}
+	for _, facet := range []string{"music-chip", "podcasts-chip"} {
+		h, err := HomeFeed(facet)
+		if err != nil || len(h.Sections) == 0 {
+			t.Errorf("home %s: %d sections, %v", facet, len(h.Sections), err)
+			continue
+		}
+		t.Logf("home %s: %q first, %d sections", facet, h.Sections[0].Title, len(h.Sections))
 	}
 	// A new account has no daily mix, until it has listened a while: a
 	// featured list stands in.
 	first := home.Daily
 	if first == "" {
-		for _, pl := range home.Featured {
+		for _, pl := range featured {
 			if strings.HasPrefix(pl.ID, "spotify:playlist:") {
 				first = pl.ID
 				break
@@ -58,7 +88,7 @@ func TestLive(t *testing.T) {
 		t.Errorf("daily tracks incomplete: %+v", daily.Tracks)
 	}
 
-	for _, pl := range home.Featured {
+	for _, pl := range featured {
 		if strings.HasPrefix(pl.ID, "spotify:album:") {
 			al, err := PlaylistDetail(pl.ID)
 			if err != nil {
@@ -95,7 +125,6 @@ func TestLive(t *testing.T) {
 		t.Fatal("library:", err)
 	}
 	t.Logf("library: made %d saved %d artists %d %v", len(lib.Made), len(lib.Saved), len(lib.Artists), lib.Artists[:min(2, len(lib.Artists))])
-	t.Logf("home artists: %d %v", len(home.Artists), home.Artists[:min(2, len(home.Artists))])
 	recent, recentArtists, err := RecentlyPlayed(me.UserID)
 	if err != nil {
 		t.Fatal("recently played:", err)

@@ -243,6 +243,7 @@ func snippet(b []byte) string {
 var ops = map[string]string{
 	"profileAttributes":                  "08ffb4730af3746e04a8301396f20875dbbce10c75243803091a9274eacc8ac0",
 	"home":                               "5fb7da7a03ee2776c0670856609cb85a189a3cecc36cc160b91cde79063b9cf1",
+	"homeSection":                        "5fb7da7a03ee2776c0670856609cb85a189a3cecc36cc160b91cde79063b9cf1",
 	"browsePage":                         "f5c4e6d668f5716464a231c1cc8b22c1cbf6ad68b09929fd7de813a30581298b",
 	"fetchPlaylist":                      "21ea11a6ac75a5f3e01fd365d29c18e0a4a8b7dc09f89bbb5d73910190c6acaf",
 	"getAlbum":                           "0b6ce3511e1b02e4a40fa95440f992acbe85080eb308af9194322d708fc1914f",

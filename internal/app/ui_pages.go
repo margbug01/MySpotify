@@ -34,60 +34,6 @@ func (a *app) section(c *ui.Context, title string) {
 	ui.Text(c, title).FontSize(19).FontWeight(700).LetterSpacing(-0.3).Margin(34, 0, 14, 0)
 }
 
-func (a *app) homePage(c *ui.Context) {
-	loading := len(a.featured) == 0 && len(a.charts) == 0
-	if loading && !a.homeLoading {
-		a.centered(c, a.homeErr, a.loadHome)
-		return
-	}
-	now := c.Now()
-	top, bottom := a.insets(c)
-	ui.Scroll(c.Key("home")).TrackScroll(&a.pageScroll).Grow(1).Padding(top+pageGap, pagePad, bottom+48, pagePad).ScrollbarInsets(top, 0, bottom, 0).Children(func() {
-		a.startMark(c)
-		defer a.endMark(c)
-		hello := greeting(now)
-		if a.profile != nil {
-			hello += "，" + a.profile.Nickname
-		}
-		a.heading(c, hello, fmt.Sprintf("%d月%d日 %s", now.Month(), now.Day(), weekday(now)))
-		if loading {
-			a.homeSkeleton(c, a.pageShimmer(c))
-			return
-		}
-		a.dailyCard(c, now)
-
-		if len(a.recPlaylists) > 0 {
-			a.section(c, "今日为你推荐")
-			ui.Grid(c).Columns(a.columns(c, 168)).GapX(20).GapY(28).Children(func() {
-				for i := range a.recPlaylists[:min(len(a.recPlaylists), a.columns(c, 168)*2)] {
-					a.playlistCard(c.Key(a.recPlaylists[i].ID), &a.recPlaylists[i])
-				}
-			})
-		}
-
-		if len(a.homeArtists) > 0 {
-			a.section(c, "你喜欢的艺人")
-			a.artistRow(c, a.homeArtists)
-		}
-
-		a.section(c, "官方榜单")
-		official := a.charts[:min(4, len(a.charts))]
-		cols := min(4, max(2, a.columns(c, 260)))
-		ui.Grid(c).Columns(cols).Gap(20).Children(func() {
-			for i := range official {
-				a.chartCard(c.Key(official[i].ID), &official[i])
-			}
-		})
-
-		a.section(c, "推荐歌单")
-		ui.Grid(c).Columns(a.columns(c, 168)).GapX(20).GapY(28).Children(func() {
-			for i := range a.featured {
-				a.playlistCard(c.Key(a.featured[i].ID), &a.featured[i])
-			}
-		})
-	})
-}
-
 func weekday(t time.Time) string {
 	return [...]string{"星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"}[t.Weekday()]
 }

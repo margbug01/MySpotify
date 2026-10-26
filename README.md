@@ -105,9 +105,9 @@ Windows 上的 Spotify 播放器：Go 写的原生界面，免费账号也能整
 </details>
 
 <details>
-<summary>首页没有「每日推荐」？</summary>
+<summary>「每日推荐」是空的？</summary>
 
-新账号要听一阵，Spotify 才会生成 Daily Mix，在那之前首页不显示这张卡片。
+新账号要听一阵，Spotify 才会生成 Daily Mix，在那之前这一页没有内容。首页照 Spotify 网页版排：筛选（全部/音乐/播客）、最近听过的快捷方块，下面是 Spotify 给的各个分区，标题也用它的。
 </details>
 
 <details>

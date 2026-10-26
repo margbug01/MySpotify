@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"image"
 	"image/draw"
-	"strconv"
 	"testing"
 	"time"
 
@@ -16,9 +15,7 @@ import (
 func TestScrollEdgesFollowContent(t *testing.T) {
 	a := newTestApp()
 	a.settings = defaultSettings()
-	for i := range 40 {
-		a.featured = append(a.featured, spotify.Playlist{ID: strconv.Itoa(i + 1), Name: "歌单"})
-	}
+	a.homeSections = testSections(12)
 	tt := ui.NewTester(a.view, 1200, 800)
 	tt.Frame()
 	if a.underTop {
@@ -42,7 +39,7 @@ func TestScrollEdgesFollowContent(t *testing.T) {
 func TestShortPageHasNoEdges(t *testing.T) {
 	a := newTestApp()
 	a.settings = defaultSettings()
-	a.featured = []spotify.Playlist{{ID: "1", Name: "歌单"}}
+	a.homeSections = testSections(1)
 	tt := ui.NewTester(a.view, 1200, 1400)
 	tt.Frame()
 	if a.underTop || a.underBottom {
@@ -58,9 +55,7 @@ func TestAccountMenuKeepsPlayerEdge(t *testing.T) {
 	a := newTestApp()
 	a.settings = defaultSettings()
 	a.profile = &spotify.Profile{UserID: "1", Nickname: "小明"}
-	for i := range 40 {
-		a.featured = append(a.featured, spotify.Playlist{ID: strconv.Itoa(i + 1), Name: "歌单"})
-	}
+	a.homeSections = testSections(12)
 	tt := ui.NewTester(a.view, 1000, 700)
 	tt.Frame()
 	tt.Advance(time.Second)

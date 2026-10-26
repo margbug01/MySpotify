@@ -277,6 +277,24 @@ type gqlEntity struct {
 	Publisher struct {
 		Name string `json:"name"`
 	} `json:"publisher"`
+	// Episodes
+	Duration    millis `json:"duration"`
+	Playability *struct {
+		Playable bool `json:"playable"`
+	} `json:"playability"`
+	ReleaseDate struct {
+		IsoString string `json:"isoString"`
+	} `json:"releaseDate"`
+	PodcastV2 struct {
+		Data struct {
+			URI       string `json:"uri"`
+			Name      string `json:"name"`
+			Publisher struct {
+				Name string `json:"name"`
+			} `json:"publisher"`
+			CoverArt gqlImage `json:"coverArt"`
+		} `json:"data"`
+	} `json:"podcastV2"`
 	// The tiles of browse pages
 	Data struct {
 		CardRepresentation gqlCard `json:"cardRepresentation"`
@@ -310,6 +328,34 @@ func (e *gqlEntity) playlist() (Playlist, bool) {
 	return pl, e.URI != ""
 }
 
+// episode returns e as a Track, or false if it is no episode.
+func (e *gqlEntity) episode() (Track, bool) {
+	show := &e.PodcastV2.Data
+	ep := Track{
+		ID: idOf(e.URI), Episode: true, Name: e.Name, Duration: e.Duration.TotalMilliseconds,
+		Artists:    []Artist{{Name: show.Publisher.Name}},
+		Album:      Album{ID: show.URI, Name: show.Name, PicURL: cmp.Or(e.CoverArt.best(), show.CoverArt.best())},
+		Unplayable: e.Playability == nil || !e.Playability.Playable,
+	}
+	return ep, e.Typename == "Episode" && strings.HasPrefix(e.URI, "spotify:episode:")
+}
+
+// homeItem returns e as a card of the home page, or false if it is none
+// the page shows.
+func (e *gqlEntity) homeItem() (HomeItem, bool) {
+	if ar, ok := e.artist(); ok {
+		return HomeItem{Artist: &ar}, true
+	}
+	if pl, ok := e.playlist(); ok {
+		return HomeItem{List: &pl}, true
+	}
+	if ep, ok := e.episode(); ok {
+		day, _, _ := strings.Cut(e.ReleaseDate.IsoString, "T")
+		return HomeItem{Episode: &ep, Released: day}, true
+	}
+	return HomeItem{}, false
+}
+
 // ArtistNamesOf is ArtistNames on a value.
 func (t Track) ArtistNamesOf() string { return t.ArtistNames() }
 
@@ -334,46 +380,109 @@ type gqlSections struct {
 	Items []struct {
 		URI  string `json:"uri"`
 		Data struct {
-			Title struct {
+			Typename string `json:"__typename"`
+			Title    struct {
 				TransformedLabel string `json:"transformedLabel"`
 			} `json:"title"`
 		} `json:"data"`
-		SectionItems struct {
-			Items []struct {
-				Content struct {
-					Data gqlEntity `json:"data"`
-				} `json:"content"`
-			} `json:"items"`
-		} `json:"sectionItems"`
+		SectionItems gqlSectionItems `json:"sectionItems"`
 	} `json:"items"`
 }
 
-// Home is what the home page shows.
+// gqlSectionItems are the cards of a section, a page of them.
+type gqlSectionItems struct {
+	TotalCount int `json:"totalCount"`
+	PagingInfo struct {
+		NextOffset *int `json:"nextOffset"`
+	} `json:"pagingInfo"`
+	Items []struct {
+		Content struct {
+			Data gqlEntity `json:"data"`
+		} `json:"content"`
+	} `json:"items"`
+}
+
+// homeItems returns the cards of s the home page shows, each once.
+func (s *gqlSectionItems) homeItems() []HomeItem {
+	var all []HomeItem
+	for i := range s.Items {
+		if it, ok := s.Items[i].Content.Data.homeItem(); ok {
+			all = append(all, it)
+		}
+	}
+	return appendNew(nil, all)
+}
+
+// Home is what the home page shows: Spotify's sections, in its order.
 type Home struct {
 	Greeting string
 	// Daily is the URI of the listener's first Daily Mix, or "".
 	Daily string
-	// ForYou are the playlists made for the listener.
-	ForYou []Playlist
-	// Featured are the rest of the home's playlists and albums.
-	Featured []Playlist
-	// Artists are the artists the home shows.
-	Artists []ArtistCard
+	// Shortcuts are what the listener played lately, for the grid over the
+	// sections: the feed's own grid, else its recently played.
+	Shortcuts []HomeItem
+	Sections  []HomeSection
+}
+
+// HomeSection is a row of cards on the home page, under its title.
+type HomeSection struct {
+	// URI is the section's, whose cards HomeSectionItems lists; "" for
+	// one that cards the feed gives one by one make up.
+	URI   string
+	Title string
+	// Total is how many cards it has, of which Items are the first.
+	Total int
+	Items []HomeItem
+}
+
+// HomeItem is a card of the home page: a list (a playlist, an album or a
+// podcast), an artist, or an episode.
+type HomeItem struct {
+	List    *Playlist   `json:",omitempty"`
+	Artist  *ArtistCard `json:",omitempty"`
+	Episode *Track      `json:",omitempty"`
+	// Released is an episode's day, as 2006-01-02.
+	Released string `json:",omitempty"`
+}
+
+// ID is the URI of what it stands for.
+func (it *HomeItem) ID() string {
+	switch {
+	case it.List != nil:
+		return it.List.ID
+	case it.Artist != nil:
+		return it.Artist.ID
+	case it.Episode != nil:
+		return "spotify:episode:" + it.Episode.ID
+	}
+	return ""
+}
+
+// appendNew appends to items those of more it lacks.
+func appendNew(items, more []HomeItem) []HomeItem {
+	seen := make(map[string]bool, len(items)+len(more))
+	for i := range items {
+		seen[items[i].ID()] = true
+	}
+	for _, it := range more {
+		if id := it.ID(); !seen[id] {
+			seen[id] = true
+			items = append(items, it)
+		}
+	}
+	return items
 }
 
 // The home's section of playlists made for the listener.
 const forYouSection = "spotify:section:0JQ5DAUnp4wcj0bCb3wh3S"
 
-// featuredMax is how many of the rest the home page shows: of over a
-// hundred, those first, in the home's order.
-const featuredMax = 36
+// feedTitle names the cards the feed gives one by one without a title.
+const feedTitle = "更多推荐"
 
-// artistsMax is how many artists the home page shows, of the twenty or so
-// its sections hold.
-const artistsMax = 12
-
-// HomeFeed returns the listener's home, as the web player shows it.
-func HomeFeed() (*Home, error) {
+// HomeFeed returns the listener's home, as the web player shows it: all of
+// it, or with facet ("music-chip", "podcasts-chip"), its music or its
+// podcasts.
+func HomeFeed(facet string) (*Home, error) {
 	var res struct {
 		Home struct {
 			Greeting struct {
@@ -385,45 +494,100 @@ func HomeFeed() (*Home, error) {
 		} `json:"home"`
 	}
 	err := query("home", map[string]any{
-		"timeZone": timeZone(), "sp_t": "", "facet": "", "sectionItemsLimit": 20,
+		"timeZone": timeZone(), "sp_t": "", "facet": facet, "sectionItemsLimit": 20,
 		"homeEndUserIntegration": "INTEGRATION_WEB_PLAYER",
 	}, &res)
 	if err != nil {
 		return nil, err
 	}
 	h := &Home{Greeting: res.Home.Greeting.TransformedLabel}
-	seen := map[string]bool{}
+	var forYou string
+	var recent []HomeItem
 	for _, s := range res.Home.SectionContainer.Sections.Items {
-		for _, it := range s.SectionItems.Items {
-			if ar, ok := it.Content.Data.artist(); ok && !seen[ar.ID] {
-				seen[ar.ID] = true
-				if len(h.Artists) < artistsMax {
-					h.Artists = append(h.Artists, ar)
-				}
-				continue
-			}
-			pl, ok := it.Content.Data.playlist()
-			if !ok || seen[pl.ID] {
-				continue
-			}
-			seen[pl.ID] = true
-			if s.URI != forYouSection {
-				if len(h.Featured) < featuredMax {
-					h.Featured = append(h.Featured, pl)
-				}
-				continue
-			}
-			h.ForYou = append(h.ForYou, pl)
-			// Daily Mixes are 37i9dQZF1E3…; Discover Weekly and radios aren't.
-			if h.Daily == "" && strings.HasPrefix(pl.ID, "spotify:playlist:37i9dQZF1E3") {
-				h.Daily = pl.ID
+		items := s.SectionItems.homeItems()
+		if len(items) == 0 {
+			continue
+		}
+		title := s.Data.Title.TransformedLabel
+		switch s.Data.Typename {
+		case "HomeShortsSectionData":
+			h.Shortcuts = items
+			continue
+		case "HomeRecentlyPlayedSectionData":
+			recent = items
+		case "HomeFeedBaselineSectionData":
+			// The feed's cards come one by one: those of a title go
+			// together, in the section of that title if there is one.
+			h.addFeed(cmp.Or(title, feedTitle), items)
+			continue
+		}
+		h.Sections = append(h.Sections, HomeSection{URI: s.URI, Title: title, Total: max(s.SectionItems.TotalCount, len(items)), Items: items})
+		if s.URI == forYouSection && items[0].List != nil {
+			forYou = items[0].List.ID
+		}
+	}
+	// Daily Mixes are 37i9dQZF1E3…; Discover Weekly and radios aren't.
+	for _, s := range h.Sections {
+		for _, it := range s.Items {
+			if h.Daily == "" && it.List != nil && strings.HasPrefix(it.List.ID, "spotify:playlist:37i9dQZF1E3") {
+				h.Daily = it.List.ID
 			}
 		}
 	}
-	if h.Daily == "" && len(h.ForYou) > 0 {
-		h.Daily = h.ForYou[0].ID
+	h.Daily = cmp.Or(h.Daily, forYou)
+	if len(h.Shortcuts) == 0 {
+		h.Shortcuts = recent
 	}
 	return h, nil
+}
+
+// addFeed adds items, which the feed gave one by one, to the section titled
+// title, or a new one.
+func (h *Home) addFeed(title string, items []HomeItem) {
+	for i := range h.Sections {
+		if s := &h.Sections[i]; s.Title == title {
+			s.Items = appendNew(s.Items, items)
+			s.Total = max(s.Total, len(s.Items))
+			return
+		}
+	}
+	h.Sections = append(h.Sections, HomeSection{Title: title, Total: len(items), Items: items})
+}
+
+// homeSectionMax is how many cards HomeSectionItems lists, at most.
+const homeSectionMax = 100
+
+// HomeSectionItems returns the cards of the home's section uri, as its
+// "show all" lists them.
+func HomeSectionItems(uri string) ([]HomeItem, error) {
+	var out []HomeItem
+	for offset := 0; offset < homeSectionMax; {
+		var res struct {
+			HomeSections struct {
+				Sections []struct {
+					SectionItems gqlSectionItems `json:"sectionItems"`
+				} `json:"sections"`
+			} `json:"homeSections"`
+		}
+		err := query("homeSection", map[string]any{
+			"uri": uri, "timeZone": timeZone(), "sp_t": "", "sectionItemsOffset": offset, "sectionItemsLimit": 20,
+			"homeEndUserIntegration": "INTEGRATION_WEB_PLAYER", "includeHomeChapterVideoCards": false, "includeEpisodeContentRatingsV2": false,
+		}, &res)
+		if err != nil {
+			return nil, err
+		}
+		if len(res.HomeSections.Sections) == 0 {
+			break
+		}
+		page := &res.HomeSections.Sections[0].SectionItems
+		out = appendNew(out, page.homeItems())
+		next := page.PagingInfo.NextOffset
+		if next == nil || *next <= offset || len(page.Items) == 0 {
+			break
+		}
+		offset = *next
+	}
+	return out, nil
 }
 
 func timeZone() string {

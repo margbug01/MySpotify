@@ -100,15 +100,14 @@ func (a *app) restoreSession() {
 // loads them anew: that takes seconds, ten and more on the first start of
 // the web player.
 type homeSnapshot struct {
-	Profile  *spotify.Profile
-	Featured []spotify.Playlist
-	ForYou   []spotify.Playlist
-	Artists  []spotify.ArtistCard
-	Charts   []spotify.Playlist
-	Daily    []spotify.Track
-	Mine     []spotify.Playlist
-	Saved    []spotify.Playlist
-	Followed []spotify.ArtistCard
+	Profile   *spotify.Profile
+	Sections  []spotify.HomeSection
+	Shortcuts []spotify.HomeItem
+	Charts    []spotify.Playlist
+	Daily     []spotify.Track
+	Mine      []spotify.Playlist
+	Saved     []spotify.Playlist
+	Followed  []spotify.ArtistCard
 }
 
 // keepHome saves what the home page and the sidebar show; signed out, it
@@ -121,7 +120,7 @@ func (a *app) keepHome() {
 		os.Remove(a.homeFile)
 		return
 	}
-	b, err := json.Marshal(homeSnapshot{a.profile, a.featured, a.recPlaylists, a.homeArtists, a.charts, a.daily, a.mine, a.saved, a.followed})
+	b, err := json.Marshal(homeSnapshot{a.profile, a.homeSections, a.homeShortcuts, a.charts, a.daily, a.mine, a.saved, a.followed})
 	if err != nil {
 		return
 	}
@@ -141,7 +140,7 @@ func (a *app) restoreHome() {
 		return
 	}
 	a.profile = s.Profile
-	a.featured, a.recPlaylists, a.homeArtists = s.Featured, s.ForYou, s.Artists
+	a.homeSections, a.homeShortcuts = s.Sections, s.Shortcuts
 	a.charts, a.daily = s.Charts, s.Daily
 	a.mine, a.saved, a.followed = s.Mine, s.Saved, s.Followed
 }
