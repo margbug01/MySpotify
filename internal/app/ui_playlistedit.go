@@ -238,7 +238,8 @@ func (a *app) removeFrom(pid string, tr *spotify.Track) {
 // listener's playlists, or take it out of pid, the one it is listed in, if
 // set.
 func (a *app) playlistItems(m *ui.Menu, tr *spotify.Track, pid string) {
-	if a.profile == nil {
+	// Episodes go in no playlist of Vinyl's: it lists their songs only.
+	if a.profile == nil || tr.Episode {
 		return
 	}
 	m.Separator()

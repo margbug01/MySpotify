@@ -105,7 +105,7 @@ func TestLiveEdit(t *testing.T) {
 		}
 		return slices.ContainsFunc(lib.Saved, func(p Playlist) bool { return p.ID == uri })
 	}
-	for _, uri := range []string{"spotify:album:1dtg7IOdq2Q6zA4nIJ5Qsk", "spotify:playlist:37i9dQZF1DXcBWIGoYBM5M"} {
+	for _, uri := range []string{"spotify:album:1dtg7IOdq2Q6zA4nIJ5Qsk", "spotify:playlist:37i9dQZF1DXcBWIGoYBM5M", "spotify:show:3SAEaxDocqSHYNxvtDQ9b1"} {
 		if saved(uri) {
 			t.Errorf("%s saved before", uri)
 			continue

@@ -42,7 +42,7 @@ func (a *app) songItems(tr *spotify.Track, pid string) func(m *ui.Menu) {
 					a.toast = "已添加到待播清单"
 				}
 			}
-			if m.Item("开启电台").Chosen() {
+			if !tr.Episode && m.Item("开启电台").Chosen() {
 				a.startRadio(tr.URI(), tr.Name)
 			}
 			m.Separator()
@@ -58,7 +58,7 @@ func (a *app) songItems(tr *spotify.Track, pid string) func(m *ui.Menu) {
 			copyText(tr.URL())
 		}
 		m.Separator()
-		if here := (route{page: pageTrack, track: tr.ID}); a.route != here && m.Item("查看歌曲").Chosen() {
+		if here := (route{page: pageTrack, track: tr.ID}); !tr.Episode && a.route != here && m.Item("查看歌曲").Chosen() {
 			a.goTo(here)
 		}
 		for _, ar := range tr.Artists {
@@ -66,7 +66,11 @@ func (a *app) songItems(tr *spotify.Track, pid string) func(m *ui.Menu) {
 				a.openArtist(ar.ID)
 			}
 		}
-		if tr.Album.ID != "" && m.Item("查看专辑："+tr.Album.Name).Chosen() {
+		album := "查看专辑："
+		if tr.Episode {
+			album = "查看播客："
+		}
+		if tr.Album.ID != "" && a.route != (route{page: pagePlaylist, playlist: tr.Album.ID}) && m.Item(album+tr.Album.Name).Chosen() {
 			a.goTo(route{page: pagePlaylist, playlist: tr.Album.ID})
 		}
 		a.playlistItems(m, tr, pid)

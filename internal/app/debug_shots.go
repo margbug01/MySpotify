@@ -251,20 +251,25 @@ func init() {
 				return
 			}
 			if os.Getenv("NM_SCENE") == "once" {
-				// One track of the charts, muted, for ten seconds: one licence
-				// asked for, which a dozen in half an hour would have Spotify
-				// turn away. What it does, and the cache, go to stderr.
-				step(0, func() { a.loadPlaylist(a.charts[1].ID, false) })
+				// One track of the charts, or of the list NM_PLAY names, muted,
+				// for ten seconds: one licence asked for, which a dozen in
+				// half an hour would have Spotify turn away. What it does,
+				// and the cache, go to stderr.
+				list := os.Getenv("NM_PLAY")
+				if list == "" {
+					mygo.RunOnMain(func() { list = a.charts[1].ID })
+				}
+				step(0, func() { a.loadPlaylist(list, false) })
 				for range 40 {
 					var ok bool
-					mygo.RunOnMain(func() { ok = a.playlists[a.charts[1].ID] != nil })
+					mygo.RunOnMain(func() { ok = a.playlists[list] != nil })
 					if ok {
 						break
 					}
 					time.Sleep(250 * time.Millisecond)
 				}
 				step(0, func() {
-					tracks := a.playlists[a.charts[1].ID].Tracks
+					tracks := a.playlists[list].Tracks
 					a.volume = 0
 					a.pl.SetVolume(0)
 					a.pl.PlayQueue(tracks, firstPlayable(tracks))

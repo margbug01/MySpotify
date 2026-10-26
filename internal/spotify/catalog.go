@@ -35,6 +35,9 @@ type Track struct {
 	// UID is its place in the playlist it is listed in, which taking it
 	// out of the playlist names.
 	UID string `json:"uid,omitempty"`
+	// Episode says it is a podcast's episode, its album the podcast and
+	// its artist who publishes it.
+	Episode bool `json:"episode,omitempty"`
 }
 
 // ArtistNames joins the track's artists as the credits read.
@@ -48,10 +51,17 @@ func (t *Track) ArtistNames() string {
 
 func (t *Track) Playable() bool        { return !t.Unplayable }
 func (t *Track) Length() time.Duration { return time.Duration(t.Duration) * time.Millisecond }
-func (t *Track) URI() string           { return "spotify:track:" + t.ID }
+func (t *Track) URI() string           { return "spotify:" + t.kind() + ":" + t.ID }
 
 // URL is the track's page on the web player.
-func (t *Track) URL() string { return "https://open.spotify.com/track/" + t.ID }
+func (t *Track) URL() string { return "https://open.spotify.com/" + t.kind() + "/" + t.ID }
+
+func (t *Track) kind() string {
+	if t.Episode {
+		return "episode"
+	}
+	return "track"
+}
 
 // Playlist is a list of tracks the pages show as one: a playlist, an
 // album, or the listener's liked songs.
@@ -291,6 +301,9 @@ func (e *gqlEntity) playlist() (Playlist, bool) {
 		pl.CoverURL = e.CoverArt.best()
 		pl.Artists = e.Artists.list()
 		pl.Creator.Nickname = Track{Artists: pl.Artists}.ArtistNamesOf()
+	case "Podcast":
+		pl.CoverURL = e.CoverArt.best()
+		pl.Creator.Nickname = e.Publisher.Name
 	default:
 		return pl, false
 	}
@@ -504,6 +517,8 @@ func PlaylistDetail(uri string) (*Playlist, error) {
 		return likedSongs()
 	case strings.HasPrefix(uri, "spotify:album:"):
 		return album(uri)
+	case strings.HasPrefix(uri, "spotify:show:"):
+		return show(uri)
 	}
 	const page = 100
 	pl, err := playlistPage(uri, 0, page)
@@ -831,9 +846,9 @@ func Save(uri string, save bool) error {
 	return query(op, map[string]any{"libraryItemUris": []string{uri}}, &res)
 }
 
-// SearchLists returns the albums and the playlists matching q, the best
-// first, limit of each.
-func SearchLists(q string, limit int) (albums, playlists []Playlist, err error) {
+// SearchLists returns the albums, playlists and podcasts matching q, the
+// best first, limit of each.
+func SearchLists(q string, limit int) (albums, playlists, podcasts []Playlist, err error) {
 	vars := map[string]any{
 		"searchTerm": q, "offset": 0, "limit": limit, "numberOfTopResults": 5,
 		"includeAudiobooks": false, "includePreReleases": false, "includeAuthors": false,
@@ -852,16 +867,18 @@ func SearchLists(q string, limit int) (albums, playlists []Playlist, err error) 
 		}
 		return out
 	}
-	var a, p struct {
+	var a, p, s struct {
 		SearchV2 struct {
 			AlbumsV2  found `json:"albumsV2"`
 			Playlists found `json:"playlists"`
+			Podcasts  found `json:"podcasts"`
 		} `json:"searchV2"`
 	}
-	var errA, errP error
+	var errA, errP, errS error
 	var wg sync.WaitGroup
 	wg.Go(func() { errA = query("searchAlbums", vars, &a) })
 	wg.Go(func() { errP = query("searchPlaylists", vars, &p) })
+	wg.Go(func() { errS = query("searchPodcasts", vars, &s) })
 	wg.Wait()
-	return lists(a.SearchV2.AlbumsV2), lists(p.SearchV2.Playlists), cmp.Or(errA, errP)
+	return lists(a.SearchV2.AlbumsV2), lists(p.SearchV2.Playlists), lists(s.SearchV2.Podcasts), cmp.Or(errA, errP, errS)
 }

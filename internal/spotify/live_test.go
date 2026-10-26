@@ -179,13 +179,34 @@ func TestLive(t *testing.T) {
 			}
 		}
 	}
+	_, _, shows, err := SearchLists("郭德纲", 5)
+	if err != nil || len(shows) == 0 {
+		t.Fatalf("search podcasts: %d, %v", len(shows), err)
+	}
+	sh, err := PlaylistDetail(shows[0].ID)
+	if err != nil || len(sh.Tracks) == 0 {
+		t.Fatalf("podcast %s: %v", shows[0].ID, err)
+	}
+	playable := 0
+	for _, e := range sh.Tracks {
+		if e.Playable() {
+			playable++
+		}
+	}
+	t.Logf("podcast %s by %s: %d of %d episodes listed, %d playable, first %q %v", sh.Name, sh.Creator.Nickname, len(sh.Tracks), sh.TrackCount, playable, sh.Tracks[0].Name, sh.Tracks[0].Length())
+	em, err := ResolveMedia(sh.Tracks[0].URI())
+	if err != nil {
+		t.Fatal("episode media:", err)
+	}
+	t.Logf("episode media: %v, %d kbps", em.Duration, em.Bitrate/1000)
+
 	up, err := UserProfile("spotify")
 	if err != nil || len(up.Playlists) == 0 {
 		t.Fatalf("profile: %v", err)
 	}
 	t.Logf("profile %s: %d followers, %d of %d playlists, first %+v", up.Name, up.Followers, len(up.Playlists), up.Total, up.Playlists[0].Name)
 
-	m, err := ResolveMedia(daily.Tracks[0].ID)
+	m, err := ResolveMedia(daily.Tracks[0].URI())
 	if err != nil {
 		t.Fatal("media:", err)
 	}

@@ -3,6 +3,7 @@ package player
 import (
 	"slices"
 	"testing"
+	"time"
 
 	"vinyl/internal/spotify"
 )
@@ -47,5 +48,23 @@ func TestAddToQueue(t *testing.T) {
 	}
 	if got := played(p); !slices.Equal(got, []string{"1", "2", "9"}) {
 		t.Fatalf("queue %v", got)
+	}
+}
+
+// An episode's audio is asked for by its own URI, not a track's.
+func TestEpisodeResolvesByItsURI(t *testing.T) {
+	got := make(chan string, 1)
+	real := resolve
+	resolve = func(uri string) (*spotify.Media, error) { got <- uri; return nil, spotify.ErrNotFound }
+	defer func() { resolve = real }()
+	p := New(func(func()) {})
+	p.PlayQueue([]spotify.Track{{ID: "e1", Episode: true}}, 0)
+	select {
+	case uri := <-got:
+		if uri != "spotify:episode:e1" {
+			t.Errorf("asked for %s", uri)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("not asked")
 	}
 }

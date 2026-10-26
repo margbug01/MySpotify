@@ -19,9 +19,10 @@ type Media struct {
 }
 
 type mediaFile struct {
-	FileID  string   `json:"file_id"`
-	Format  looseInt `json:"format"`
-	Bitrate looseInt `json:"bitrate"`
+	FileID    string   `json:"file_id"`
+	Format    looseInt `json:"format"`
+	Bitrate   looseInt `json:"bitrate"`
+	TrackType string   `json:"track_type"` // AUDIO, or a video podcast's VIDEO
 }
 
 // looseInt accepts 11 and "11": the service sends either.
@@ -40,11 +41,10 @@ func (n *looseInt) UnmarshalJSON(b []byte) error {
 	return err
 }
 
-// ResolveMedia returns the manifest of track id's lowest bitrate, 128k,
-// which a free account is licensed to play: the licence of the 256k one
-// it is refused (403).
-func ResolveMedia(id string) (*Media, error) {
-	uri := "spotify:track:" + id
+// ResolveMedia returns the manifest of the lowest bitrate of uri, a
+// track's or a podcast episode's: 128k, which a free account is licensed to
+// play; the licence of the 256k one it is refused (403).
+func ResolveMedia(uri string) (*Media, error) {
 	raw, err := spGet("/track-playback/v1/media/"+uri+"?manifestFileFormat=file_ids_mp4", "application/json")
 	if err != nil {
 		return nil, err
@@ -71,7 +71,12 @@ func ResolveMedia(id string) (*Media, error) {
 			break
 		}
 	}
-	files := entry.Item.Manifest.MP4
+	var files []mediaFile
+	for _, f := range entry.Item.Manifest.MP4 {
+		if f.TrackType == "" || f.TrackType == "AUDIO" {
+			files = append(files, f)
+		}
+	}
 	if !ok || len(files) == 0 {
 		return nil, fmt.Errorf("track-playback: no MP4 files for %s", uri)
 	}

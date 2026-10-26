@@ -245,9 +245,12 @@ func (a *app) playlistHeader(c *ui.Context, pl *spotify.Playlist) {
 			a.coverFill(c, pl.Cover(), 600, 14)
 		})
 		ui.Column(c).Grow(1).Shrink(1).MinWidth(0).Gap(8).Children(func() {
-			kind := "歌单"
-			if strings.HasPrefix(pl.ID, "spotify:album:") {
+			kind, unit := "歌单", "首"
+			switch {
+			case strings.HasPrefix(pl.ID, "spotify:album:"):
 				kind = "专辑"
+			case strings.HasPrefix(pl.ID, "spotify:show:"):
+				kind, unit = "播客", "集"
 			}
 			ui.Text(c, kind).FontSize(12).FontWeight(600).TextColor(p.accent)
 			ui.Text(c, pl.Name).FontSize(30).FontWeight(800).LetterSpacing(-0.6).MaxLines(2).LineHeight(1.2)
@@ -263,7 +266,12 @@ func (a *app) playlistHeader(c *ui.Context, pl *spotify.Playlist) {
 				} else if pl.Creator.Nickname != "" {
 					ui.Text(c, pl.Creator.Nickname+" · ").FontSize(13).TextColor(p.muted)
 				}
-				ui.Text(c, fmt.Sprintf("%d 首", len(pl.Tracks))).FontSize(13).TextColor(p.muted).Shrink(0)
+				n := len(pl.Tracks)
+				if unit == "集" {
+					// The latest episodes list; the podcast has them all.
+					n = max(n, pl.TrackCount)
+				}
+				ui.Text(c, fmt.Sprintf("%d %s", n, unit)).FontSize(13).TextColor(p.muted).Shrink(0)
 			})
 			if d := strings.TrimSpace(pl.Description); d != "" {
 				ui.Text(c, strings.ReplaceAll(d, "\n", " ")).FontSize(12.5).TextColor(p.muted).MaxLines(2).LineHeight(1.45).Margin(2, 0, 0, 0)
@@ -328,7 +336,7 @@ func (a *app) searchPage(c *ui.Context) {
 	}
 	a.trackRows(c, a.results, true, func(c *ui.Context) {
 		a.heading(c, "“"+a.searched+"”", "搜索")
-		if len(a.found)+len(a.foundAlbums)+len(a.foundLists) == 0 {
+		if len(a.found)+len(a.foundAlbums)+len(a.foundLists)+len(a.foundShows) == 0 {
 			return
 		}
 		ui.Column(c).PaddingX(12).Margin(0, 0, 8, 0).Children(func() {
@@ -345,7 +353,7 @@ func (a *app) searchPage(c *ui.Context) {
 			for _, s := range []struct {
 				name  string
 				lists []spotify.Playlist
-			}{{"专辑", a.foundAlbums}, {"歌单", a.foundLists}} {
+			}{{"专辑", a.foundAlbums}, {"歌单", a.foundLists}, {"播客", a.foundShows}} {
 				if len(s.lists) == 0 {
 					continue
 				}

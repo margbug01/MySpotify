@@ -483,13 +483,13 @@ func (a *app) search(q string) {
 // runSearch loads the results of q, wherever the listener is.
 func (a *app) runSearch(q string) {
 	a.searched, a.searching, a.searchErr, a.results, a.found = q, true, "", nil, nil
-	a.foundAlbums, a.foundLists = nil, nil
+	a.foundAlbums, a.foundLists, a.foundShows = nil, nil, nil
 	go func() {
 		var found []spotify.ArtistCard
-		var albums, lists []spotify.Playlist
+		var albums, lists, shows []spotify.Playlist
 		var wg sync.WaitGroup
 		wg.Go(func() { found, _ = spotify.SearchArtists(q, 12) })
-		wg.Go(func() { albums, lists, _ = spotify.SearchLists(q, 12) })
+		wg.Go(func() { albums, lists, shows, _ = spotify.SearchLists(q, 12) })
 		res, err := spotify.Search(q, 60)
 		wg.Wait()
 		a.post(func() {
@@ -498,7 +498,7 @@ func (a *app) runSearch(q string) {
 			}
 			a.searching = false
 			a.results, a.found = res, found
-			a.foundAlbums, a.foundLists = albums, lists
+			a.foundAlbums, a.foundLists, a.foundShows = albums, lists, shows
 			if err != nil {
 				a.searchErr = "搜索失败，请稍后再试"
 			}

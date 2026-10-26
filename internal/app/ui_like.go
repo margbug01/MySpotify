@@ -91,6 +91,10 @@ func (a *app) setLiked(id string, like bool) {
 // pops it in on a spring while a ring swells around it and confetti flies
 // out; unliking lets it give a little.
 func (a *app) likeButton(c *ui.Context, tr *spotify.Track, size float32, color ui.Color) ui.Element {
+	if tr.Episode {
+		// Not liked as songs are: its room stays, empty.
+		return ui.Box(c).Size(size, size)
+	}
 	liked := a.liked[tr.ID]
 	icon, label := iconHeart, "喜欢"
 	if liked {

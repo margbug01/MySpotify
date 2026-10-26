@@ -668,7 +668,7 @@ func (p *Player) loadSkipping(at, skipped int, play bool, from time.Duration) {
 	gen, t := p.cue(at, play, from)
 	p.loading, p.skipped = true, skipped
 	go func() {
-		m, err := resolve(t.ID)
+		m, err := resolve(t.URI())
 		p.post(func() {
 			if gen != p.gen {
 				return
@@ -745,10 +745,12 @@ func (p *Player) cue(at int, play bool, from time.Duration) (int, spotify.Track)
 	}()
 
 	go func() {
-		lrc, err := spotify.Lyrics(t.ID)
 		var lines []lyrics.Line
-		if err == nil {
-			lines = lyrics.Build(lrc, "", "")
+		// An episode has none, but maybe a transcript.
+		if !t.Episode {
+			if lrc, err := spotify.Lyrics(t.ID); err == nil {
+				lines = lyrics.Build(lrc, "", "")
+			}
 		}
 		p.post(func() {
 			if gen == p.gen {

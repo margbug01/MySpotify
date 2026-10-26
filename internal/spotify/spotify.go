@@ -265,6 +265,9 @@ var ops = map[string]string{
 	"internalLinkRecommenderTrack":       "642923b2e705fceb9984697c1620fecd42615fd8b116b8a9faf2786b389d3e4a",
 	"queryTrackCreditsGroupedModal":      "f135fb9be58a72d041ab5d214d817021a272405d883860468e2627afb01a3ca9",
 	"browseAll":                          "dbd8b55e09a58afc52eab438bc228ba28fd72ac2f2148c6c26354980e4579001",
+	"queryShowMetadataV2":                "b475447846f37cc426add800b995a7859c169c53c72b62de6338c0c40a5dacea",
+	"queryPodcastEpisodes":               "3539d746cf882f3909660de40b4ef472b3f5893a0761d617c282541de5d412c5",
+	"searchPodcasts":                     "0195d9f61b43606d490bca64c3456e3593528cea6cc05c7e822c7c42beed0f4e",
 }
 
 // query runs the web player's GraphQL operation op with vars, decoding its
