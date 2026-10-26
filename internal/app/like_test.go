@@ -38,7 +38,7 @@ func TestLikeFromPlayerBar(t *testing.T) {
 		t.Fatal("the heart did not fill at once")
 	}
 	if like := <-calls; !like {
-		t.Error("asked NetEase to unlike")
+		t.Error("asked Spotify to unlike")
 	}
 	tt.Frame()
 	if err := tt.Click("取消喜欢"); err != nil {
@@ -48,7 +48,7 @@ func TestLikeFromPlayerBar(t *testing.T) {
 		t.Error("still liked after unliking")
 	}
 	if like := <-calls; like {
-		t.Error("asked NetEase to like again")
+		t.Error("asked Spotify to like again")
 	}
 }
 
