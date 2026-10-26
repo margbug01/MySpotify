@@ -46,7 +46,9 @@ func (a *app) view(c *ui.Context) {
 		c.OnShortcut(0, ui.KeySpace, a.pl.TogglePlay)
 	}
 	npOpen, npSettled := a.npState(c)
-	a.overBanner = false // until the page says, as it builds
+	// Until the page says, as it builds.
+	a.overBanner = false
+	a.tones, a.washTop, a.washFoot = tones{}, ui.Color{}, ui.Color{}
 	root.Children(func() {
 		page := ui.Row(c).Fill().AlignItems(ui.Stretch)
 		page.Children(func() {
@@ -347,7 +349,7 @@ func edgeShown(el ui.Element, under bool) float32 {
 func (a *app) pageTop(c *ui.Context) {
 	top, _ := a.insets(c)
 	edge := ui.Box(c.Key("top-edge")).Absolute().Top(0).Left(0).Right(0).Height(top).DragWindow().
-		Material(glass.ScrollEdge{Hard: true, Background: a.pal.bg})
+		Material(glass.ScrollEdge{Hard: true, Background: a.edgeBG(a.washTop)})
 	edge.Opacity(edgeShown(edge, a.underTop))
 	if len(a.history) > 0 || len(a.forward) > 0 {
 		ui.Row(c).Absolute().Top(0).Left(20).Height(topBar(c)).AlignItems(ui.Center).Children(func() {

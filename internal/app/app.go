@@ -150,13 +150,18 @@ type app struct {
 	// the back button, which read white over it; buttonsLight, that the
 	// window's do.
 	overBanner, buttonsLight bool
-	barScrub                 scrubState
-	npScrub                  scrubState
-	backdropCache            backdropCache // the backdrop of Now Playing, as last painted
-	npArt                    *artwork      // the cover whose colors Now Playing shows
-	npCoverState             coverState    // the cover of Now Playing, as it is tilted and flicked
-	sig                      playerSig
-	quitting                 bool
+	// tones are the colors the page shown takes from its picture, zero for
+	// a page without; washTop and washFoot, what of them shows under the
+	// bars, for their edges (pageWash).
+	tones             tones
+	washTop, washFoot ui.Color
+	barScrub          scrubState
+	npScrub           scrubState
+	backdropCache     backdropCache // the backdrop of Now Playing, as last painted
+	npArt             *artwork      // the cover whose colors Now Playing shows
+	npCoverState      coverState    // the cover of Now Playing, as it is tilted and flicked
+	sig               playerSig
+	quitting          bool
 
 	settings    settings
 	settingsWin *mygo.Window

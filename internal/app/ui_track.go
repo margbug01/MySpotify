@@ -51,6 +51,7 @@ func (a *app) trackPage(c *ui.Context) {
 		a.trackSkeleton(c, s, true, func(c *ui.Context) { a.playlistHeaderSkeleton(c, s) })
 		return
 	}
+	a.tones = a.pageTones(a.artTint(pg.Track.Album.PicURL, 600))
 	a.trackRows(c, pg.Recommended, true, func(c *ui.Context) { a.trackHeader(c, pg) }, func(c *ui.Context) { a.trackFooter(c, pg) })
 }
 
@@ -61,7 +62,7 @@ func (a *app) trackHeader(c *ui.Context, pg *spotify.TrackPage) {
 	tr := &pg.Track
 	top, _ := a.insets(c)
 	band := a.bleed(c).Padding(top+pageGap+28, pagePad, 30, pagePad)
-	tintBand(band, a.pageTint(a.artTint(tr.Album.PicURL, 600)))
+	tintBand(band, a.tones.head)
 	band.Children(func() {
 		ui.Row(c).Gap(28).AlignItems(ui.End).Children(func() {
 			ui.Box(c).Size(232, 232).Shrink(0).Radius(10).Shadow(0, 18, 44, -10, ui.RGBA(0, 0, 0, 0.4)).Children(func() {

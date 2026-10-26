@@ -121,6 +121,11 @@ func (a *app) artistPage(c *ui.Context) {
 		a.trackSkeleton(c, s, true, func(c *ui.Context) { a.playlistHeaderSkeleton(c, s) })
 		return
 	}
+	pic, px := pg.Banner, 1600
+	if pic == "" {
+		pic, px = pg.Avatar, 600 // as avatar asks for it, 200 across
+	}
+	a.tones = a.pageTones(a.artTint(pic, px))
 	a.trackRows(c, pg.TopTracks, true,
 		func(c *ui.Context) { a.artistHeader(c, pg) },
 		func(c *ui.Context) { a.artistFooter(c, pg) })
@@ -147,104 +152,111 @@ func (a *app) artistHeader(c *ui.Context, pg *spotify.ArtistPage) {
 		})
 	}
 	// As Spotify's: from the top of the window and edge to edge, the banner
-	// or the picture's color fading into the page below.
-	top, _ := a.insets(c)
-	pic, px := pg.Banner, 1600
-	if pic == "" {
-		pic, px = pg.Avatar, 600 // as avatar asks for it, 200 across
+	// melting into the page below, or the picture's color over it.
+	// What they can be played or followed with, in row.
+	actions := func(row ui.Element) {
+		row.Gap(10).Children(func() {
+			if len(pg.TopTracks) > 0 {
+				if pillButton(c.Key("play"), iconPlay, "播放", p.accent, p.onAccent).Clicked() {
+					if a.pl.Shuffle() {
+						a.pl.ToggleShuffle()
+					}
+					a.playFrom(spotify.HomeItem{Artist: &pg.ArtistCard}, pg.TopTracks, firstPlayable(pg.TopTracks))
+				}
+				if pillButton(c.Key("shuffle"), iconShuffle, "随机播放", p.hover.Over(p.bg), p.text).Clicked() {
+					if !a.pl.Shuffle() {
+						a.pl.ToggleShuffle()
+					}
+					a.playFrom(spotify.HomeItem{Artist: &pg.ArtistCard}, pg.TopTracks, firstPlayable(pg.TopTracks))
+				}
+				label := "电台"
+				if a.radioStarting == radioName(pg.ID, pg.Name) {
+					label = "正在开启…"
+				}
+				if pillButton(c.Key("radio"), iconRadio, label, p.hover.Over(p.bg), p.text).Clicked() {
+					a.startRadio(pg.ID, pg.Name)
+				}
+			}
+			icon, label := iconPlus, "关注"
+			if pg.Followed {
+				icon, label = iconCheck, "已关注"
+			}
+			if pillButton(c.Key("follow"), icon, label, p.hover.Over(p.bg), p.text).Clicked() {
+				a.toggleFollow(pg)
+			}
+		})
 	}
-	tint := a.pageTint(a.artTint(pic, px))
+	top, _ := a.insets(c)
 	a.bleed(c).Children(func() {
-		padTop := top + pageGap + 28
 		if pg.Banner != "" {
-			a.artistBanner(c, pg, tint, kind, stats)
-			padTop = 26
+			a.artistBanner(c, pg, kind, stats, actions)
 			// Content is under the bar at the top once the banner is: the
 			// bar's edge covers what is left of it. Till then, the back
 			// button and the window's read white over it (view, pageTop).
 			a.startMark(c)
 			a.overBanner = !a.underTop
-		}
-		band := ui.Column(c).Padding(padTop, pagePad, 4, pagePad)
-		tintBand(band, tint)
-		band.Children(func() {
-			if pg.Banner == "" {
-				ui.Row(c).Gap(28).AlignItems(ui.Center).Padding(0, 0, 26, 0).Children(func() {
-					a.avatar(c, pg.Avatar, 200, p.hover)
-					ui.Column(c).Grow(1).Shrink(1).MinWidth(0).Gap(8).Children(func() {
-						kind(p.text)
-						ui.Text(c, pg.Name).FontSize(a.titleSize(c)).FontWeight(800).LetterSpacing(-1).MaxLines(2).LineHeight(1.12)
-						if len(stats) > 0 {
-							ui.Text(c, strings.Join(stats, " · ")).FontSize(13).TextColor(p.muted)
-						}
-					})
-				})
+			if len(pg.TopTracks) > 0 {
+				ui.Box(c).Padding(0, pagePad, 4, pagePad).Children(func() { a.section(c, "热门歌曲") })
 			}
-			ui.Row(c).Gap(10).Children(func() {
-				if len(pg.TopTracks) > 0 {
-					if pillButton(c.Key("play"), iconPlay, "播放", p.accent, p.onAccent).Clicked() {
-						if a.pl.Shuffle() {
-							a.pl.ToggleShuffle()
-						}
-						a.playFrom(spotify.HomeItem{Artist: &pg.ArtistCard}, pg.TopTracks, firstPlayable(pg.TopTracks))
+			return
+		}
+		band := ui.Column(c).Padding(top+pageGap+28, pagePad, 4, pagePad)
+		tintBand(band, a.tones.head)
+		band.Children(func() {
+			ui.Row(c).Gap(28).AlignItems(ui.Center).Padding(0, 0, 26, 0).Children(func() {
+				a.avatar(c, pg.Avatar, 200, p.hover)
+				ui.Column(c).Grow(1).Shrink(1).MinWidth(0).Gap(8).Children(func() {
+					kind(p.text)
+					ui.Text(c, pg.Name).FontSize(a.titleSize(c)).FontWeight(800).LetterSpacing(-1).MaxLines(2).LineHeight(1.12)
+					if len(stats) > 0 {
+						ui.Text(c, strings.Join(stats, " · ")).FontSize(13).TextColor(p.muted)
 					}
-					if pillButton(c.Key("shuffle"), iconShuffle, "随机播放", p.hover.Over(p.bg), p.text).Clicked() {
-						if !a.pl.Shuffle() {
-							a.pl.ToggleShuffle()
-						}
-						a.playFrom(spotify.HomeItem{Artist: &pg.ArtistCard}, pg.TopTracks, firstPlayable(pg.TopTracks))
-					}
-					label := "电台"
-					if a.radioStarting == radioName(pg.ID, pg.Name) {
-						label = "正在开启…"
-					}
-					if pillButton(c.Key("radio"), iconRadio, label, p.hover.Over(p.bg), p.text).Clicked() {
-						a.startRadio(pg.ID, pg.Name)
-					}
-				}
-				icon, label := iconPlus, "关注"
-				if pg.Followed {
-					icon, label = iconCheck, "已关注"
-				}
-				if pillButton(c.Key("follow"), icon, label, p.hover.Over(p.bg), p.text).Clicked() {
-					a.toggleFollow(pg)
-				}
+				})
 			})
+			actions(ui.Row(c))
 			if len(pg.TopTracks) > 0 {
 				a.section(c, "热门歌曲")
 			}
 		})
-		if pg.Banner == "" {
-			// Content is under the bar at the top once the band is.
-			a.startMark(c)
-		}
+		// Content is under the bar at the top once the band is.
+		a.startMark(c)
 	})
 }
 
+// bannerMelt is how far below the artist's name their banner goes on,
+// melting into the page's tone, with the buttons over it.
+const bannerMelt = 110
+
 // artistBanner is an artist's banner, the width of the page from the top
-// of the window, their name over it; in the dark, it fades into tint.
-func (a *app) artistBanner(c *ui.Context, pg *spotify.ArtistPage, tint ui.Color, kind func(ui.Color), stats []string) {
+// of the window, their name over it, darkened under them: below it, the
+// banner melts into the page's tone, which the page takes all the way
+// down (pageWash), so that it ends nowhere.
+func (a *app) artistBanner(c *ui.Context, pg *spotify.ArtistPage, kind func(ui.Color), stats []string, actions func(ui.Element)) {
 	_, h := c.Size()
-	ui.Box(c).Height(min(max(h*0.42, 300), 440)).Children(func() {
+	pic := min(max(h*0.42, 300), 440)
+	ui.Box(c).Height(pic + bannerMelt).Children(func() {
 		a.coverFill(c, pg.Banner, 1600, 0)
 		shade := ui.Box(c).Absolute().Top(0).Left(0).Right(0).Bottom(0)
-		fade := ui.RGBA(0, 0, 0, 0.5)
-		if a.pal.dark {
-			fade = shade.AnimateColor("tint", tint, ui.Animation{Duration: 500 * time.Millisecond})
-		}
+		anim := ui.Animation{Duration: 500 * time.Millisecond}
+		page := shade.AnimateColor("page", a.tones.page, anim)
+		deep := shade.AnimateColor("deep", a.tones.deep, anim)
 		// Dark at the top too, under the back button and the window's.
 		shade.LinearGradient(ui.LinearGradient{Angle: 180, Oklab: true, Stops: []ui.GradientStop{
 			{Color: ui.RGBA(0, 0, 0, 0.3), At: 0},
-			{Color: ui.RGBA(0, 0, 0, 0), At: 0.3},
-			{Color: fade, At: 1},
+			{Color: deep.Alpha(0), At: 0.25},
+			{Color: deep.Alpha(0.55), At: pic / (pic + bannerMelt)},
+			{Color: page, At: 1},
 		}})
-		ui.Column(c).Absolute().Left(pagePad).Right(pagePad).Bottom(22).Gap(6).TextColor(white).Children(func() {
+		ui.Column(c).Absolute().Left(pagePad).Right(pagePad).Bottom(bannerMelt + 12).Gap(6).TextColor(white).Children(func() {
 			kind(white.Alpha(0.85))
 			ui.Text(c, pg.Name).FontSize(a.titleSize(c) * 1.25).FontWeight(800).LetterSpacing(-1.5).SingleLine()
 			if len(stats) > 0 {
 				ui.Text(c, strings.Join(stats, " · ")).FontSize(13).TextColor(white.Alpha(0.8))
 			}
 		})
+		// Over the banner as it melts: positioned, after the shade, so that
+		// they paint over it and take the pointer.
+		actions(ui.Row(c).Absolute().Left(pagePad).Bottom(38))
 	})
 }
 

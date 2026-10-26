@@ -181,19 +181,20 @@ func (a *app) playlistPage(c *ui.Context) {
 		a.trackSkeleton(c, s, false, func(c *ui.Context) { a.playlistHeaderSkeleton(c, s) })
 		return
 	}
-	a.trackRows(c, pl.Tracks, false, func(c *ui.Context) { a.playlistHeader(c, pl) }, nil)
-}
-
-// playlistHeader is the top of a list's page, as Spotify's: from the top of
-// the window and edge to edge, on its cover's color fading into the page.
-func (a *app) playlistHeader(c *ui.Context, pl *spotify.Playlist) {
-	top, _ := a.insets(c)
 	tint := likedTint
 	if !pl.Liked() {
 		tint = a.artTint(pl.Cover(), 600)
 	}
+	a.tones = a.pageTones(tint)
+	a.trackRows(c, pl.Tracks, false, func(c *ui.Context) { a.playlistHeader(c, pl) }, nil)
+}
+
+// playlistHeader is the top of a list's page, as Spotify's: from the top of
+// the window and edge to edge, on its cover's color, deeper than the page's.
+func (a *app) playlistHeader(c *ui.Context, pl *spotify.Playlist) {
+	top, _ := a.insets(c)
 	band := a.bleed(c).Padding(top+pageGap+28, pagePad, 30, pagePad)
-	tintBand(band, a.pageTint(tint))
+	tintBand(band, a.tones.head)
 	band.Children(func() {
 		a.playlistTop(c, pl)
 		// Content is under the bar at the top once the band is.
@@ -295,19 +296,54 @@ func tintBand(el ui.Element, tint ui.Color) {
 	}})
 }
 
-// pageTint is the color a page's header takes from its picture's, base:
-// deep, which white reads over, on a dark page, and pale on a light one;
-// gray for a gray picture, or one still loading.
-func (a *app) pageTint(base ui.Color) ui.Color {
+// tones are the colors a page takes from its picture, all the way down,
+// as the page's background, rather than a band of it over a white page.
+type tones struct {
+	page ui.Color // the page's: deep on a dark page, pale on a light one
+	head ui.Color // deeper, under the header, fading into page
+	deep ui.Color // dark, under white text over a banner
+}
+
+// pageTones are the tones of a page whose picture's color is base: gray
+// for a gray picture, or one still loading.
+func (a *app) pageTones(base ui.Color) tones {
 	h, s, _ := hsv(float64(base.R)/255, float64(base.G)/255, float64(base.B)/255)
 	if s < 0.12 {
 		s = 0
 	}
 	s = min(s, 0.65)
 	if a.pal.dark {
-		return hsvColor(h, s*0.85, 0.32)
+		page := hsvColor(h, s*0.75, 0.25)
+		return tones{page: page, head: hsvColor(h, s*0.85, 0.4), deep: page}
 	}
-	return hsvColor(h, s*0.3, 0.95)
+	return tones{page: hsvColor(h, s*0.42, 0.95), head: hsvColor(h, s*0.6, 0.88), deep: hsvColor(h, s*0.8, 0.28)}
+}
+
+// pageWash paints list, a page that takes tones (a.tones), with the page's
+// tone from top to bottom, and notes what shows under the bars, for their
+// edges. It stays as the list scrolls, as the page's background.
+func (a *app) pageWash(list ui.Element) {
+	if a.tones == (tones{}) {
+		return
+	}
+	page := list.AnimateColor("tint", a.tones.page, ui.Animation{Duration: 500 * time.Millisecond})
+	foot := page.Mix(a.pal.bg, 0.4)
+	// Even down to under a banner's foot (artistBanner), which melts into
+	// the page's tone.
+	list.LinearGradient(ui.LinearGradient{Angle: 180, Oklab: true, Stops: []ui.GradientStop{
+		{Color: page, At: 0},
+		{Color: page, At: 0.72},
+		{Color: foot, At: 1},
+	}})
+	a.washTop, a.washFoot = page, foot
+}
+
+// edgeBG is what a bar's edge frosts over: the page's tone, if it has one.
+func (a *app) edgeBG(tone ui.Color) ui.Color {
+	if tone == (ui.Color{}) {
+		return a.pal.bg
+	}
+	return tone
 }
 
 // titleSize is how large the name over a page's header is, as wide as the
@@ -392,7 +428,7 @@ func (a *app) trackRows(c *ui.Context, tracks []spotify.Track, covers bool, head
 	if footer != nil {
 		n++
 	}
-	ui.List(c.Key(a.route), &a.trackList, n, func(i int) {
+	list := ui.List(c.Key(a.route), &a.trackList, n, func(i int) {
 		if i == 0 {
 			ui.Column(c).Children(func() {
 				a.startMark(c)
@@ -475,6 +511,7 @@ func (a *app) trackRows(c *ui.Context, tracks []spotify.Track, covers bool, head
 			a.playFrom(a.routeItem(), tracks, i)
 		}
 	}).Grow(1).Padding(top+pageGap, pagePad-12, bottom+32, pagePad-12).ScrollbarInsets(top, 0, bottom, 0)
+	a.pageWash(list)
 }
 
 // nowPlayingBars dance in the row of the track playing.

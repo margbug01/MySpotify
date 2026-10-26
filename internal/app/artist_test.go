@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"image/color"
 	"slices"
 	"testing"
 	"time"
@@ -167,5 +168,62 @@ func TestArtistBannerUnderTheBars(t *testing.T) {
 	tt.Frame()
 	if a.overBanner || a.underTop {
 		t.Fatalf("a list's page: over a banner %v, content under the bar %v", a.overBanner, a.underTop)
+	}
+}
+
+// An artist's page takes the banner's color all the way down: the banner
+// melts into it with no edge, it goes on under the songs, and the bar at
+// the top frosts it rather than white once the songs are under it.
+func TestArtistPageTakesTheBannersColor(t *testing.T) {
+	for _, dark := range []bool{false, true} {
+		a := artistApp()
+		pg := a.artists[easonURI]
+		pg.Banner = "https://i.scdn.co/image/banner"
+		for i := range 40 {
+			pg.TopTracks = append(pg.TopTracks, spotify.Track{ID: fmt.Sprint(i + 10), Name: "歌", Duration: 200000})
+		}
+		// The banner's color, as if it had loaded: pink.
+		a.art.art[spotify.Sized(pg.Banner, 1600)] = &artwork{tint: ui.RGB(220, 40, 120), used: time.Now()}
+		a.history = []route{{page: pageHome}}
+		a.route = route{page: pageArtist, artist: easonURI}
+		tt := ui.NewTester(a.view, 1200, 800)
+		tt.SetDark(dark)
+		settle := func() {
+			tt.Frame()
+			tt.Advance(time.Second)
+			tt.Frame()
+			tt.Frame()
+		}
+		settle()
+		img := tt.Image()
+		s := float32(img.Bounds().Dx()) / 1200
+		at := func(x, y float32) color.RGBA { return img.RGBAAt(int(x*s), int(y*s)) }
+		pink := func(c color.RGBA) bool { return int(c.R)-int(c.G) > 20 }
+		// Down a column clear of text, from the top to the songs.
+		const x = 1050
+		worst, where := 0, float32(0)
+		for y := float32(50); y < 690; y += 1 / s {
+			p, q := at(x, y), at(x, y+1/s)
+			for _, d := range []int{int(p.R) - int(q.R), int(p.G) - int(q.G), int(p.B) - int(q.B)} {
+				if d < 0 {
+					d = -d
+				}
+				if d > worst {
+					worst, where = d, y
+				}
+			}
+		}
+		if worst > 12 {
+			t.Errorf("dark %v: an edge across the page at y=%.0f (%d)", dark, where, worst)
+		}
+		if c := at(x, 680); !pink(c) {
+			t.Errorf("dark %v: under the songs %v, not the banner's color", dark, c)
+		}
+		tt.Scroll(700, 400, 0, 2000)
+		settle()
+		img = tt.Image()
+		if c := at(x, 12); !pink(c) {
+			t.Errorf("dark %v: the bar at the top over the songs %v, not the banner's color", dark, c)
+		}
 	}
 }
