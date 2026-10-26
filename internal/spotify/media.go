@@ -40,8 +40,9 @@ func (n *looseInt) UnmarshalJSON(b []byte) error {
 	return err
 }
 
-// ResolveMedia returns the manifest of track id's lowest bitrate, which a
-// free account is licensed to play (higher ones untried).
+// ResolveMedia returns the manifest of track id's lowest bitrate, 128k,
+// which a free account is licensed to play: the licence of the 256k one
+// it is refused (403).
 func ResolveMedia(id string) (*Media, error) {
 	uri := "spotify:track:" + id
 	raw, err := spGet("/track-playback/v1/media/"+uri+"?manifestFileFormat=file_ids_mp4", "application/json")

@@ -429,6 +429,12 @@ func (o *webOut) event(kind string, t time.Duration, msg string) {
 		o.mu.Unlock()
 		return
 	case "error":
+		if o.err != "" {
+			// Reported once already: as the licence and the media element
+			// both fail.
+			o.mu.Unlock()
+			return
+		}
 		log.Printf("player: track %d: %s", o.gen, msg)
 		o.running, o.playing, o.err = false, false, msg
 		end = o.onEnd

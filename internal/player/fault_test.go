@@ -73,6 +73,12 @@ func TestThrottledLicenceWaits(t *testing.T) {
 		w.WriteHeader(http.StatusTooManyRequests)
 	})
 	fails(t, ch, p, "1")
+	// The page reports it twice, as the licence and the media element both
+	// fail: the second didn't pass for the track ending, on to the next.
+	page(p, http.MethodPost, "/event", `{"gen":1,"type":"error","msg":"media 3"}`)
+	for len(ch) > 0 {
+		next(t, ch)
+	}
 	if p.Err() != "Spotify 暂时限流，稍后重试" || !p.Playing() || p.Current().ID != "1" {
 		t.Fatalf("throttled: err %q, playing %v, track %s", p.Err(), p.Playing(), p.Current().ID)
 	}
