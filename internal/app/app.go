@@ -184,6 +184,8 @@ func Run() error {
 	mygo.App.SetName("Vinyl")
 	if dir, err := mygo.App.Path(mygo.PathUserData); err == nil {
 		log.SetOutput(io.MultiWriter(&logFile{path: filepath.Join(dir, "vinyl.log")}, os.Stderr))
+		spotify.OpsFile = filepath.Join(dir, "queries.json")
+		spotify.LoadOps()
 	}
 	log.Printf("start, pid %d", os.Getpid())
 	// The page that plays starts without a click; its GPU work, which

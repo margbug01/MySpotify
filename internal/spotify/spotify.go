@@ -17,9 +17,11 @@ import (
 	"time"
 )
 
+// pathfinderURL is where the GraphQL queries go; tests swap it.
+var pathfinderURL = "https://api-partner.spotify.com/pathfinder/v2/query"
+
 const (
-	pathfinderURL = "https://api-partner.spotify.com/pathfinder/v2/query"
-	spclientURL   = "https://spclient.wg.spotify.com"
+	spclientURL = "https://spclient.wg.spotify.com"
 	// UserAgent is the browser the requests say they come from, as the web
 	// player's own do.
 	UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0"
@@ -217,6 +219,9 @@ func do(build func() (*http.Request, error)) ([]byte, error) {
 			return nil, ErrNotFound
 		case res.StatusCode == http.StatusTooManyRequests:
 			return nil, &Throttled{RetryAfter(res.Header)}
+		case res.StatusCode == http.StatusPreconditionFailed:
+			// "Invalid query hash": the web player was updated.
+			return nil, fmt.Errorf("%w: %s", errStaleQuery, snippet(body))
 		}
 		return nil, fmt.Errorf("spotify: %s %s: %s", req.URL.Host, res.Status, snippet(body))
 	}
@@ -233,9 +238,8 @@ func snippet(b []byte) string {
 // ops are the web player's persisted GraphQL queries, by name: the hash
 // stands for the query, which Spotify's servers hold.
 //
-// shortcut: hashes taken from web-player.f954508a.js (2026-10-26); revisit
-// when a query fails with PersistedQueryNotFound, by reading them again from
-// the web player's scripts.
+// They are those of web-player.f954508a.js (2026-10-26): when the service
+// no longer knows one, refreshOps reads the web player's scripts again.
 var ops = map[string]string{
 	"profileAttributes":                  "08ffb4730af3746e04a8301396f20875dbbce10c75243803091a9274eacc8ac0",
 	"home":                               "5fb7da7a03ee2776c0670856609cb85a189a3cecc36cc160b91cde79063b9cf1",
@@ -260,12 +264,23 @@ var ops = map[string]string{
 }
 
 // query runs the web player's GraphQL operation op with vars, decoding its
-// data into out.
+// data into out: again, once, if the service no longer knew the query, and
+// the web player's scripts say another hash.
 func query(op string, vars map[string]any, out any) error {
+	h := opHash(op)
+	err := queryAs(op, h, vars, out)
+	if errors.Is(err, errStaleQuery) && refreshOps(op, h) {
+		err = queryAs(op, opHash(op), vars, out)
+	}
+	return err
+}
+
+// queryAs runs op, its hash h.
+func queryAs(op, h string, vars map[string]any, out any) error {
 	body, err := json.Marshal(map[string]any{
 		"variables":     vars,
 		"operationName": op,
-		"extensions":    map[string]any{"persistedQuery": map[string]any{"version": 1, "sha256Hash": ops[op]}},
+		"extensions":    map[string]any{"persistedQuery": map[string]any{"version": 1, "sha256Hash": h}},
 	})
 	if err != nil {
 		return err
@@ -291,6 +306,9 @@ func query(op string, vars map[string]any, out any) error {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 	if len(res.Errors) > 0 && (len(res.Data) == 0 || string(res.Data) == "null") {
+		if strings.Contains(res.Errors[0].Message, "PersistedQueryNotFound") {
+			return fmt.Errorf("%s: %w", op, errStaleQuery)
+		}
 		return fmt.Errorf("%s: %s", op, res.Errors[0].Message)
 	}
 	return json.Unmarshal(res.Data, out)
