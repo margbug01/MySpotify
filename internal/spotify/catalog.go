@@ -2,6 +2,9 @@ package spotify
 
 import (
 	"encoding/json"
+	"errors"
+	"io"
+	"net/http"
 	"sort"
 	"strconv"
 	"strings"
@@ -615,6 +618,10 @@ type Profile struct {
 	UserID    string `json:"userId"` // the username, as in spotify:user:<UserID>
 	Nickname  string `json:"nickname"`
 	AvatarURL string `json:"avatarUrl"`
+	// AvatarColor, 0xRRGGBB, is what Spotify shows the first letter of
+	// their name on, where they have no picture.
+	AvatarColor int    `json:"avatarColor"`
+	Email       string `json:"email"` // as AccountEmail says, once it has
 }
 
 // Account returns the profile of who is signed in.
@@ -625,6 +632,7 @@ func Account() (*Profile, error) {
 				Name     string   `json:"name"`
 				Username string   `json:"username"`
 				Avatar   gqlImage `json:"avatar"`
+				Color    int      `json:"avatarBackgroundColor"`
 			} `json:"profile"`
 		} `json:"me"`
 	}
@@ -632,7 +640,40 @@ func Account() (*Profile, error) {
 		return nil, err
 	}
 	p := res.Me.Profile
-	return &Profile{UserID: p.Username, Nickname: p.Name, AvatarURL: p.Avatar.best()}, nil
+	return &Profile{UserID: p.Username, Nickname: p.Name, AvatarURL: p.Avatar.best(), AvatarColor: p.Color}, nil
+}
+
+// AccountURL is where spotify.com says what the listener's account
+// settings are, their email among them, to the web player's cookies.
+const AccountURL = "https://www.spotify.com/api/account-settings/v1/profile"
+
+// AccountEmail returns the listener's email, asking AccountURL with
+// cookies, the web player's for it as a Cookie header.
+func AccountEmail(cookies string) (string, error) {
+	req, err := http.NewRequest(http.MethodGet, AccountURL, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Cookie", cookies)
+	req.Header.Set("User-Agent", UserAgent)
+	req.Header.Set("Accept", "application/json")
+	res, err := Client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return "", errors.New("account settings: " + res.Status)
+	}
+	var v struct {
+		Profile struct {
+			Email string `json:"email"`
+		} `json:"profile"`
+	}
+	if err := json.NewDecoder(io.LimitReader(res.Body, 1<<20)).Decode(&v); err != nil {
+		return "", err
+	}
+	return v.Profile.Email, nil
 }
 
 // Library is what the listener keeps: the playlists they made, their

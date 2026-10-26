@@ -54,7 +54,8 @@ func TestAccountMenu(t *testing.T) {
 }
 
 // With NM_FRAMES set, saves the foot of the sidebar with the account menu
-// open, light and dark.
+// open, light and dark: the first letter of a name with Spotify's color,
+// and of one without.
 func TestAccountMenuFrames(t *testing.T) {
 	dir := os.Getenv("NM_FRAMES")
 	if dir == "" {
@@ -63,11 +64,14 @@ func TestAccountMenuFrames(t *testing.T) {
 	for _, dark := range []bool{false, true} {
 		a := newTestApp()
 		a.settings = defaultSettings()
-		a.profile = &spotify.Profile{UserID: "1", Nickname: "小明"}
+		a.profile = &spotify.Profile{UserID: "1", Nickname: "Alex Chen", AvatarColor: 0x19e68c}
+		if dark {
+			a.profile = &spotify.Profile{UserID: "1", Nickname: "小明"}
+		}
 		tt := ui.NewTester(a.view, 1000, 600)
 		tt.SetDark(dark)
 		tt.Frame()
-		tt.Click("小明")
+		tt.Click(a.profile.Nickname)
 		tt.Advance(time.Second)
 		tt.Frame()
 		img := tt.Image()

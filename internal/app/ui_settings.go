@@ -1,6 +1,7 @@
 package app
 
 import (
+	"cmp"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 )
@@ -130,10 +131,10 @@ func (a *app) settingsView(c *ui.Context) {
 			}
 			prof := a.profile
 			ui.Row(c).Padding(12, 16).Gap(12).AlignItems(ui.Center).Children(func() {
-				a.avatar(c, prof.AvatarURL, 36, p.press)
+				a.profileAvatar(c, prof, 36)
 				ui.Column(c).Grow(1).Gap(2).Children(func() {
 					ui.Text(c, prof.Nickname).FontSize(13.5).FontWeight(600)
-					ui.Text(c, "已登录 Spotify").FontSize(12).TextColor(p.muted)
+					ui.Text(c, cmp.Or(prof.Email, "已登录 Spotify")).FontSize(12).TextColor(p.muted)
 				})
 				if ui.Button(c.Key("logout"), "退出登录").Clicked() {
 					a.signOut()

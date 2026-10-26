@@ -2,11 +2,16 @@ package app
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"log"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
@@ -204,6 +209,72 @@ func (a *app) signedIn(prof *spotify.Profile) {
 	a.loadHome()
 	a.loadLiked(prof.UserID)
 	a.loadMine(prof.UserID)
+	a.loadEmail(prof)
+}
+
+// loadEmail asks spotify.com for the listener's email, with the web
+// player's cookies: the settings show it, and its picture on Gravatar
+// stands in for one they have not set on Spotify.
+func (a *app) loadEmail(prof *spotify.Profile) {
+	go func() {
+		cookies, err := mygo.Cookies.List(mygo.CookieFilter{URL: spotify.AccountURL})
+		var email string
+		if err == nil {
+			pairs := make([]string, len(cookies))
+			for i, k := range cookies {
+				pairs[i] = k.Name + "=" + k.Value
+			}
+			email, err = spotify.AccountEmail(strings.Join(pairs, "; "))
+		}
+		if err != nil {
+			log.Printf("account email: %v", err)
+			return
+		}
+		a.post(func() { prof.Email = email })
+	}()
+}
+
+// gravatar is where Gravatar has the picture of email: none, a 404, if it
+// has none.
+func gravatar(email string) string {
+	if email == "" {
+		return ""
+	}
+	h := sha256.Sum256([]byte(strings.ToLower(strings.TrimSpace(email))))
+	return "https://gravatar.com/avatar/" + hex.EncodeToString(h[:]) + "?s=256&d=404"
+}
+
+// profileAvatar is the listener's picture: theirs on Spotify, else their
+// email's on Gravatar, else, as Spotify and mail apps show who has none,
+// the first letter of their name on the color Spotify gives them.
+func (a *app) profileAvatar(c *ui.Context, prof *spotify.Profile, size float32) {
+	url := prof.AvatarURL
+	if url == "" {
+		url = gravatar(prof.Email)
+	}
+	bmp := bitmap(a.art.get(spotify.Sized(url, int(size*3)), false))
+	bg, ink := a.pal.press, a.pal.muted
+	if v := prof.AvatarColor; v > 0 {
+		r, g, b := uint8(v>>16), uint8(v>>8), uint8(v)
+		bg, ink = ui.RGB(r, g, b), ui.RGB(255, 255, 255)
+		// Dark on a light color, as on Spotify's.
+		if 0.2126*float32(r)+0.7152*float32(g)+0.0722*float32(b) > 140 {
+			ink = ui.RGBA(0, 0, 0, 0.85)
+		}
+	}
+	name := strings.TrimSpace(prof.Nickname)
+	if name == "" {
+		name = prof.UserID
+	}
+	first, _ := utf8.DecodeRuneInString(name)
+	box := ui.Box(c).Size(size, size).Radius(size / 2).Shrink(0).Center().Background(bg)
+	in := artIn(box, bmp)
+	box.Children(func() {
+		if in < 1 && first != utf8.RuneError {
+			ui.Text(c, string(unicode.ToUpper(first))).FontSize(size * 0.44).FontWeight(700).TextColor(ink)
+		}
+		artImage(c, bmp, size/2, in)
+	})
 }
 
 func (a *app) signOut() {
@@ -263,7 +334,7 @@ func (a *app) accountRow(c *ui.Context) {
 	}
 	prof := a.profile
 	b.Label(prof.Nickname).Expanded(a.accountOpen).Children(func() {
-		a.avatar(c, prof.AvatarURL, 26, p.press)
+		a.profileAvatar(c, prof, 26)
 		ui.Text(c, prof.Nickname).FontSize(13).FontWeight(600).SingleLine().Grow(1).Shrink(1).MinWidth(0)
 		ui.Icon(c, iconUpDown).Size(13, 13).TextColor(p.faint)
 	})

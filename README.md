@@ -6,7 +6,7 @@ Windows 上的 Spotify 播放器，Go + [MyGo](https://github.com/egoist/mygo) �
 
 ## 怎么做到的
 
-- 登录：一个平时隐藏的窗口打开 open.spotify.com，`internal/spotify/capture.js` 记下网页播放器自己拿到的 token 和 client-token。没登录就把这个窗口显示成 Spotify 官方登录页。token 快过期时在后台重新加载一次。
+- 登录：一个平时隐藏的窗口打开 open.spotify.com，`internal/spotify/capture.js` 记下网页播放器自己拿到的 token 和 client-token。没登录就把这个窗口显示成 Spotify 官方登录页。token 快过期时在后台重新加载一次。账号头像依次用：Spotify 上设的头像 → 账号邮箱在 Gravatar 上的头像 → 名字首字母（底色是 Spotify 给的 `avatarBackgroundColor`，和网页版一样）。邮箱是带着 WebView 的 cookie 问 `www.spotify.com/api/account-settings/v1/profile` 拿的，设置页也显示它。
 - 数据：网页播放器用的 Pathfinder GraphQL（首页、排行榜、歌单、专辑、搜索、资料库、喜欢）+ spclient（歌词、播放清单）。公开 Web API 对这个身份一律 429，不用。查询哈希写死在 `internal/spotify/spotify.go` 的 `ops` 里，Spotify 更新网页播放器后可能失效（报 PersistedQueryNotFound），到时从 open.spotify.com 的 JS 包里重新取。
 - 播放：另一个隐藏的 WebView 页面（`internal/player/web/player.html`）用 hls.js + Widevine 播加密的 MP4，解密在浏览器的 CDM 里。清单、分段、许可证都经本机 127.0.0.1 的小服务转发。队列、随机、循环、淡入淡出、会话恢复沿用上游。
 - 播放出错：许可证 401 先换身份再要一次；429（限流）按 Retry-After 等（没给就 30 秒起翻倍，最多 5 分钟），播放栏写「Spotify 暂时限流，稍后重试」，等完自动从原位置重来；403 停在这首。页面里的网络错误（hls.js `startLoad`，清单出错就重新 `loadSource`）和媒体错误（`recoverMediaError`）各首最多重试 2 次，还不行就跳到下一首。
