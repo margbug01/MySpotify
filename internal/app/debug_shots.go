@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/egoist/mygo"
+
+	"vinyl/internal/spotify"
 )
 
 // With NM_SHOTS set to a directory, the app walks through its views and
@@ -210,6 +212,15 @@ func init() {
 				watch("resumed", 3)
 				step(0, a.pl.Next)
 				watch("next", 5)
+				// As an hour on: the identity runs out, the next track
+				// renews it first.
+				go func() {
+					id, _ := spotify.CurrentIdentity()
+					id.Expires = time.Now()
+					spotify.SetIdentity(id)
+					step(0, a.pl.Next)
+				}()
+				watch("renewed", 8)
 				mygo.RunOnMain(mygo.App.Quit)
 				return
 			}
