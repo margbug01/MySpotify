@@ -466,21 +466,22 @@ func (a *app) search(q string) {
 // runSearch loads the results of q, wherever the listener is.
 func (a *app) runSearch(q string) {
 	a.searched, a.searching, a.searchErr, a.results, a.found = q, true, "", nil, nil
+	a.foundAlbums, a.foundLists = nil, nil
 	go func() {
 		var found []spotify.ArtistCard
-		done := make(chan struct{})
-		go func() {
-			defer close(done)
-			found, _ = spotify.SearchArtists(q, 12)
-		}()
+		var albums, lists []spotify.Playlist
+		var wg sync.WaitGroup
+		wg.Go(func() { found, _ = spotify.SearchArtists(q, 12) })
+		wg.Go(func() { albums, lists, _ = spotify.SearchLists(q, 12) })
 		res, err := spotify.Search(q, 60)
-		<-done
+		wg.Wait()
 		a.post(func() {
 			if q != a.searched {
 				return
 			}
 			a.searching = false
 			a.results, a.found = res, found
+			a.foundAlbums, a.foundLists = albums, lists
 			if err != nil {
 				a.searchErr = "搜索失败，请稍后再试"
 			}

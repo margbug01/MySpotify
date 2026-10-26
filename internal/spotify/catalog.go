@@ -1,6 +1,7 @@
 package spotify
 
 import (
+	"cmp"
 	"encoding/json"
 	"errors"
 	"io"
@@ -817,4 +818,39 @@ func Save(uri string, save bool) error {
 	}
 	var res json.RawMessage
 	return query(op, map[string]any{"libraryItemUris": []string{uri}}, &res)
+}
+
+// SearchLists returns the albums and the playlists matching q, the best
+// first, limit of each.
+func SearchLists(q string, limit int) (albums, playlists []Playlist, err error) {
+	vars := map[string]any{
+		"searchTerm": q, "offset": 0, "limit": limit, "numberOfTopResults": 5,
+		"includeAudiobooks": false, "includePreReleases": false, "includeAuthors": false,
+	}
+	type found struct {
+		Items []struct {
+			Data gqlEntity `json:"data"`
+		} `json:"items"`
+	}
+	lists := func(f found) []Playlist {
+		var out []Playlist
+		for _, it := range f.Items {
+			if pl, ok := it.Data.playlist(); ok {
+				out = append(out, pl)
+			}
+		}
+		return out
+	}
+	var a, p struct {
+		SearchV2 struct {
+			AlbumsV2  found `json:"albumsV2"`
+			Playlists found `json:"playlists"`
+		} `json:"searchV2"`
+	}
+	var errA, errP error
+	var wg sync.WaitGroup
+	wg.Go(func() { errA = query("searchAlbums", vars, &a) })
+	wg.Go(func() { errP = query("searchPlaylists", vars, &p) })
+	wg.Wait()
+	return lists(a.SearchV2.AlbumsV2), lists(p.SearchV2.Playlists), cmp.Or(errA, errP)
 }

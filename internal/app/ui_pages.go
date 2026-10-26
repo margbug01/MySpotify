@@ -314,13 +314,36 @@ func (a *app) searchPage(c *ui.Context) {
 	}
 	a.trackRows(c, a.results, true, func(c *ui.Context) {
 		a.heading(c, "“"+a.searched+"”", "搜索")
-		if len(a.found) > 0 {
-			ui.Column(c).PaddingX(12).Margin(0, 0, 8, 0).Children(func() {
-				ui.Text(c, "艺人").FontSize(19).FontWeight(700).LetterSpacing(-0.3).Margin(4, 0, 14, 0)
-				a.artistRow(c, a.found)
-				ui.Text(c, "歌曲").FontSize(19).FontWeight(700).LetterSpacing(-0.3).Margin(30, 0, 6, 0)
-			})
+		if len(a.found)+len(a.foundAlbums)+len(a.foundLists) == 0 {
+			return
 		}
+		ui.Column(c).PaddingX(12).Margin(0, 0, 8, 0).Children(func() {
+			title := func(s string) {
+				ui.Text(c, s).FontSize(19).FontWeight(700).LetterSpacing(-0.3).Margin(4, 0, 14, 0)
+			}
+			if len(a.found) > 0 {
+				title("艺人")
+				a.artistRow(c, a.found)
+				ui.Box(c).Height(26)
+			}
+			// A row of each, the best: the rest a search more precise finds.
+			cols := a.columns(c, 150)
+			for _, s := range []struct {
+				name  string
+				lists []spotify.Playlist
+			}{{"专辑", a.foundAlbums}, {"歌单", a.foundLists}} {
+				if len(s.lists) == 0 {
+					continue
+				}
+				title(s.name)
+				ui.Grid(c.Key(s.name)).Columns(cols).GapX(20).Margin(0, 0, 26, 0).Children(func() {
+					for i := range s.lists[:min(len(s.lists), cols)] {
+						a.playlistCard(c.Key(s.lists[i].ID), &s.lists[i])
+					}
+				})
+			}
+			ui.Text(c, "歌曲").FontSize(19).FontWeight(700).LetterSpacing(-0.3).Margin(4, 0, 6, 0)
+		})
 	}, nil)
 }
 

@@ -48,22 +48,23 @@ type app struct {
 	history []route
 	forward []route // the pages gone back from, the last first to go to
 
-	profile       *spotify.Profile
-	mine, saved   []spotify.Playlist   // the listener's playlists: made, and saved
-	followed      []spotify.ArtistCard // the artists the listener follows
-	next          *route               // the page to open once the frame is built (goTo)
-	recPlaylists  []spotify.Playlist   // the day's playlists picked for the listener
-	signin        signin               // the web player's window, which signs the listener in
-	accountOpen   bool                 // the dropdown of the account row shows
-	liked         map[string]bool      // the songs the listener likes
-	toast         string               // a message to show once
-	naming        nameDialog           // the name of a playlist asked for
-	deleting      deleteDialog         // whether to delete a playlist, asked
-	radioStarting string               // the radio asked for its first songs, or ""
-	played        []spotify.Track      // the songs Vinyl played, the latest first
-	recentLists   []spotify.Playlist   // what the listener played in Spotify's apps
-	recentArtists []spotify.ArtistCard
-	recentLoading bool
+	profile                 *spotify.Profile
+	mine, saved             []spotify.Playlist   // the listener's playlists: made, and saved
+	followed                []spotify.ArtistCard // the artists the listener follows
+	next                    *route               // the page to open once the frame is built (goTo)
+	recPlaylists            []spotify.Playlist   // the day's playlists picked for the listener
+	signin                  signin               // the web player's window, which signs the listener in
+	accountOpen             bool                 // the dropdown of the account row shows
+	liked                   map[string]bool      // the songs the listener likes
+	toast                   string               // a message to show once
+	naming                  nameDialog           // the name of a playlist asked for
+	deleting                deleteDialog         // whether to delete a playlist, asked
+	radioStarting           string               // the radio asked for its first songs, or ""
+	played                  []spotify.Track      // the songs Vinyl played, the latest first
+	recentLists             []spotify.Playlist   // what the listener played in Spotify's apps
+	recentArtists           []spotify.ArtistCard
+	recentLoading           bool
+	foundAlbums, foundLists []spotify.Playlist // the albums and playlists a search found
 
 	daily       []spotify.Track
 	dailySpin   spinState // the record on the daily card
