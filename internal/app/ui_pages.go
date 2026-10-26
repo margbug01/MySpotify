@@ -184,11 +184,28 @@ func (a *app) playlistPage(c *ui.Context) {
 	a.trackRows(c, pl.Tracks, false, func(c *ui.Context) { a.playlistHeader(c, pl) }, nil)
 }
 
+// playlistHeader is the top of a list's page, as Spotify's: from the top of
+// the window and edge to edge, on its cover's color fading into the page.
 func (a *app) playlistHeader(c *ui.Context, pl *spotify.Playlist) {
+	top, _ := a.insets(c)
+	tint := likedTint
+	if !pl.Liked() {
+		tint = a.artTint(pl.Cover(), 600)
+	}
+	band := a.bleed(c).Padding(top+pageGap+28, pagePad, 30, pagePad)
+	tintBand(band, a.pageTint(tint))
+	band.Children(func() {
+		a.playlistTop(c, pl)
+		// Content is under the bar at the top once the band is.
+		a.startMark(c)
+	})
+}
+
+func (a *app) playlistTop(c *ui.Context, pl *spotify.Playlist) {
 	p := a.pal
-	ui.Row(c).Gap(28).AlignItems(ui.End).Padding(0, 0, 26, 0).Children(func() {
-		ui.Box(c).Size(212, 212).Radius(14).Shadow(0, 18, 40, -10, p.cardShade).Children(func() {
-			a.coverFill(c, pl.Cover(), 600, 14)
+	ui.Row(c).Gap(28).AlignItems(ui.End).Children(func() {
+		ui.Box(c).Size(232, 232).Shrink(0).Radius(10).Shadow(0, 18, 44, -10, ui.RGBA(0, 0, 0, 0.4)).Children(func() {
+			a.itemArt(c, &spotify.HomeItem{List: pl}, 600, 10)
 		})
 		ui.Column(c).Grow(1).Shrink(1).MinWidth(0).Gap(8).Children(func() {
 			kind, unit := "歌单", "首"
@@ -198,8 +215,8 @@ func (a *app) playlistHeader(c *ui.Context, pl *spotify.Playlist) {
 			case strings.HasPrefix(pl.ID, "spotify:show:"):
 				kind, unit = "播客", "集"
 			}
-			ui.Text(c, kind).FontSize(12).FontWeight(600).TextColor(p.accent)
-			ui.Text(c, pl.Name).FontSize(30).FontWeight(800).LetterSpacing(-0.6).MaxLines(2).LineHeight(1.2)
+			ui.Text(c, kind).FontSize(12.5).FontWeight(600)
+			ui.Text(c, pl.Name).FontSize(a.titleSize(c)).FontWeight(800).LetterSpacing(-1).MaxLines(2).LineHeight(1.12)
 			ui.Row(c).AlignItems(ui.Center).Children(func() {
 				if len(pl.Artists) > 0 {
 					a.artistLinks(c.Key("by"), pl.Artists, 13, p.muted, p.text)
@@ -259,6 +276,45 @@ func (a *app) playlistHeader(c *ui.Context, pl *spotify.Playlist) {
 			})
 		})
 	})
+}
+
+// bleed is a column that reaches past the list's padding to the top of the
+// window and its edges, under the bars, for a page's header, as Spotify's.
+func (a *app) bleed(c *ui.Context) ui.Element {
+	top, _ := a.insets(c)
+	return ui.Column(c).Margin(-(top + pageGap), -(pagePad - 12), 0, -(pagePad - 12))
+}
+
+// tintBand paints el with tint fading down its height into the page.
+func tintBand(el ui.Element, tint ui.Color) {
+	t := el.AnimateColor("tint", tint, ui.Animation{Duration: 500 * time.Millisecond})
+	el.LinearGradient(ui.LinearGradient{Angle: 180, Oklab: true, Stops: []ui.GradientStop{
+		{Color: t, At: 0},
+		{Color: t.Alpha(0.7), At: 0.6},
+		{Color: t.Alpha(0), At: 1},
+	}})
+}
+
+// pageTint is the color a page's header takes from its picture's, base:
+// deep, which white reads over, on a dark page, and pale on a light one;
+// gray for a gray picture, or one still loading.
+func (a *app) pageTint(base ui.Color) ui.Color {
+	h, s, _ := hsv(float64(base.R)/255, float64(base.G)/255, float64(base.B)/255)
+	if s < 0.12 {
+		s = 0
+	}
+	s = min(s, 0.65)
+	if a.pal.dark {
+		return hsvColor(h, s*0.85, 0.32)
+	}
+	return hsvColor(h, s*0.3, 0.95)
+}
+
+// titleSize is how large the name over a page's header is, as wide as the
+// page lets it.
+func (a *app) titleSize(c *ui.Context) float32 {
+	w, _ := c.Size()
+	return min(max((w-sidebarWidth)*0.06, 36), 64)
 }
 
 func (a *app) searchPage(c *ui.Context) {

@@ -381,15 +381,24 @@ func (a *app) homeCard(c *ui.Context, it *spotify.HomeItem) {
 func (a *app) itemArt(c *ui.Context, it *spotify.HomeItem, px int, radius float32) ui.Color {
 	if it.List != nil && it.List.Liked() {
 		likedArt(c, radius, float32(px)/6)
-		return ui.Hex("#5038a0")
+		return likedTint
 	}
 	url := itemCover(it)
 	a.coverFill(c, url, px, radius)
+	return a.artTint(url, px)
+}
+
+// artTint is the most vivid color of the cover at url, px across, once it
+// has loaded; zero until then.
+func (a *app) artTint(url string, px int) ui.Color {
 	if art := a.art.get(spotify.Sized(url, px), false); art != nil && !art.failed {
 		return art.tint
 	}
 	return ui.Color{}
 }
+
+// likedTint is the color of the liked songs' cover.
+var likedTint = ui.Hex("#5038a0")
 
 // likedArt is the cover of the liked songs, as Spotify's: a heart on violet
 // fading to mint, the heart icon DIPs across.

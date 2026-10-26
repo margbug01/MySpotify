@@ -146,67 +146,106 @@ func (a *app) artistHeader(c *ui.Context, pg *spotify.ArtistPage) {
 			}
 		})
 	}
-	if pg.Banner != "" {
-		ui.Box(c).Height(300).Radius(16).Margin(0, 0, 22, 0).Shadow(0, 18, 40, -14, p.cardShade).Children(func() {
-			a.coverFill(c, pg.Banner, 1600, 16)
-			ui.Box(c).Absolute().Top(0).Left(0).Right(0).Bottom(0).Radius(16).
-				LinearGradient(ui.LinearGradient{Angle: 180, Stops: []ui.GradientStop{
-					{Color: ui.RGBA(0, 0, 0, 0), At: 0.3},
-					{Color: ui.RGBA(0, 0, 0, 0.55), At: 1},
-				}})
-			ui.Column(c).Absolute().Left(28).Right(28).Bottom(24).Gap(6).TextColor(white).Children(func() {
-				kind(white.Alpha(0.85))
-				ui.Text(c, pg.Name).FontSize(44).FontWeight(800).LetterSpacing(-0.8).SingleLine()
-				if len(stats) > 0 {
-					ui.Text(c, strings.Join(stats, " · ")).FontSize(13).TextColor(white.Alpha(0.8))
-				}
-			})
-		})
-	} else {
-		ui.Row(c).Gap(28).AlignItems(ui.Center).Padding(0, 0, 22, 0).Children(func() {
-			a.avatar(c, pg.Avatar, 200, p.hover)
-			ui.Column(c).Grow(1).Shrink(1).MinWidth(0).Gap(8).Children(func() {
-				kind(p.accent)
-				ui.Text(c, pg.Name).FontSize(40).FontWeight(800).LetterSpacing(-0.8).MaxLines(2).LineHeight(1.15)
-				if len(stats) > 0 {
-					ui.Text(c, strings.Join(stats, " · ")).FontSize(13).TextColor(p.muted)
-				}
-			})
-		})
+	// As Spotify's: from the top of the window and edge to edge, the banner
+	// or the picture's color fading into the page below.
+	top, _ := a.insets(c)
+	pic, px := pg.Banner, 1600
+	if pic == "" {
+		pic, px = pg.Avatar, 600 // as avatar asks for it, 200 across
 	}
-	ui.Row(c).Gap(10).Children(func() {
-		if len(pg.TopTracks) > 0 {
-			if pillButton(c.Key("play"), iconPlay, "播放", p.accent, p.onAccent).Clicked() {
-				if a.pl.Shuffle() {
-					a.pl.ToggleShuffle()
-				}
-				a.playFrom(spotify.HomeItem{Artist: &pg.ArtistCard}, pg.TopTracks, firstPlayable(pg.TopTracks))
-			}
-			if pillButton(c.Key("shuffle"), iconShuffle, "随机播放", p.hover.Over(p.bg), p.text).Clicked() {
-				if !a.pl.Shuffle() {
-					a.pl.ToggleShuffle()
-				}
-				a.playFrom(spotify.HomeItem{Artist: &pg.ArtistCard}, pg.TopTracks, firstPlayable(pg.TopTracks))
-			}
-			label := "电台"
-			if a.radioStarting == radioName(pg.ID, pg.Name) {
-				label = "正在开启…"
-			}
-			if pillButton(c.Key("radio"), iconRadio, label, p.hover.Over(p.bg), p.text).Clicked() {
-				a.startRadio(pg.ID, pg.Name)
-			}
+	tint := a.pageTint(a.artTint(pic, px))
+	a.bleed(c).Children(func() {
+		padTop := top + pageGap + 28
+		if pg.Banner != "" {
+			a.artistBanner(c, pg, tint, kind, stats)
+			padTop = 26
+			// Content is under the bar at the top once the banner is: the
+			// bar's edge covers what is left of it. Till then, the back
+			// button and the window's read white over it (view, pageTop).
+			a.startMark(c)
+			a.overBanner = !a.underTop
 		}
-		icon, label := iconPlus, "关注"
-		if pg.Followed {
-			icon, label = iconCheck, "已关注"
-		}
-		if pillButton(c.Key("follow"), icon, label, p.hover.Over(p.bg), p.text).Clicked() {
-			a.toggleFollow(pg)
+		band := ui.Column(c).Padding(padTop, pagePad, 4, pagePad)
+		tintBand(band, tint)
+		band.Children(func() {
+			if pg.Banner == "" {
+				ui.Row(c).Gap(28).AlignItems(ui.Center).Padding(0, 0, 26, 0).Children(func() {
+					a.avatar(c, pg.Avatar, 200, p.hover)
+					ui.Column(c).Grow(1).Shrink(1).MinWidth(0).Gap(8).Children(func() {
+						kind(p.text)
+						ui.Text(c, pg.Name).FontSize(a.titleSize(c)).FontWeight(800).LetterSpacing(-1).MaxLines(2).LineHeight(1.12)
+						if len(stats) > 0 {
+							ui.Text(c, strings.Join(stats, " · ")).FontSize(13).TextColor(p.muted)
+						}
+					})
+				})
+			}
+			ui.Row(c).Gap(10).Children(func() {
+				if len(pg.TopTracks) > 0 {
+					if pillButton(c.Key("play"), iconPlay, "播放", p.accent, p.onAccent).Clicked() {
+						if a.pl.Shuffle() {
+							a.pl.ToggleShuffle()
+						}
+						a.playFrom(spotify.HomeItem{Artist: &pg.ArtistCard}, pg.TopTracks, firstPlayable(pg.TopTracks))
+					}
+					if pillButton(c.Key("shuffle"), iconShuffle, "随机播放", p.hover.Over(p.bg), p.text).Clicked() {
+						if !a.pl.Shuffle() {
+							a.pl.ToggleShuffle()
+						}
+						a.playFrom(spotify.HomeItem{Artist: &pg.ArtistCard}, pg.TopTracks, firstPlayable(pg.TopTracks))
+					}
+					label := "电台"
+					if a.radioStarting == radioName(pg.ID, pg.Name) {
+						label = "正在开启…"
+					}
+					if pillButton(c.Key("radio"), iconRadio, label, p.hover.Over(p.bg), p.text).Clicked() {
+						a.startRadio(pg.ID, pg.Name)
+					}
+				}
+				icon, label := iconPlus, "关注"
+				if pg.Followed {
+					icon, label = iconCheck, "已关注"
+				}
+				if pillButton(c.Key("follow"), icon, label, p.hover.Over(p.bg), p.text).Clicked() {
+					a.toggleFollow(pg)
+				}
+			})
+			if len(pg.TopTracks) > 0 {
+				a.section(c, "热门歌曲")
+			}
+		})
+		if pg.Banner == "" {
+			// Content is under the bar at the top once the band is.
+			a.startMark(c)
 		}
 	})
-	if len(pg.TopTracks) > 0 {
-		a.section(c, "热门歌曲")
-	}
+}
+
+// artistBanner is an artist's banner, the width of the page from the top
+// of the window, their name over it; in the dark, it fades into tint.
+func (a *app) artistBanner(c *ui.Context, pg *spotify.ArtistPage, tint ui.Color, kind func(ui.Color), stats []string) {
+	_, h := c.Size()
+	ui.Box(c).Height(min(max(h*0.42, 300), 440)).Children(func() {
+		a.coverFill(c, pg.Banner, 1600, 0)
+		shade := ui.Box(c).Absolute().Top(0).Left(0).Right(0).Bottom(0)
+		fade := ui.RGBA(0, 0, 0, 0.5)
+		if a.pal.dark {
+			fade = shade.AnimateColor("tint", tint, ui.Animation{Duration: 500 * time.Millisecond})
+		}
+		// Dark at the top too, under the back button and the window's.
+		shade.LinearGradient(ui.LinearGradient{Angle: 180, Oklab: true, Stops: []ui.GradientStop{
+			{Color: ui.RGBA(0, 0, 0, 0.3), At: 0},
+			{Color: ui.RGBA(0, 0, 0, 0), At: 0.3},
+			{Color: fade, At: 1},
+		}})
+		ui.Column(c).Absolute().Left(pagePad).Right(pagePad).Bottom(22).Gap(6).TextColor(white).Children(func() {
+			kind(white.Alpha(0.85))
+			ui.Text(c, pg.Name).FontSize(a.titleSize(c) * 1.25).FontWeight(800).LetterSpacing(-1.5).SingleLine()
+			if len(stats) > 0 {
+				ui.Text(c, strings.Join(stats, " · ")).FontSize(13).TextColor(white.Alpha(0.8))
+			}
+		})
+	})
 }
 
 // artistFooter follows an artist's top tracks: their releases, artists

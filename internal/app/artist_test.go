@@ -1,8 +1,10 @@
 package app
 
 import (
+	"fmt"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 
@@ -115,5 +117,55 @@ func TestArtistPageOpensAlbum(t *testing.T) {
 	tt.Frame()
 	if a.route != (route{page: pagePlaylist, playlist: "spotify:album:7"}) {
 		t.Errorf("route %+v, want the album's page", a.route)
+	}
+}
+
+// Over an artist's banner, at the top of their page, the back button and
+// the window's read white and the bar shows no edge; scrolled past the
+// banner and its band, the bar is the page's again. A list's page, its
+// band pale on a light page, keeps them as they are.
+func TestArtistBannerUnderTheBars(t *testing.T) {
+	a := artistApp()
+	pg := a.artists[easonURI]
+	pg.Banner = "https://i.scdn.co/image/banner"
+	for i := range 40 {
+		pg.TopTracks = append(pg.TopTracks, spotify.Track{ID: fmt.Sprint(i + 10), Name: "歌", Duration: 200000})
+	}
+	a.history = []route{{page: pageHome}}
+	a.route = route{page: pageArtist, artist: easonURI}
+	tt := ui.NewTester(a.view, 1200, 800)
+	tt.Frame()
+	tt.Frame()
+	if !a.overBanner || a.underTop {
+		t.Fatalf("at the top: over the banner %v, content under the bar %v", a.overBanner, a.underTop)
+	}
+	// A little down, the banner still under the bar.
+	tt.Scroll(700, 500, 0, 120)
+	tt.Advance(time.Second)
+	tt.Frame()
+	tt.Frame()
+	if !a.overBanner || a.underTop {
+		t.Fatalf("a little down: over the banner %v, content under the bar %v", a.overBanner, a.underTop)
+	}
+	// The banner past the bar, the rest of the header still in view.
+	tt.Scroll(700, 500, 0, 300)
+	tt.Advance(time.Second)
+	tt.Frame()
+	tt.Frame()
+	if a.overBanner || !a.underTop {
+		t.Fatalf("past the banner: over the banner %v, content under the bar %v", a.overBanner, a.underTop)
+	}
+	tt.Scroll(700, 500, 0, 100000)
+	tt.Advance(time.Second)
+	tt.Frame()
+	tt.Frame()
+	if a.overBanner || !a.underTop {
+		t.Fatalf("scrolled down: over the banner %v, content under the bar %v", a.overBanner, a.underTop)
+	}
+	a.open(route{page: pagePlaylist, playlist: "42"})
+	tt.Frame()
+	tt.Frame()
+	if a.overBanner || a.underTop {
+		t.Fatalf("a list's page: over a banner %v, content under the bar %v", a.overBanner, a.underTop)
 	}
 }

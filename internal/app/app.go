@@ -146,13 +146,17 @@ type app struct {
 	// underTop and underBottom say whether the page has content under its
 	// bars, which show their scroll edges then.
 	underTop, underBottom bool
-	barScrub              scrubState
-	npScrub               scrubState
-	backdropCache         backdropCache // the backdrop of Now Playing, as last painted
-	npArt                 *artwork      // the cover whose colors Now Playing shows
-	npCoverState          coverState    // the cover of Now Playing, as it is tilted and flicked
-	sig                   playerSig
-	quitting              bool
+	// overBanner says an artist's banner is under the window's buttons and
+	// the back button, which read white over it; buttonsLight, that the
+	// window's do.
+	overBanner, buttonsLight bool
+	barScrub                 scrubState
+	npScrub                  scrubState
+	backdropCache            backdropCache // the backdrop of Now Playing, as last painted
+	npArt                    *artwork      // the cover whose colors Now Playing shows
+	npCoverState             coverState    // the cover of Now Playing, as it is tilted and flicked
+	sig                      playerSig
+	quitting                 bool
 
 	settings    settings
 	settingsWin *mygo.Window

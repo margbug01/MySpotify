@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/plugins/glass"
 	"github.com/egoist/mygo/ui"
 
@@ -45,6 +46,7 @@ func (a *app) view(c *ui.Context) {
 		c.OnShortcut(0, ui.KeySpace, a.pl.TogglePlay)
 	}
 	npOpen, npSettled := a.npState(c)
+	a.overBanner = false // until the page says, as it builds
 	root.Children(func() {
 		page := ui.Row(c).Fill().AlignItems(ui.Stretch)
 		page.Children(func() {
@@ -74,6 +76,14 @@ func (a *app) view(c *ui.Context) {
 		a.playlistNameDialog(c)
 		a.deletePlaylistDialog(c)
 	})
+	if a.overBanner != a.buttonsLight && a.win != nil {
+		a.buttonsLight = a.overBanner
+		theme := mygo.ThemeSystem
+		if a.overBanner {
+			theme = mygo.ThemeDark // light glyphs, as over a dark page
+		}
+		a.win.SetWindowButtonsTheme(theme)
+	}
 	if a.toast != "" {
 		c.Toast(a.toast)
 		a.toast = ""
@@ -341,14 +351,18 @@ func (a *app) pageTop(c *ui.Context) {
 	edge.Opacity(edgeShown(edge, a.underTop))
 	if len(a.history) > 0 || len(a.forward) > 0 {
 		ui.Row(c).Absolute().Top(0).Left(20).Height(topBar(c)).AlignItems(ui.Center).Children(func() {
-			back := iconButton(c.Key("back"), iconBack, 18, a.pal.muted, "返回").Disabled(len(a.history) == 0)
+			ink := a.pal.muted
+			if a.overBanner {
+				ink = white
+			}
+			back := iconButton(c.Key("back"), iconBack, 18, ink, "返回").Disabled(len(a.history) == 0)
 			if len(a.history) == 0 {
 				back.Opacity(0.35)
 			}
 			if back.Clicked() {
 				a.back()
 			}
-			if len(a.forward) > 0 && iconButton(c.Key("forward"), iconForward, 18, a.pal.muted, "前进").Clicked() {
+			if len(a.forward) > 0 && iconButton(c.Key("forward"), iconForward, 18, ink, "前进").Clicked() {
 				a.goForward()
 			}
 		})
