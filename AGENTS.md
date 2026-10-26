@@ -22,7 +22,7 @@ Only write a test for behaviour that can actually break. If the code under test 
 
 - Build views with `ui.NewTester` and set up the app with `newTestApp` (in `internal/app/helpers_test.go`). Find elements by their accessibility label, then `Click`, `RightClick`, `Press`/`Move`/`Release` or `Key`, and check the app's state afterwards.
 - Swap out the network and the clipboard through package variables such as `likeSong` and `copyText`, and restore the real one with `defer`.
-- Live tests that call NetEase skip unless `LIVE` is set.
+- Live tests that call Spotify skip unless `LIVE` is set.
 - Look at visuals instead of asserting on them. The `NM_FRAMES` tests save PNGs into that directory and skip when it isn't set. Check pixels only for coverage, such as whether a layer still covers the window.
 - Start each test with a one-sentence comment saying the behaviour it checks, in the style of the code.
 - Run `go test ./internal/...` before committing, and run a new UI test with `-count=5`. Fix or delete a flaky test; don't retry it.
