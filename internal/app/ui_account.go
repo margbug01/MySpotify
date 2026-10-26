@@ -447,7 +447,8 @@ func (a *app) myPlaylists(c *ui.Context, title string, lists []spotify.Playlist,
 			}
 			ui.Text(c, pl.Name).FontSize(13).SingleLine().Shrink(1).MinWidth(0)
 		})
-		if mine && !pl.Liked() {
+		switch {
+		case mine && !pl.Liked():
 			b.ContextMenu(func(m *ui.Menu) {
 				if m.Item("重命名…").Chosen() {
 					a.startRename(pl)
@@ -455,6 +456,12 @@ func (a *app) myPlaylists(c *ui.Context, title string, lists []spotify.Playlist,
 				m.Separator()
 				if m.Item("删除歌单…").Chosen() {
 					a.confirmDelete(pl)
+				}
+			})
+		case !mine:
+			b.ContextMenu(func(m *ui.Menu) {
+				if m.Item("取消收藏").Chosen() {
+					a.toggleSaved(pl)
 				}
 			})
 		}

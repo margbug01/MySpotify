@@ -314,3 +314,64 @@ func TestPlaylistEditFrames(t *testing.T) {
 		a.deleting.open = false
 	}
 }
+
+// An album, or a playlist someone else made, is saved from its page and
+// shows in the sidebar at once; saved, it is taken out again from its page
+// or from the sidebar's menu.
+func TestSaveAlbumAndPlaylist(t *testing.T) {
+	type call struct {
+		uri  string
+		save bool
+	}
+	calls := make(chan call, 4)
+	saveToLibrary = func(uri string, save bool) error { calls <- call{uri, save}; return nil }
+	followPlaylist = func(user, uri string, follow bool) error { calls <- call{user + ":" + uri, follow}; return nil }
+	defer func() { saveToLibrary, followPlaylist = spotify.Save, spotify.FollowPlaylist }()
+	next := func() call {
+		select {
+		case c := <-calls:
+			return c
+		case <-time.After(2 * time.Second):
+			t.Fatal("Spotify not asked")
+			return call{}
+		}
+	}
+
+	const album = "spotify:album:9"
+	a := editTestApp()
+	a.playlists[album] = &spotify.Playlist{ID: album, Name: "大小说家", Tracks: a.playlists[pl10].Tracks}
+	a.route = route{page: pagePlaylist, playlist: album}
+	tt := ui.NewTester(a.view, 1200, 800)
+	tt.Frame()
+	if err := tt.Click("收藏"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if got := next(); got != (call{album, true}) || !a.isSaved(album) {
+		t.Fatalf("saved %+v, in the sidebar %v", got, a.isSaved(album))
+	}
+	if err := tt.Click("已收藏"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if got := next(); got != (call{album, false}) || a.isSaved(album) {
+		t.Fatalf("unsaved %+v, in the sidebar %v", got, a.isSaved(album))
+	}
+
+	// The listener's own playlist offers no saving.
+	a.route = route{page: pagePlaylist, playlist: pl10}
+	tt.Frame()
+	if _, ok := tt.Find("收藏"); ok {
+		t.Error("offered to save the listener's own playlist")
+	}
+	if err := tt.RightClick("飙升榜"); err != nil {
+		t.Fatal(err)
+	}
+	if err := tt.ChooseMenuItem("取消收藏"); err != nil {
+		t.Fatalf("%v; the menu shows %q", err, tt.Menu())
+	}
+	tt.Frame()
+	if got := next(); got != (call{"1:" + pl20, false}) || a.isSaved(pl20) {
+		t.Fatalf("from the sidebar %+v, still listed %v", got, a.isSaved(pl20))
+	}
+}

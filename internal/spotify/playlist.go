@@ -50,15 +50,24 @@ func CreatePlaylist(user, name string) (*Playlist, error) {
 	if err := json.Unmarshal(raw, &made); err != nil || made.URI == "" {
 		return nil, errors.New("create playlist: no URI")
 	}
-	add := map[string]any{"kind": "ADD", "add": map[string]any{"addFirst": true, "items": []any{map[string]any{
-		"uri": made.URI, "attributes": map[string]any{
-			"timestamp": strconv.FormatInt(time.Now().UnixMilli(), 10),
-		},
-	}}}}
-	if _, err := spPost(rootlist(user), changes(add)); err != nil {
+	if err := FollowPlaylist(user, made.URI, true); err != nil {
 		return nil, err
 	}
 	return &Playlist{ID: made.URI, Name: name}, nil
+}
+
+// FollowPlaylist puts the playlist uri first among the listener user's, or
+// takes it out: a playlist kept in the library, which the library's
+// addToLibrary doesn't take.
+func FollowPlaylist(user, uri string, follow bool) error {
+	op := map[string]any{"kind": "REM", "rem": map[string]any{"itemsAsKey": true, "items": []any{map[string]any{"uri": uri}}}}
+	if follow {
+		op = map[string]any{"kind": "ADD", "add": map[string]any{"addFirst": true, "items": []any{map[string]any{
+			"uri": uri, "attributes": map[string]any{"timestamp": strconv.FormatInt(time.Now().UnixMilli(), 10)},
+		}}}}
+	}
+	_, err := spPost(rootlist(user), changes(op))
+	return err
 }
 
 // RenamePlaylist names the playlist uri name.
@@ -69,11 +78,7 @@ func RenamePlaylist(uri, name string) error {
 
 // DeletePlaylist takes the playlist uri out of the listener user's: as
 // Spotify deletes one, which its followers keep.
-func DeletePlaylist(user, uri string) error {
-	rem := map[string]any{"kind": "REM", "rem": map[string]any{"itemsAsKey": true, "items": []any{map[string]any{"uri": uri}}}}
-	_, err := spPost(rootlist(user), changes(rem))
-	return err
-}
+func DeletePlaylist(user, uri string) error { return FollowPlaylist(user, uri, false) }
 
 func rootlist(user string) string {
 	return playlistURL + "/user/" + url.PathEscape(user) + "/rootlist/changes"

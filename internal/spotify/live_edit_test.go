@@ -3,6 +3,7 @@ package spotify
 import (
 	"os"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -94,6 +95,39 @@ func TestLiveEdit(t *testing.T) {
 	}
 	if ids := likes(); slices.Contains(ids, one) || len(ids) != before {
 		t.Errorf("after unliking: %d, had %d", len(ids), before)
+	}
+
+	// An album, a playlist of Spotify's and a podcast, saved and then not.
+	saved := func(uri string) bool {
+		lib, err := UserLibrary(me.UserID)
+		if err != nil {
+			t.Fatal("library:", err)
+		}
+		return slices.ContainsFunc(lib.Saved, func(p Playlist) bool { return p.ID == uri })
+	}
+	for _, uri := range []string{"spotify:album:1dtg7IOdq2Q6zA4nIJ5Qsk", "spotify:playlist:37i9dQZF1DXcBWIGoYBM5M"} {
+		if saved(uri) {
+			t.Errorf("%s saved before", uri)
+			continue
+		}
+		keep := func(on bool) error {
+			if strings.HasPrefix(uri, "spotify:playlist:") {
+				return FollowPlaylist(me.UserID, uri, on)
+			}
+			return Save(uri, on)
+		}
+		if err := keep(true); err != nil {
+			t.Fatalf("save %s: %v", uri, err)
+		}
+		if !saved(uri) {
+			t.Errorf("%s not in the library after saving", uri)
+		}
+		if err := keep(false); err != nil {
+			t.Fatalf("unsave %s: %v", uri, err)
+		}
+		if saved(uri) {
+			t.Errorf("%s still in the library", uri)
+		}
 	}
 
 	const artist = "spotify:artist:2QcZxAgcs2I1q7CtCkl6MI"

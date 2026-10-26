@@ -276,6 +276,15 @@ func (a *app) playlistHeader(c *ui.Context, pl *spotify.Playlist) {
 					}
 					a.pl.PlayQueue(pl.Tracks, firstPlayable(pl.Tracks))
 				}
+				if a.profile != nil && !pl.Liked() && a.editable(pl.ID) == nil {
+					icon, label := iconPlus, "收藏"
+					if a.isSaved(pl.ID) {
+						icon, label = iconCheck, "已收藏"
+					}
+					if pillButton(c.Key("save"), icon, label, p.hover.Over(p.bg), p.text).Clicked() {
+						a.toggleSaved(pl)
+					}
+				}
 				if mine := a.editable(pl.ID); mine != nil {
 					more := iconButton(c.Key("more"), iconMore, 18, p.muted, "更多")
 					more.Menu(func(m *ui.Menu) {

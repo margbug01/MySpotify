@@ -192,7 +192,7 @@ func (a *app) sidebar(c *ui.Context) {
 				a.navItem(c, iconSearch, "搜索结果", route{page: pageSearch})
 			}
 			a.myPlaylists(c, "我的歌单", a.mine, true)
-			a.myPlaylists(c, "收藏的歌单", a.saved, false)
+			a.myPlaylists(c, "我的收藏", a.saved, false)
 			a.followedArtists(c)
 		})
 
