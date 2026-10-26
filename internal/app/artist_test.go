@@ -65,7 +65,7 @@ func TestSongMenuOpensArtistAndAlbum(t *testing.T) {
 	if err := tt.RightClick("孤勇者"); err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"复制歌名", "复制歌名和歌手", "-", "复制链接", "-", "查看歌手：陳奕迅", "查看歌手：合唱团", "查看专辑：孤勇者", "-", "添加到歌单"}
+	want := []string{"下一首播放", "添加到待播清单", "-", "复制歌名", "复制歌名和歌手", "-", "复制链接", "-", "查看歌手：陳奕迅", "查看歌手：合唱团", "查看专辑：孤勇者", "-", "添加到歌单"}
 	if got := tt.Menu(); !slices.Equal(got, want) {
 		t.Fatalf("the menu shows %q, want %q", got, want)
 	}

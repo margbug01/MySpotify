@@ -6,6 +6,7 @@ import (
 	"math"
 	"math/rand/v2"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/egoist/mygo"
@@ -366,6 +367,46 @@ func (p *Player) appendTracks(tracks []spotify.Track) {
 			p.queue = append(p.queue, t)
 		}
 	}
+}
+
+// PlayNext puts tr after the track playing, to play next: moved there if
+// queued already. With nothing queued, it plays tr.
+func (p *Player) PlayNext(tr spotify.Track) {
+	if p.at < 0 || len(p.order) == 0 {
+		p.PlayQueue([]spotify.Track{tr}, 0)
+		return
+	}
+	if i := slices.IndexFunc(p.queue, func(t spotify.Track) bool { return t.ID == tr.ID }); i >= 0 {
+		k := slices.Index(p.order, i)
+		if k == p.at {
+			return
+		}
+		p.order = slices.Delete(p.order, k, k+1)
+		if k < p.at {
+			p.at--
+		}
+		p.order = slices.Insert(p.order, p.at+1, i)
+	} else {
+		p.order = slices.Insert(p.order, p.at+1, len(p.queue))
+		p.queue = append(p.queue, tr)
+	}
+	p.sync()
+}
+
+// AddToQueue puts tr at the end of the queue, and reports whether it did:
+// not if queued already. With nothing queued, it plays tr.
+func (p *Player) AddToQueue(tr spotify.Track) bool {
+	if p.at < 0 || len(p.order) == 0 {
+		p.PlayQueue([]spotify.Track{tr}, 0)
+		return true
+	}
+	if slices.ContainsFunc(p.queue, func(t spotify.Track) bool { return t.ID == tr.ID }) {
+		return false
+	}
+	p.order = append(p.order, len(p.queue))
+	p.queue = append(p.queue, tr)
+	p.sync()
+	return true
 }
 
 // shuffleOrder shuffles the order, with first first.

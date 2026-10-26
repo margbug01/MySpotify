@@ -20,12 +20,31 @@ func (a *app) songMenu(c *ui.Context, tr *spotify.Track, size float32, color ui.
 }
 
 // songItems builds the menu of what can be done with tr, behind its dots
-// or a right click on its row: copying its title, its title with its
-// artists, or the link to its page; going to its artists or album; and,
-// signed in, adding it to a playlist or taking it out of pid, the playlist
-// it is listed in, if set.
+// or a right click on its row: playing it next or queueing it; copying its
+// title, its title with its artists, or the link to its page; going to its
+// artists or album; and, signed in, adding it to a playlist or taking it
+// out of pid, the playlist it is listed in, if set.
 func (a *app) songItems(tr *spotify.Track, pid string) func(m *ui.Menu) {
 	return func(m *ui.Menu) {
+		if tr.Playable() {
+			// With nothing playing, either plays it: no toast needed.
+			queued := a.pl.Current() != nil
+			if m.Item("下一首播放").Chosen() {
+				a.pl.PlayNext(*tr)
+				if queued {
+					a.toast = "将在下一首播放"
+				}
+			}
+			if m.Item("添加到待播清单").Chosen() {
+				switch {
+				case !a.pl.AddToQueue(*tr):
+					a.toast = "歌曲已在待播清单中"
+				case queued:
+					a.toast = "已添加到待播清单"
+				}
+			}
+			m.Separator()
+		}
 		if m.Item("复制歌名").Chosen() {
 			copyText(tr.Name)
 		}
