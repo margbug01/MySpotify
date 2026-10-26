@@ -264,6 +264,7 @@ var ops = map[string]string{
 	"getTrack":                           "fe16b8083eec2305854db612ca75589bcb71e009dc7a4d014f29bd534a4c01f5",
 	"internalLinkRecommenderTrack":       "642923b2e705fceb9984697c1620fecd42615fd8b116b8a9faf2786b389d3e4a",
 	"queryTrackCreditsGroupedModal":      "f135fb9be58a72d041ab5d214d817021a272405d883860468e2627afb01a3ca9",
+	"browseAll":                          "dbd8b55e09a58afc52eab438bc228ba28fd72ac2f2148c6c26354980e4579001",
 }
 
 // query runs the web player's GraphQL operation op with vars, decoding its

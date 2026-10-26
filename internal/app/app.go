@@ -28,6 +28,9 @@ const (
 	pageArtist
 	pageRecent
 	pageTrack
+	pageBrowse
+	pageCategory
+	pageUser
 )
 
 type route struct {
@@ -35,6 +38,8 @@ type route struct {
 	playlist string
 	artist   string // its URI
 	track    string // its ID
+	category string // its page's URI
+	user     string // their username
 }
 
 // app is the state both windows show. Everything in it is read and changed
@@ -89,6 +94,13 @@ type app struct {
 	tracks    map[string]*spotify.TrackPage
 	loadingTr map[string]bool
 	trErr     map[string]string
+
+	cats      []spotify.Category               // the tiles of the browse page
+	catPages  map[string]*spotify.CategoryPage // by URI
+	users     map[string]*spotify.UserPage     // profiles, by username
+	shelfOpen map[string]bool                  // a category's rows shown whole
+	loading   map[string]bool                  // what fetch loads, by key
+	loadErr   map[string]string                // why it did not, by key
 	trackList ui.ListState
 	// Where the page and the sidebar are scrolled, kept while Now Playing
 	// covers them, unbuilt.

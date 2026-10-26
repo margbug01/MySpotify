@@ -30,13 +30,13 @@ func TestAccountMenu(t *testing.T) {
 	if !a.accountOpen || !tt.HasText("退出登录") {
 		t.Fatalf("menu not open: %v", a.accountOpen)
 	}
-	if !tt.Focused("设置…") {
+	if !tt.Focused("个人主页") {
 		t.Fatal("the first item has no focus")
 	}
 	tt.Key(0, ui.KeyDown)
 	tt.Frame()
-	if !tt.Focused("退出登录") {
-		t.Fatal("Down did not move to signing out")
+	if !tt.Focused("设置…") {
+		t.Fatal("Down did not move to the settings")
 	}
 	tt.Key(0, ui.KeyEscape)
 	tt.Frame()

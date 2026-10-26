@@ -66,7 +66,9 @@ type Playlist struct {
 	Artists []Artist
 	// Note is what a card says under the name, as a release's year and
 	// kind; the creator if empty.
-	Note   string
+	Note string
+	// Owner is the username of who made a playlist, for their profile.
+	Owner  string
 	Tracks []Track
 	// Preview holds a chart's top songs, as its card shows them.
 	Preview []ChartLine
@@ -261,6 +263,14 @@ type gqlEntity struct {
 	Visuals struct {
 		AvatarImage gqlImage `json:"avatarImage"`
 	} `json:"visuals"`
+	// Podcasts
+	Publisher struct {
+		Name string `json:"name"`
+	} `json:"publisher"`
+	// The tiles of browse pages
+	Data struct {
+		CardRepresentation gqlCard `json:"cardRepresentation"`
+	} `json:"data"`
 }
 
 // artist returns e as an ArtistCard, or false if it is no artist.
@@ -274,8 +284,9 @@ func (e *gqlEntity) playlist() (Playlist, bool) {
 	pl := Playlist{ID: e.URI, Name: e.Name, Description: stripTags(e.Description), TrackCount: e.Content.TotalCount}
 	switch e.Typename {
 	case "Playlist":
-		pl.CoverURL = e.Images.best()
+		pl.CoverURL = imageURL(e.Images.best())
 		pl.Creator.Nickname = e.OwnerV2.Data.Name
+		pl.Owner = e.OwnerV2.Data.Username
 	case "Album":
 		pl.CoverURL = e.CoverArt.best()
 		pl.Artists = e.Artists.list()

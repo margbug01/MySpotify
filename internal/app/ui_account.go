@@ -360,7 +360,11 @@ func (a *app) accountMenu(c *ui.Context, row ui.Element) {
 		if runtime.GOOS == "darwin" {
 			shortcut = "⌘,"
 		}
-		if a.menuItem(c, iconSettings, "设置…", shortcut).AutoFocus().Clicked() {
+		if a.menuItem(c, iconUser, "个人主页", "").AutoFocus().Clicked() {
+			a.accountOpen = false
+			a.goTo(route{page: pageUser, user: a.profile.UserID})
+		}
+		if a.menuItem(c, iconSettings, "设置…", shortcut).Clicked() {
 			a.accountOpen = false
 			a.openSettings()
 		}

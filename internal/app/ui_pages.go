@@ -255,6 +255,11 @@ func (a *app) playlistHeader(c *ui.Context, pl *spotify.Playlist) {
 				if len(pl.Artists) > 0 {
 					a.artistLinks(c.Key("by"), pl.Artists, 13, p.muted, p.text)
 					ui.Text(c, " · ").FontSize(13).TextColor(p.muted)
+				} else if pl.Owner != "" {
+					if link(c.Key("owner"), pl.Creator.Nickname, 13, p.muted, p.text).Clicked() {
+						a.goTo(route{page: pageUser, user: pl.Owner})
+					}
+					ui.Text(c, " · ").FontSize(13).TextColor(p.muted).Shrink(0)
 				} else if pl.Creator.Nickname != "" {
 					ui.Text(c, pl.Creator.Nickname+" · ").FontSize(13).TextColor(p.muted)
 				}

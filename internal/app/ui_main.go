@@ -125,6 +125,12 @@ func (a *app) show(r route) {
 		a.loadRecent()
 	case pageTrack:
 		a.loadTrack(r.track)
+	case pageBrowse:
+		a.loadCategories()
+	case pageCategory:
+		a.loadCategory(r.category)
+	case pageUser:
+		a.loadUser(r.user)
 	}
 }
 
@@ -189,6 +195,7 @@ func (a *app) sidebar(c *ui.Context) {
 			a.navItem(c, iconHome, "为你推荐", route{page: pageHome})
 			a.navItem(c, iconDaily, "每日推荐", route{page: pageDaily})
 			a.navItem(c, iconCharts, "排行榜", route{page: pageCharts})
+			a.navItem(c, iconBrowse, "浏览", route{page: pageBrowse})
 			a.navItem(c, iconRecent, "最近播放", route{page: pageRecent})
 			if a.searched != "" {
 				a.navItem(c, iconSearch, "搜索结果", route{page: pageSearch})
@@ -370,6 +377,12 @@ func (a *app) content(c *ui.Context) {
 		a.recentPage(c)
 	case pageTrack:
 		a.trackPage(c)
+	case pageBrowse:
+		a.browsePage(c)
+	case pageCategory:
+		a.categoryPage(c)
+	case pageUser:
+		a.userPage(c)
 	}
 }
 

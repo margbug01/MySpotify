@@ -160,6 +160,31 @@ func TestLive(t *testing.T) {
 		t.Error("track page incomplete")
 	}
 
+	cats, err := Categories()
+	if err != nil || len(cats) < 20 {
+		t.Fatalf("categories: %d, %v", len(cats), err)
+	}
+	t.Logf("categories: %d, first %+v", len(cats), cats[0])
+	for _, name := range []string{"流行", "播客"} {
+		for _, cat := range cats {
+			if cat.Name != name {
+				continue
+			}
+			cp, err := CategoryDetail(cat.ID)
+			if err != nil || len(cp.Shelves) == 0 {
+				t.Fatalf("category %s: %v", name, err)
+			}
+			for _, sh := range cp.Shelves {
+				t.Logf("  %s/%s: %d lists %d tiles", cp.Name, sh.Title, len(sh.Lists), len(sh.Tiles))
+			}
+		}
+	}
+	up, err := UserProfile("spotify")
+	if err != nil || len(up.Playlists) == 0 {
+		t.Fatalf("profile: %v", err)
+	}
+	t.Logf("profile %s: %d followers, %d of %d playlists, first %+v", up.Name, up.Followers, len(up.Playlists), up.Total, up.Playlists[0].Name)
+
 	m, err := ResolveMedia(daily.Tracks[0].ID)
 	if err != nil {
 		t.Fatal("media:", err)
