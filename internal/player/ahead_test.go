@@ -31,8 +31,10 @@ func TestPrefetchedStartAnswersThePage(t *testing.T) {
 		"#EXT-X-BYTERANGE:300@100\n" + src + "\n#EXT-X-BYTERANGE:300@400\n" + src + "\n#EXT-X-BYTERANGE:300@700\n" + src + "\n#EXT-X-ENDLIST\n"}
 	w := &Web{addr: "127.0.0.1:1", cmds: make(chan string, 8), vol: make(chan float64, 1), outs: map[int]*webOut{}}
 	w.Prefetch(m)
-	if hits.Load() != 1 {
-		t.Fatalf("prefetch asked the CDN %d times", hits.Load())
+	// The start comes in parts asked for at once, so that a slow link does
+	// not hold the first one behind a whole minute of audio.
+	if n := hits.Load(); n < 2 {
+		t.Fatalf("prefetch asked the CDN %d times, want the start in parts", n)
 	}
 	w.Open(m)
 	get := func(rg string) (*httptest.ResponseRecorder, int32) {
@@ -42,16 +44,19 @@ func TestPrefetchedStartAnswersThePage(t *testing.T) {
 		w.ServeHTTP(rec, req)
 		return rec, hits.Load()
 	}
+	// What the prefetch fetched is answered from memory; the rest, past
+	// it, still comes from the CDN.
+	prefetched := hits.Load()
 	for _, c := range []struct {
 		rg       string
 		from, to int
 		cdn      int32
-	}{{"bytes=0-399", 0, 399, 1}, {"bytes=400-699", 400, 699, 1}, {"bytes=700-999", 700, 999, 2}} {
+	}{{"bytes=0-399", 0, 399, 0}, {"bytes=400-699", 400, 699, 0}, {"bytes=300-399", 300, 399, 0}} {
 		rec, n := get(c.rg)
-		if rec.Code != http.StatusPartialContent || !bytes.Equal(rec.Body.Bytes(), file[c.from:c.to+1]) || n != c.cdn {
-			t.Fatalf("%s: %d, %d bytes, CDN asked %d times", c.rg, rec.Code, rec.Body.Len(), n)
+		if rec.Code != http.StatusPartialContent || !bytes.Equal(rec.Body.Bytes(), file[c.from:c.to+1]) || n != prefetched+c.cdn {
+			t.Fatalf("%s: %d, %d bytes, CDN asked %d times", c.rg, rec.Code, rec.Body.Len(), n-prefetched)
 		}
-		if c.cdn == 1 && rec.Header().Get("Content-Range") != "bytes "+c.rg[6:]+"/1000" {
+		if rec.Header().Get("Content-Range") != "bytes "+c.rg[6:]+"/1000" {
 			t.Fatalf("%s: Content-Range %q", c.rg, rec.Header().Get("Content-Range"))
 		}
 	}

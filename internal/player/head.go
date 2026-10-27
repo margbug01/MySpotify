@@ -4,17 +4,22 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	"vinyl/internal/spotify"
 )
 
 // headSegments is how many segments the start fetched ahead covers: the
-// first plays at once, the second while the rest come from the CDN.
-const headSegments = 2
+// first plays at once, and the rest while the CDN sends what follows. A
+// segment is ten seconds, so six is a minute of the track at hand before
+// the CDN is needed at all.
+const headSegments = 6
 
 // maxHeads is how many starts are kept: the next track's, and a few the
 // queue went past.
@@ -76,41 +81,112 @@ loop:
 
 // Prefetch fetches the start of m's file, so that once m is opened the
 // page's first requests for it are answered at once.
+//
+// The start comes in parts, each a range of the same file, and they are
+// asked for at the same time: one request carrying a minute of AAC takes a
+// while on a slow link, and the page wants its first part in a fraction of
+// a second. The parts are joined once they are all in, the page's requests
+// being answered from the single run of bytes.
 func (w *Web) Prefetch(m *spotify.Media) {
 	source, n := headOf(m.Manifest)
 	if n <= 0 || w.head(source) != nil {
 		return
 	}
-	req, err := http.NewRequest(http.MethodGet, source, nil)
-	if err != nil {
+	parts := splitHead(n)
+	if parts == nil {
 		return
 	}
-	req.Header.Set("Range", fmt.Sprintf("bytes=0-%d", n-1))
-	res, err := spotify.Client.Do(req)
-	if err != nil {
+	data := make([]byte, n)
+	var meta struct { // what the parts say of the whole, the first to speak
+		sync.Mutex
+		total, ctype string
+	}
+	var wg sync.WaitGroup
+	var ok atomic.Bool
+	ok.Store(true)
+	for _, p := range parts {
+		wg.Add(1)
+		go func(p headPart) {
+			defer wg.Done()
+			req, err := http.NewRequest(http.MethodGet, source, nil)
+			if err != nil {
+				ok.Store(false)
+				return
+			}
+			req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", p.from, p.to))
+			res, err := cdnDo(req)
+			if err != nil {
+				ok.Store(false)
+				return
+			}
+			defer res.Body.Close()
+			if res.StatusCode != http.StatusPartialContent && res.StatusCode != http.StatusOK {
+				ok.Store(false)
+				return
+			}
+			body, err := io.ReadAll(io.LimitReader(res.Body, p.to-p.from+1))
+			if err != nil || int64(len(body)) != p.to-p.from+1 {
+				ok.Store(false)
+				return
+			}
+			copy(data[p.from:], body)
+			meta.Lock()
+			if meta.total == "" {
+				if _, rest, found := strings.Cut(res.Header.Get("Content-Range"), "/"); found && rest != "" && !strings.ContainsAny(rest, "*") {
+					meta.total = rest
+				}
+			}
+			if meta.ctype == "" {
+				meta.ctype = res.Header.Get("Content-Type")
+			}
+			meta.Unlock()
+		}(p)
+	}
+	wg.Wait()
+	// One part short is a hole in the middle of the start: the page reads
+	// it as silence or as an error it has to recover from, so it is better
+	// to hand it nothing and let the CDN send the start itself.
+	if !ok.Load() {
+		log.Printf("player: prefetch of %s fell short; its start comes from the CDN", source)
 		return
 	}
-	defer res.Body.Close()
-	if res.StatusCode != http.StatusPartialContent && res.StatusCode != http.StatusOK {
-		return
-	}
-	data, err := io.ReadAll(io.LimitReader(res.Body, n))
-	if err != nil || int64(len(data)) != n {
-		return
-	}
-	h := &head{source: source, data: data, total: "*", ctype: res.Header.Get("Content-Type")}
-	if _, total, ok := strings.Cut(res.Header.Get("Content-Range"), "/"); ok && total != "" {
-		h.total = total
-	} else if res.StatusCode == http.StatusOK && res.ContentLength > 0 {
-		h.total = strconv.FormatInt(res.ContentLength, 10)
+	total := meta.total
+	if total == "" {
+		total = strconv.FormatInt(n, 10)
 	}
 	w.mu.Lock()
-	w.heads = append(w.heads, h)
+	w.heads = append(w.heads, &head{source: source, data: data, total: total, ctype: meta.ctype})
 	if len(w.heads) > maxHeads {
 		w.heads = w.heads[len(w.heads)-maxHeads:]
 	}
 	w.mu.Unlock()
 }
+
+// headPart is a range of the start fetched ahead: both ends, as the CDN
+// wants them.
+type headPart struct{ from, to int64 }
+
+// splitHead cuts the start of n bytes into the parts they are fetched in,
+// at most headParallel of them, each a run of the file.
+func splitHead(n int64) []headPart {
+	if n <= 0 {
+		return nil
+	}
+	parts := headParallel
+	if n < int64(parts) {
+		parts = int(n)
+	}
+	size := (n + int64(parts) - 1) / int64(parts)
+	out := make([]headPart, 0, parts)
+	for from := int64(0); from < n; from += size {
+		out = append(out, headPart{from: from, to: min(from+size-1, n-1)})
+	}
+	return out
+}
+
+// headParallel is how many parts of a start come at once: enough to keep a
+// slow link busy, few enough not to look like a download to the CDN.
+const headParallel = 4
 
 func (w *Web) head(source string) *head {
 	w.mu.Lock()

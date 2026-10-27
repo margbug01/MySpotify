@@ -7,9 +7,6 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
-	"time"
-
-	"vinyl/internal/spotify"
 )
 
 const mirrorFileID = "f6e2ff1804615a9cb45b63cbba993d3ba440eb4a"
@@ -152,32 +149,24 @@ func TestAURLWithoutAFileIDHasNoMirrors(t *testing.T) {
 }
 
 // mirrorTest answers storage-resolve with urls and every CDN with cdn, then
-// puts the app's own back.
+// puts the app's own back. It swaps the player's hooks, not the client
+// Spotify's own requests go through: other tests' background work is still
+// using that one.
 func mirrorTest(t *testing.T, urls []string, cdn func(*http.Request) (*http.Response, error)) func() {
 	t.Helper()
-	spotify.SetIdentity(spotify.Identity{Token: "t", ClientToken: "c", Expires: time.Now().Add(time.Hour)})
-	oldClient := spotify.Client
-	spotify.Client = &http.Client{Transport: roundTrip(func(req *http.Request) (*http.Response, error) {
-		if strings.Contains(req.URL.Path, "/storage-resolve/") {
-			var b strings.Builder
-			b.WriteString(`{"cdnurl":[`)
-			for i, u := range urls {
-				if i > 0 {
-					b.WriteString(",")
-				}
-				b.WriteString(`"` + u + `"`)
-			}
-			b.WriteString(`]}`)
-			return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(b.String())), Header: http.Header{}}, nil
+	oldDo, oldMirrors := cdnDo, mirrorsOf
+	cdnDo = cdn
+	mirrorsOf = func(string) ([]string, error) {
+		if urls == nil {
+			return nil, io.ErrUnexpectedEOF
 		}
-		return cdn(req)
-	})}
+		return urls, nil
+	}
 	mirrors.mu.Lock()
 	mirrors.dead = nil
 	mirrors.mu.Unlock()
 	return func() {
-		spotify.Client = oldClient
-		spotify.SetIdentity(spotify.Identity{})
+		cdnDo, mirrorsOf = oldDo, oldMirrors
 		mirrors.mu.Lock()
 		mirrors.dead = nil
 		mirrors.mu.Unlock()

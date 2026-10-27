@@ -96,7 +96,7 @@ func otherMirrors(source string) []string {
 	if id == "" {
 		return nil
 	}
-	all, err := spotify.Mirrors(id)
+	all, err := mirrorsOf(id)
 	if err != nil {
 		return nil
 	}
@@ -117,8 +117,16 @@ func getRange(r *http.Request, u, rg string) (*http.Response, error) {
 	if rg != "" {
 		req.Header.Set("Range", rg)
 	}
-	return spotify.Client.Do(req)
+	return cdnDo(req)
 }
+
+// cdnDo sends a request to a CDN. Tests swap it, rather than the client
+// Spotify's own requests go through, which other tests are using.
+var cdnDo = func(req *http.Request) (*http.Response, error) { return spotify.Client.Do(req) }
+
+// mirrorsOf asks Spotify where else a file is served. Tests swap it for the
+// same reason.
+var mirrorsOf = spotify.Mirrors
 
 // answers reports whether res carries the part: a range of it, or the whole
 // file for one asked from its start.
