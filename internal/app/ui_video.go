@@ -178,7 +178,6 @@ func (a *app) npVideo(c *ui.Context, width, size float32) {
 // as it plays, they go, and so does the pointer. Double-clicked, the video
 // fills the screen, or leaves it.
 func (a *app) npTheater(c *ui.Context, tr *spotify.Track, art *artwork, accent ui.Color) {
-	pl := a.pl
 	now := c.Now()
 	if !a.mvShown {
 		// Come to fill it: the controls show at first.
@@ -187,98 +186,157 @@ func (a *app) npTheater(c *ui.Context, tr *spotify.Track, art *artwork, accent u
 	if a.mvMoved {
 		a.mvMoved, a.mvMovedAt = false, now
 	}
+	side := a.mvQueueWidth(c)
+	if side == 0 {
+		a.queueAt = -1 // shown again, the queue shows the track playing at its top
+	}
 	root := ui.Box(c.Key("theater")).Absolute().Top(0).Left(0).Right(0).Bottom(0).Background(black).TextColor(white)
 	root.Children(func() {
-		ui.Column(c).Absolute().Top(0).Left(0).Right(0).Bottom(0).Children(func() {
-			ui.WebView(c, a.mvPage()).Grow(1).Label("MV")
+		if side > 0 {
+			a.mvQueue(c, side)
+		}
+		// The video, its controls over it, beside the queue.
+		ui.Box(c.Key("mv-stage")).Absolute().Top(0).Left(0).Bottom(0).Right(side).Children(func() {
+			a.mvStage(c, tr, art, accent, now)
 		})
-		// Over the video, which would take the pointer itself: here its
-		// moves show the controls.
-		over := ui.Box(c.Key("mv-over")).Absolute().Top(0).Left(0).Right(0).Bottom(0).Label("MV 画面")
-		over.HandleInput(func(ev ui.InputEvent) bool {
-			if ev.Kind != ui.InputPointerMove {
-				return false
-			}
-			a.mvMoved = true
-			return true
-		})
-		if over.DoubleClicked() {
-			a.toggleMVFullScreen()
-		}
-		head := ui.Column(c.Key("mv-head")).Absolute().Top(0).Left(0).Right(0).Padding(0, 0, 28, 0).
-			LinearGradient(ui.LinearGradient{Angle: 180, Stops: []ui.GradientStop{
-				{Color: black.Alpha(0.6), At: 0},
-				{Color: black.Alpha(0), At: 1},
-			}})
-		foot := ui.Column(c.Key("mv-foot")).Absolute().Left(0).Right(0).Bottom(0).Padding(56, 0, 0, 0).
-			LinearGradient(ui.LinearGradient{Angle: 180, Stops: []ui.GradientStop{
-				{Color: black.Alpha(0), At: 0},
-				{Color: black.Alpha(0.7), At: 1},
-			}})
-		idle := now.Sub(a.mvMovedAt)
-		held := head.Hovered() || foot.Hovered()
-		shown := !pl.Playing() || held || idle < mvIdle
-		if shown && pl.Playing() && !held {
-			// Built again as they go.
-			c.After(mvIdle - idle)
-		}
-		if !shown {
-			// Gone, they let the pointer through to the video, whose moves
-			// bring them back.
-			over.Cursor(ui.CursorNone)
-			head.PassThrough()
-			foot.PassThrough()
-		}
-		if a.settings.MVLyrics {
-			a.mvLyrics(c, shown)
-		}
-		reveal(head, shown).Children(func() {
-			// The top strip drags the window; the ways to show the video sit
-			// below it, clear of the window's buttons (Windows).
-			ui.Row(c).Height(topBar(c)).Justify(ui.Center).AlignItems(ui.Center).DragWindow().Children(func() {
-				if iconButton(c.Key("close"), iconDown, 22, white.Alpha(0.8), "关闭").Clicked() {
-					a.nowPlaying = false
-				}
-			})
-			ui.Row(c).Justify(ui.End).AlignItems(ui.Center).Gap(10).Padding(0, 28, 0, 28).Children(func() {
-				if lines, _ := pl.Lyrics(); timed(lines) {
-					label := "显示歌词"
-					if a.settings.MVLyrics {
-						label = "隐藏歌词"
-					}
-					// The lyrics, and on either side, earlier and later.
-					ui.Row(c.Key("lyrics")).Gap(2).AlignItems(ui.Center).Margin(0, 6, 0, 0).Children(func() {
-						if a.settings.MVLyrics {
-							if iconButton(c.Key("earlier"), iconMinus, 15, white.Alpha(0.75), "歌词提前 0.5 秒 ([)").Clicked() {
-								a.nudgeLyrics(-lyricsNudge)
-							}
-						}
-						if badge(c.Key("on"), "歌词", label, a.settings.MVLyrics, white, ink) {
-							a.settings.MVLyrics = !a.settings.MVLyrics
-							a.settings.save()
-						}
-						if a.settings.MVLyrics {
-							if iconButton(c.Key("later"), iconPlus, 15, white.Alpha(0.75), "歌词延后 0.5 秒 (])").Clicked() {
-								a.nudgeLyrics(lyricsNudge)
-							}
-						}
-					})
-				}
-				a.mvButton(c)
-				if iconButton(c.Key("shrink"), iconShrink, 20, white.Alpha(0.85), "还原").Clicked() {
-					a.showMV(mvInCover)
-				}
-				icon, label := iconFullScreen, "全屏"
-				if a.mvMode == mvFullScreen {
-					icon, label = iconExitFullScreen, "退出全屏"
-				}
-				if iconButton(c.Key("full"), icon, 20, white.Alpha(0.85), label).Clicked() {
-					a.toggleMVFullScreen()
-				}
-			})
-		})
-		reveal(foot, shown).Children(func() { a.stageBar(c, tr, art, accent) })
 	})
+}
+
+// mvStage is the music video filling Now Playing, its controls over it.
+func (a *app) mvStage(c *ui.Context, tr *spotify.Track, art *artwork, accent ui.Color, now time.Time) {
+	pl := a.pl
+	ui.Column(c).Absolute().Top(0).Left(0).Right(0).Bottom(0).Children(func() {
+		ui.WebView(c, a.mvPage()).Grow(1).Label("MV")
+	})
+	// Over the video, which would take the pointer itself: here its
+	// moves show the controls.
+	over := ui.Box(c.Key("mv-over")).Absolute().Top(0).Left(0).Right(0).Bottom(0).Label("MV 画面")
+	over.HandleInput(func(ev ui.InputEvent) bool {
+		if ev.Kind != ui.InputPointerMove {
+			return false
+		}
+		a.mvMoved = true
+		return true
+	})
+	if over.DoubleClicked() {
+		a.toggleMVFullScreen()
+	}
+	head := ui.Column(c.Key("mv-head")).Absolute().Top(0).Left(0).Right(0).Padding(0, 0, 28, 0).
+		LinearGradient(ui.LinearGradient{Angle: 180, Stops: []ui.GradientStop{
+			{Color: black.Alpha(0.6), At: 0},
+			{Color: black.Alpha(0), At: 1},
+		}})
+	foot := ui.Column(c.Key("mv-foot")).Absolute().Left(0).Right(0).Bottom(0).Padding(56, 0, 0, 0).
+		LinearGradient(ui.LinearGradient{Angle: 180, Stops: []ui.GradientStop{
+			{Color: black.Alpha(0), At: 0},
+			{Color: black.Alpha(0.7), At: 1},
+		}})
+	idle := now.Sub(a.mvMovedAt)
+	held := head.Hovered() || foot.Hovered()
+	shown := !pl.Playing() || held || idle < mvIdle
+	if shown && pl.Playing() && !held {
+		// Built again as they go.
+		c.After(mvIdle - idle)
+	}
+	if !shown {
+		// Gone, they let the pointer through to the video, whose moves
+		// bring them back.
+		over.Cursor(ui.CursorNone)
+		head.PassThrough()
+		foot.PassThrough()
+	}
+	if a.settings.MVLyrics {
+		a.mvLyrics(c, shown)
+	}
+	reveal(head, shown).Children(func() {
+		// The top strip drags the window; the ways to show the video sit
+		// below it, clear of the window's buttons (Windows).
+		ui.Row(c).Height(topBar(c)).Justify(ui.Center).AlignItems(ui.Center).DragWindow().Children(func() {
+			if iconButton(c.Key("close"), iconDown, 22, white.Alpha(0.8), "关闭").Clicked() {
+				a.nowPlaying = false
+			}
+		})
+		ui.Row(c).Justify(ui.End).AlignItems(ui.Center).Gap(10).Padding(0, 28, 0, 28).Children(func() {
+			if lines, _ := pl.Lyrics(); timed(lines) {
+				label := "显示歌词"
+				if a.settings.MVLyrics {
+					label = "隐藏歌词"
+				}
+				// The lyrics, and on either side, earlier and later.
+				ui.Row(c.Key("lyrics")).Gap(2).AlignItems(ui.Center).Margin(0, 6, 0, 0).Children(func() {
+					if a.settings.MVLyrics {
+						if iconButton(c.Key("earlier"), iconMinus, 15, white.Alpha(0.75), "歌词提前 0.5 秒 ([)").Clicked() {
+							a.nudgeLyrics(-lyricsNudge)
+						}
+					}
+					if badge(c.Key("on"), "歌词", label, a.settings.MVLyrics, white, ink) {
+						a.settings.MVLyrics = !a.settings.MVLyrics
+						a.settings.save()
+					}
+					if a.settings.MVLyrics {
+						if iconButton(c.Key("later"), iconPlus, 15, white.Alpha(0.75), "歌词延后 0.5 秒 (])").Clicked() {
+							a.nudgeLyrics(lyricsNudge)
+						}
+					}
+				})
+			}
+			if len(pl.Queue()) > 1 {
+				color, label := white.Alpha(0.85), "显示待播清单"
+				if a.settings.MVQueue {
+					color, label = white, "收起待播清单"
+				}
+				if iconButton(c.Key("queue"), iconQueue, 18, color, label).Clicked() {
+					a.setMVQueue(!a.settings.MVQueue)
+				}
+			}
+			a.mvButton(c)
+			if iconButton(c.Key("shrink"), iconShrink, 20, white.Alpha(0.85), "还原").Clicked() {
+				a.showMV(mvInCover)
+			}
+			icon, label := iconFullScreen, "全屏"
+			if a.mvMode == mvFullScreen {
+				icon, label = iconExitFullScreen, "退出全屏"
+			}
+			if iconButton(c.Key("full"), icon, 20, white.Alpha(0.85), label).Clicked() {
+				a.toggleMVFullScreen()
+			}
+		})
+	})
+	reveal(foot, shown).Children(func() { a.stageBar(c, tr, art, accent) })
+}
+
+// mvQueueWidth is how wide the queue beside a music video filling Now
+// Playing is: 0 with it closed, nothing after the track playing, or the
+// window too narrow for both.
+func (a *app) mvQueueWidth(c *ui.Context) float32 {
+	w, _ := c.Size()
+	if !a.settings.MVQueue || w < 900 || len(a.pl.Queue()) < 2 {
+		return 0
+	}
+	return min(360, w*0.28)
+}
+
+// mvQueue is the queue beside the music video: what plays next, and
+// what played.
+func (a *app) mvQueue(c *ui.Context, width float32) {
+	ui.Column(c.Key("mv-queue")).Absolute().Top(0).Right(0).Bottom(0).Width(width).Padding(topBar(c), 0, 0, 10).
+		Background(ui.RGB(18, 18, 20)).BorderWidth(0, 0, 0, 1).BorderColor(white.Alpha(0.08)).Children(func() {
+		ui.Row(c).Padding(4, 14, 8, 10).AlignItems(ui.Center).Children(func() {
+			ui.Text(c, "待播清单").FontSize(15).FontWeight(700).Grow(1)
+			if iconButton(c.Key("close-queue"), iconX, 16, white.Alpha(0.6), "收起待播清单").Clicked() {
+				a.setMVQueue(false)
+			}
+		})
+		a.queuePane(c)
+	})
+}
+
+// setMVQueue shows the queue beside music videos or not, kept for the
+// next time.
+func (a *app) setMVQueue(on bool) {
+	a.settings.MVQueue = on
+	a.settings.save()
+	a.mvMoved = true
 }
 
 // timed reports whether lines are lyrics with their times, which can show
@@ -379,7 +437,8 @@ func (a *app) nudgeLyrics(d time.Duration) {
 	if d < 0 {
 		way, d = "提前", -d
 	}
-	a.toast = fmt.Sprintf("歌词%s %.1f 秒（偏移 %+.1f 秒）", way, d.Seconds(), lead.Seconds())
+	// One toast, changing as the lyrics move, rather than one a press.
+	a.lyricsToast = fmt.Sprintf("歌词%s %.1f 秒（偏移 %+.1f 秒）", way, d.Seconds(), lead.Seconds())
 	a.mvMoved = true
 }
 

@@ -169,6 +169,7 @@ type app struct {
 	mvShown        bool      // the video filled Now Playing in the last frame
 	mvMoved        bool      // the pointer moved over the video since the last frame
 	mvMovedAt      time.Time // when the pointer last moved over the video
+	lyricsToast    string    // how far the lyrics over a video were moved, to show
 
 	settings    settings
 	settingsWin *mygo.Window

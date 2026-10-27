@@ -517,8 +517,16 @@ func (a *app) queuePane(c *ui.Context) {
 			a.cover(c, tr.Album.PicURL, 96, 42, 7)
 			ui.Column(c).Grow(1).MinWidth(0).Gap(3).Children(func() {
 				ui.Text(c, tr.Name).FontSize(14).FontWeight(600).SingleLine()
-				ui.Text(c, tr.ArtistNames()).FontSize(12.5).TextColor(white.Alpha(0.55)).SingleLine()
+				ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
+					if tr.Video {
+						ui.Text(c, "MV").FontSize(9).FontWeight(800).TextColor(white.Alpha(0.6)).Padding(0, 4).Radius(3).Border(1, white.Alpha(0.35))
+					}
+					ui.Text(c, tr.ArtistNames()).FontSize(12.5).TextColor(white.Alpha(0.55)).SingleLine().Shrink(1)
+				})
 			})
+			if at >= 0 && r == at+1 {
+				ui.Text(c, "接下来").FontSize(10.5).FontWeight(700).TextColor(white.Alpha(0.85)).Padding(2, 7).Radius(5).Background(white.Alpha(0.14))
+			}
 			ui.Text(c, clock(tr.Length())).FontSize(12).FontFeatures("tnum").TextColor(white.Alpha(0.4))
 		})
 		if row.Clicked() && tr.Playable() && !playing {

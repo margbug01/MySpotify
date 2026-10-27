@@ -79,6 +79,10 @@ func (a *app) view(c *ui.Context) {
 		c.Toast(a.toast)
 		a.toast = ""
 	}
+	if a.lyricsToast != "" {
+		c.AddToast(ui.Toast{ID: "lyrics-nudge", Title: a.lyricsToast})
+		a.lyricsToast = ""
+	}
 	if r := a.next; r != nil {
 		a.next = nil
 		a.open(*r)

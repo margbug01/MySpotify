@@ -356,3 +356,61 @@ func TestMVTagsInTrackLists(t *testing.T) {
 		t.Fatalf("playing %+v, video on %v, Now Playing open %v", cur, a.pl.VideoOn(), a.nowPlaying)
 	}
 }
+
+// Filling Now Playing, the music video has the queue beside it, the song
+// to play next marked; closed, the video takes the room, and so it stays.
+func TestMVHasTheQueueBesideIt(t *testing.T) {
+	a := newTestApp()
+	a.settings = defaultSettings()
+	a.settings.path = filepath.Join(t.TempDir(), "settings.json")
+	a.pl.Cue([]spotify.Track{
+		{ID: "1", Name: "APT.", Duration: 170000},
+		{ID: "2", Name: "On My Mind", Duration: 222000, Video: true},
+		{ID: "3", Name: "一张相片", Duration: 200000},
+	})
+	a.pl.SetLyrics(nil)
+	a.pl.ShowVideo(&mygo.WebView{})
+	a.mvMode = mvTheater
+	tt := ui.NewTester(a.view, 1200, 800)
+	a.nowPlaying = true
+	frame := func() {
+		tt.Advance(300 * time.Millisecond)
+		tt.Frame()
+	}
+	frame()
+	video, _ := tt.Find("MV 画面")
+	queue, ok := tt.Find("待播清单")
+	if !ok || video.W >= 1200 || queue.X < video.X+video.W {
+		t.Fatalf("the queue at %v, the video at %v", queue, video)
+	}
+	next, _ := tt.Find("接下来")
+	row, _ := tt.Find("On My Mind")
+	if next.Y < row.Y || next.Y+next.H > row.Y+row.H {
+		t.Fatalf("next is marked at %v, the next song at %v", next, row)
+	}
+	if err := tt.Click("收起待播清单"); err != nil {
+		t.Fatal(err)
+	}
+	frame()
+	if r, _ := tt.Find("MV 画面"); r.W != 1200 || a.settings.MVQueue {
+		t.Fatalf("closed: the video is %v, the queue kept %v", r, a.settings.MVQueue)
+	}
+	b, err := os.ReadFile(a.settings.path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	kept := defaultSettings()
+	json.Unmarshal(b, &kept)
+	if kept.MVQueue {
+		t.Fatal("closing the queue was not kept")
+	}
+	tt.Move(600, 300)
+	frame()
+	if err := tt.Click("显示待播清单"); err != nil {
+		t.Fatal(err)
+	}
+	frame()
+	if r, _ := tt.Find("MV 画面"); r.W >= 1200 || !a.settings.MVQueue {
+		t.Fatalf("opened again: the video is %v", r)
+	}
+}

@@ -44,6 +44,8 @@ type settings struct {
 	// MVLeads is how many milliseconds the listener has the music videos
 	// of songs, by their IDs, run ahead of them: the lyrics follow.
 	MVLeads map[string]int64 `json:"mvLeads,omitempty"`
+	// MVQueue shows the queue beside music videos filling Now Playing.
+	MVQueue bool `json:"mvQueue"`
 
 	// CacheMB is how many megabytes the parts of tracks kept on disk may
 	// take; 0 keeps none.
@@ -53,7 +55,7 @@ type settings struct {
 }
 
 func defaultSettings() settings {
-	return settings{NotchActivity: true, Appearance: "system", Volume: 0.8, CacheMB: 1024, MVLyrics: true}
+	return settings{NotchActivity: true, Appearance: "system", Volume: 0.8, CacheMB: 1024, MVLyrics: true, MVQueue: true}
 }
 
 func settingsPath() (string, error) {
