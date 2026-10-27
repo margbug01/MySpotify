@@ -19,10 +19,46 @@ window.vinyl = {
     document.body.append(a);
     const hls = new Hls({
       emeEnabled: true,
+      maxBufferLength: 30,
+      maxMaxBufferLength: 60,
+      maxBufferSize: 2 * 1024 * 1024,
+      backBufferLength: 30,
       drmSystems: { 'com.widevine.alpha': { licenseUrl: '/license?gen=' + gen, serverCertificateUrl: '/cert?gen=' + gen } },
     });
     // tries counts the recoveries, two at most; want is whether to play.
-    const t = { gen, a, hls, seek: null, tries: 0, want: false };
+    const t = { gen, a, hls, seek: null, tries: 0, want: false, endSeq: 0, ending: false, lastTime: 0, still: 0, heard: false };
+    const finish = (reason) => {
+      if (cur !== t || t.ending) return;
+      t.ending = true;
+      const seq = ++t.endSeq;
+      const report = async () => {
+        if (cur !== t || !t.ending || t.endSeq !== seq) return;
+        try {
+          const response = await fetch('/event', {
+            method: 'POST', signal: AbortSignal.timeout(5000),
+            body: JSON.stringify({ gen, type: 'ended', t: a.currentTime, seq, msg: reason }),
+          });
+          if (!response.ok) throw new Error('event http=' + response.status);
+        } catch {
+          if (cur === t && t.ending && t.endSeq === seq) t.endTimer = setTimeout(report, 1000);
+        }
+      };
+      report();
+    };
+    t.watch = setInterval(() => {
+      const position = a.currentTime;
+      const moved = position > t.lastTime + 0.001;
+      t.lastTime = position;
+      const duration = a.duration;
+      const tail = Number.isFinite(duration) && duration > 0 && position >= duration - 0.25 && position <= duration + 0.25;
+      const buffered = a.buffered;
+      const complete = buffered.length > 0 && buffered.start(buffered.length - 1) <= position && buffered.end(buffered.length - 1) >= duration - 0.05;
+      if (!t.want || t.ending || !t.heard || a.paused || a.seeking || a.error || !tail || !complete || moved) {
+        t.still = 0;
+        return;
+      }
+      if (++t.still >= 4) finish('tail stalled');
+    }, 1000);
     // A network or media error is tried again; a licence turned down, or a
     // third error, is reported: Vinyl knows how the licence service answered.
     const fail = (what) => {
@@ -43,7 +79,12 @@ window.vinyl = {
       const msg = d.type + ' ' + d.details + (d.response && d.response.code ? ' http=' + d.response.code : '');
       fail({ type: d.type === Hls.ErrorTypes.KEY_SYSTEM_ERROR ? 'licence' : d.type, details: d.details, msg });
     });
-    for (const n of ['playing', 'pause', 'waiting', 'ended', 'seeked']) a.addEventListener(n, () => send(gen, n, a.currentTime));
+    for (const n of ['playing', 'pause', 'waiting', 'seeked']) a.addEventListener(n, () => {
+      if (n === 'playing') t.heard = true;
+      send(gen, n, a.currentTime);
+    });
+    a.addEventListener('ended', () => finish('media ended'));
+    a.addEventListener('seeking', () => { t.still = 0; t.heard = false; });
     a.addEventListener('timeupdate', () => send(gen, 'time', a.currentTime));
     a.addEventListener('error', () => fail({ type: Hls.ErrorTypes.MEDIA_ERROR, details: '', msg: 'media ' + (a.error ? a.error.code + ' ' + a.error.message : '') }));
     a.addEventListener('loadedmetadata', () => {
@@ -58,12 +99,28 @@ window.vinyl = {
     if (!cur || cur.gen !== gen) return;
     const a = cur.a;
     cur.want = true;
+    clearTimeout(cur.pauseTimer);
+    if (cur.stopped) { cur.hls.startLoad(a.currentTime); cur.stopped = false; }
     const p = a.play();
     if (p) p.catch((e) => { if (e.name !== 'AbortError') send(gen, 'error', a.currentTime, 'play ' + e.name + ': ' + e.message); });
   },
-  pause(gen) { if (cur && cur.gen === gen) { cur.want = false; cur.a.pause(); } },
+  pause(gen) {
+    if (!cur || cur.gen !== gen) return;
+    const t = cur;
+    t.want = false;
+    t.still = 0;
+    t.a.pause();
+    clearTimeout(t.pauseTimer);
+    t.pauseTimer = setTimeout(() => {
+      if (cur === t && !t.want) { t.hls.stopLoad(); t.stopped = true; }
+    }, 30000);
+  },
   seek(gen, t) {
     if (!cur || cur.gen !== gen) return;
+    cur.ending = false;
+    cur.still = 0;
+    cur.heard = false;
+    clearTimeout(cur.endTimer);
     if (cur.a.readyState >= 1) cur.a.currentTime = t; else cur.seek = t;
   },
   volume(v) {
@@ -72,6 +129,9 @@ window.vinyl = {
   },
   unload(gen) {
     if (!cur || cur.gen !== gen) return;
+    clearTimeout(cur.pauseTimer);
+    clearTimeout(cur.endTimer);
+    clearInterval(cur.watch);
     cur.hls.destroy();
     cur.a.remove();
     cur = null;

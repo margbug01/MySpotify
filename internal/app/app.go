@@ -58,6 +58,13 @@ type app struct {
 	history []route
 	forward []route // the pages gone back from, the last first to go to
 
+	connect     *connectState
+	mineLoading bool
+	mineAgain   bool
+	mineGen     int
+	mineChecked time.Time
+	mineTimer   *time.Timer
+
 	profile                             *spotify.Profile
 	mine, saved                         []spotify.Playlist   // the listener's playlists: made, and saved
 	followed                            []spotify.ArtistCard // the artists the listener follows
@@ -84,6 +91,7 @@ type app struct {
 	homeErr     string
 	homeLoading bool
 
+	homeShelves   map[string]*ui.ScrollState
 	homeSections  []spotify.HomeSection            // what the home page shows: Spotify's sections
 	homeShortcuts []spotify.HomeItem               // what the listener played lately, for the grid over them
 	homeFacet     string                           // the chip chosen over the home page, "" for all
@@ -226,10 +234,7 @@ func Run() error {
 		spotify.LoadOps()
 	}
 	log.Printf("start, pid %d", os.Getpid())
-	// The page that plays starts without a click; its GPU work, which
-	// it hardly has, runs in the web view's main process rather than a
-	// process of its own (50 MB).
-	os.Setenv("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", strings.TrimSpace(os.Getenv("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS")+" --autoplay-policy=no-user-gesture-required --in-process-gpu"))
+	os.Setenv("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", strings.TrimSpace(os.Getenv("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS")+" --autoplay-policy=no-user-gesture-required --in-process-gpu --disable-gpu"))
 	// What decoding a page of covers takes goes back to the system after,
 	// rather than staying in the heap (20 MB).
 	if os.Getenv("GOMEMLIMIT") == "" {
@@ -247,15 +252,18 @@ func Run() error {
 			go pruneCovers(a.art.dir, coversMax)
 		}
 		a.pl = player.New(a.post)
-		if web, err := player.NewWeb(); err == nil {
-			a.pl.Web = web
-			web.Cache = newPartCache(a.settings.CacheMB)
-		} else {
-			log.Printf("player: %v", err)
+		a.pl.Cache = newPartCache(a.settings.CacheMB)
+		a.pl.NewWeb = func() (*player.Web, error) {
+			web, err := player.NewWeb()
+			if err == nil {
+				web.Cache = a.pl.Cache
+			}
+			return web, err
 		}
 		a.pl.Changed = func() {
 			a.notePlayed()
 			a.keepSession()
+			a.reportConnect()
 		}
 		a.played, a.playedFrom = loadPlayed()
 		a.volume = a.settings.Volume
@@ -287,6 +295,8 @@ func Run() error {
 			a.restoreHome()
 			a.redraw()
 		}
+		a.win.OnFocus(func() { a.refreshMine(time.Now()) })
+		a.scheduleMine()
 		a.setMenu()
 		a.boot()
 		// The notch player is macOS's, over its menu bar: elsewhere it would
@@ -317,9 +327,16 @@ func Run() error {
 	})
 	mygo.App.OnBeforeQuit(func(*mygo.QuitEvent) {
 		a.quitting = true
+		a.stopConnect()
+		if a.mineTimer != nil {
+			a.mineTimer.Stop()
+		}
 		a.settings.Volume = a.volume
 		a.settings.save()
 		a.saveSession()
+		if a.pl != nil {
+			a.pl.CloseWeb()
+		}
 	})
 	mygo.App.OnWindowAllClosed(func() {})
 	mygo.App.OnActivate(func(bool) { a.showMain() })

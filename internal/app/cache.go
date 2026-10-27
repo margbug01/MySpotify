@@ -32,10 +32,10 @@ func newPartCache(mb int) *player.Cache {
 }
 
 func (a *app) partCache() *player.Cache {
-	if a.pl == nil || a.pl.Web == nil {
+	if a.pl == nil {
 		return nil
 	}
-	return a.pl.Web.Cache
+	return a.pl.Cache
 }
 
 // applyCacheLimit gives the cache the limit the settings say.

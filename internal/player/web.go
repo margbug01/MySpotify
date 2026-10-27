@@ -22,7 +22,7 @@ import (
 	"vinyl/internal/spotify"
 )
 
-//go:embed web
+//go:embed web/player.html web/hls.min.js
 var webFiles embed.FS
 
 // licenseHost is Spotify's licence service; tests swap it for their own.
@@ -34,12 +34,17 @@ var licenseHost = "https://spclient.wg.spotify.com/widevine-license/v1"
 // commands through Eval, and reports what plays back to the server on
 // 127.0.0.1 it is served from, which passes the media and licences through.
 type Web struct {
-	addr  string
-	win   *mygo.Window
-	cmds  chan string
-	vol   chan float64 // the latest volume only
-	ready chan struct{}
-	once  sync.Once
+	addr     string
+	win      *mygo.Window
+	cmds     chan string
+	vol      chan float64 // the latest volume only
+	ready    chan struct{}
+	once     sync.Once
+	done     chan struct{}
+	stopOnce sync.Once
+	server   *http.Server
+	ctx      context.Context
+	cancel   context.CancelFunc
 
 	mu   sync.Mutex
 	gen  int
@@ -63,7 +68,10 @@ func NewWeb() (*Web, error) {
 		ready: make(chan struct{}),
 		outs:  map[int]*webOut{},
 	}
-	go http.Serve(ln, w)
+	w.done = make(chan struct{})
+	w.ctx, w.cancel = context.WithCancel(context.Background())
+	w.server = &http.Server{Handler: w, BaseContext: func(net.Listener) context.Context { return w.ctx }}
+	go w.server.Serve(ln)
 	w.win = mygo.NewWindow(mygo.WindowOptions{
 		Title: "Vinyl", Width: 320, Height: 240, Hidden: true, SkipTaskbar: true,
 		URL: "http://" + w.addr + "/",
@@ -72,11 +80,36 @@ func NewWeb() (*Web, error) {
 	return w, nil
 }
 
-// run evaluates the commands in order, once the page is ready.
+func (w *Web) Close() {
+	w.stopOnce.Do(func() {
+		if w.done != nil {
+			close(w.done)
+		}
+		if w.cancel != nil {
+			w.cancel()
+		}
+		if w.server != nil {
+			w.server.Close()
+		}
+		if w.win != nil {
+			w.win.Close()
+		}
+		w.mu.Lock()
+		clear(w.outs)
+		w.mu.Unlock()
+	})
+}
+
 func (w *Web) run() {
-	<-w.ready
+	select {
+	case <-w.ready:
+	case <-w.done:
+		return
+	}
 	for {
 		select {
+		case <-w.done:
+			return
 		case js := <-w.cmds:
 			w.eval(js)
 		case v := <-w.vol:
@@ -86,7 +119,7 @@ func (w *Web) run() {
 }
 
 func (w *Web) eval(js string) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(w.ctx, 5*time.Second)
 	defer cancel()
 	if _, err := w.win.Page().EvalContext(ctx, js); err != nil {
 		log.Printf("player: %s: %v", js, err)
@@ -94,6 +127,11 @@ func (w *Web) eval(js string) {
 }
 
 func (w *Web) send(js string) {
+	select {
+	case <-w.done:
+		return
+	default:
+	}
 	select {
 	case w.cmds <- js:
 	default:
@@ -203,6 +241,7 @@ func (w *Web) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 			Type string  `json:"type"`
 			T    float64 `json:"t"`
 			Msg  string  `json:"msg"`
+			Seq  int     `json:"seq"`
 		}
 		if json.NewDecoder(io.LimitReader(r.Body, 8<<10)).Decode(&e) != nil {
 			http.Error(rw, "bad event", http.StatusBadRequest)
@@ -211,7 +250,7 @@ func (w *Web) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		if e.Type == "ready" {
 			w.once.Do(func() { close(w.ready) })
 		} else if o := w.out(e.Gen); o != nil {
-			o.event(e.Type, time.Duration(e.T*float64(time.Second)), e.Msg)
+			o.event(e.Type, time.Duration(e.T*float64(time.Second)), e.Msg, e.Seq)
 		}
 		rw.WriteHeader(http.StatusNoContent)
 	default:
@@ -336,6 +375,7 @@ type webOut struct {
 	running bool // the page plays it: its time moves
 	playing bool // it was asked to play, and has not ended
 	onEnd   func()
+	endSeq  int
 	err     string
 	licence int           // how the licence service last answered
 	wait    time.Duration // how long it asked to wait, with a 429
@@ -420,7 +460,7 @@ func (o *webOut) answered(status int, wait time.Duration) {
 }
 
 // event takes in what the page reports: an event of its audio at t.
-func (o *webOut) event(kind string, t time.Duration, msg string) {
+func (o *webOut) event(kind string, t time.Duration, msg string, seq int) {
 	o.mu.Lock()
 	var end func()
 	switch kind {
@@ -430,6 +470,12 @@ func (o *webOut) event(kind string, t time.Duration, msg string) {
 	case "pause", "waiting":
 		o.running = false
 	case "ended":
+		if seq <= o.endSeq {
+			o.mu.Unlock()
+			return
+		}
+		o.endSeq = seq
+		log.Printf("player: track %d ended seq=%d at=%v duration=%v (%s)", o.gen, seq, t, o.dur, msg)
 		o.running, o.playing = false, false
 		t, end = o.dur, o.onEnd
 	case "retry":

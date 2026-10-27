@@ -263,6 +263,7 @@ var ops = map[string]string{
 	"searchAlbums":                       "202cb3305e31e5a0767ba7925f28bd728cf8f8b0217e6da43909056071cd70e9",
 	"searchPlaylists":                    "d520014e748f9ea44f7707d8df1819867ac1205e8b7f3e28f22fe5fc858921b1",
 	"getTrack":                           "fe16b8083eec2305854db612ca75589bcb71e009dc7a4d014f29bd534a4c01f5",
+	"decorateContextTracks":              "383de00240775c39a6afe0b1055dc562b2a3930894201f9762f3fc32a74971c7",
 	"internalLinkRecommenderTrack":       "642923b2e705fceb9984697c1620fecd42615fd8b116b8a9faf2786b389d3e4a",
 	"queryTrackCreditsGroupedModal":      "f135fb9be58a72d041ab5d214d817021a272405d883860468e2627afb01a3ca9",
 	"browseAll":                          "dbd8b55e09a58afc52eab438bc228ba28fd72ac2f2148c6c26354980e4579001",

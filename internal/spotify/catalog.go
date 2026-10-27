@@ -49,7 +49,11 @@ func (t *Track) ArtistNames() string {
 	return strings.Join(names, ", ")
 }
 
-func (t *Track) Playable() bool        { return !t.Unplayable }
+func (t *Track) Playable() bool { return !t.Unplayable }
+
+// Unnamed reports whether t is known by little more than its URI: without
+// its name, or its artist's, as Connect gives some tracks.
+func (t *Track) Unnamed() bool         { return t.Name == "" || len(t.Artists) == 0 || t.Artists[0].Name == "" }
 func (t *Track) Length() time.Duration { return time.Duration(t.Duration) * time.Millisecond }
 func (t *Track) URI() string           { return "spotify:" + t.kind() + ":" + t.ID }
 
@@ -245,6 +249,44 @@ func tracks(items []*gqlTrack, album *Album) []Track {
 		}
 	}
 	return out
+}
+
+// Decorate names the tracks only the URIs of are known, as of those far
+// down a Connect queue, as the web player does its queue, and those named
+// without their artist, as Connect's state machine sometimes gives them:
+// the others, and those Spotify does not know, as they were.
+func Decorate(list []Track) ([]Track, error) {
+	var uris []string
+	seen := map[string]bool{}
+	for _, t := range list {
+		if t.Unnamed() && !t.Episode && !seen[t.URI()] {
+			seen[t.URI()] = true
+			uris = append(uris, t.URI())
+		}
+	}
+	found := map[string]Track{}
+	for start := 0; start < len(uris); start += 50 {
+		var res struct {
+			Tracks []*gqlTrack `json:"tracks"`
+		}
+		if err := query("decorateContextTracks", map[string]any{"uris": uris[start:min(start+50, len(uris))]}, &res); err != nil {
+			return list, err
+		}
+		for _, t := range res.Tracks {
+			if t != nil && t.Name != "" {
+				found[t.URI] = t.track(nil)
+			}
+		}
+	}
+	out := append([]Track(nil), list...)
+	for i, t := range out {
+		if d, ok := found[t.URI()]; ok && t.Unnamed() {
+			// It says nothing of playability: Spotify queued it to play.
+			d.UID, d.Unplayable = t.UID, false
+			out[i] = d
+		}
+	}
+	return out, nil
 }
 
 // gqlEntity is a card of the home or browse pages: a playlist, an album

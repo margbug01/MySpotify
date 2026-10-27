@@ -24,9 +24,10 @@ import (
 // spotify, again whenever that runs out; shown, it is where the listener
 // signs in. Closed in between, its page gives back the memory it took.
 type signin struct {
-	win   *mygo.Window
-	shown bool // the window shows, for the listener to sign in
-	gen   int  // counts the times it showed, to stop the wait of one closed
+	win     *mygo.Window
+	cookies string
+	shown   bool // the window shows, for the listener to sign in
+	gen     int  // counts the times it showed, to stop the wait of one closed
 }
 
 // captureMu lets one capture use the window at a time.
@@ -105,7 +106,12 @@ func (a *app) renewIdentity() (spotify.Identity, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 	defer cancel()
 	id, err := capture(ctx, w.Page(), false)
+	cookies := ""
+	if err == nil && !id.Anonymous {
+		cookies = accountCookies()
+	}
 	mygo.RunOnMain(func() {
+		a.signin.cookies = cookies
 		if !a.signin.shown {
 			a.closeSignin()
 		}
@@ -180,9 +186,11 @@ func (a *app) openLogin() {
 		if err != nil {
 			return
 		}
+		cookies := accountCookies()
 		spotify.SetIdentity(id)
 		prof, err := spotify.Account()
 		a.post(func() {
+			a.signin.cookies = cookies
 			if gen == s.gen {
 				a.closeSignin()
 			}
@@ -203,9 +211,16 @@ func (a *app) signedIn(prof *spotify.Profile) {
 		// Until loadEmail asks again, for the picture it finds.
 		prof.Email = a.profile.Email
 	}
+	a.mineGen++
+	a.mineLoading, a.mineAgain = false, false
+	a.mineChecked = time.Time{}
 	a.profile = prof
+	if a.win != nil {
+		a.startConnect()
+	}
 	a.liked = nil
 	if !same {
+		a.homeShelves = nil
 		a.mine, a.saved, a.followed = nil, nil, nil
 		a.homeSections, a.homeShortcuts, a.daily = nil, nil, nil
 		a.facets, a.sectionAll = nil, nil
@@ -216,6 +231,7 @@ func (a *app) signedIn(prof *spotify.Profile) {
 	a.playlists = map[string]*spotify.Playlist{}
 	a.plErr = map[string]string{}
 	if prof == nil {
+		a.signin.cookies = ""
 		// Spotify plays nothing to nobody.
 		a.homeLoading, a.homeErr = false, ""
 		a.daily, a.homeSections, a.homeShortcuts, a.charts = nil, nil, nil, nil
@@ -235,20 +251,26 @@ func (a *app) signedIn(prof *spotify.Profile) {
 	a.loadEmail(prof)
 }
 
-// loadEmail asks spotify.com for the listener's email, with the web
-// player's cookies: the settings show it, and its picture on Gravatar
-// stands in for one they have not set on Spotify.
+func accountCookies() string {
+	cookies, err := mygo.Cookies.List(mygo.CookieFilter{URL: spotify.AccountURL})
+	if err != nil {
+		return ""
+	}
+	pairs := make([]string, len(cookies))
+	for i, k := range cookies {
+		pairs[i] = k.Name + "=" + k.Value
+	}
+	return strings.Join(pairs, "; ")
+}
+
 func (a *app) loadEmail(prof *spotify.Profile) {
+	cookies := a.signin.cookies
+	a.signin.cookies = ""
+	if cookies == "" {
+		return
+	}
 	go func() {
-		cookies, err := mygo.Cookies.List(mygo.CookieFilter{URL: spotify.AccountURL})
-		var email string
-		if err == nil {
-			pairs := make([]string, len(cookies))
-			for i, k := range cookies {
-				pairs[i] = k.Name + "=" + k.Value
-			}
-			email, err = spotify.AccountEmail(strings.Join(pairs, "; "))
-		}
+		email, err := spotify.AccountEmail(cookies)
 		if err != nil {
 			log.Printf("account email: %v", err)
 			return
@@ -434,17 +456,65 @@ func (a *app) avatar(c *ui.Context, url string, size float32, empty ui.Color) {
 	box.Children(func() { artImage(c, bmp, size/2, in) })
 }
 
+var userLibrary = spotify.UserLibrary
+
 // loadMine loads the listener's playlists, for the sidebar.
 func (a *app) loadMine(uid string) {
+	if a.quitting || a.profile == nil || a.profile.UserID != uid {
+		return
+	}
+	if a.mineLoading {
+		a.mineAgain = true
+		return
+	}
+	a.mineLoading = true
+	a.mineChecked = time.Now()
+	a.mineGen++
+	gen := a.mineGen
+	get := userLibrary
 	go func() {
-		lib, err := spotify.UserLibrary(uid)
-		a.post(func() {
-			if err == nil && a.profile != nil && a.profile.UserID == uid {
-				a.mine, a.saved, a.followed = lib.Made, lib.Saved, lib.Artists
-				a.keepHome()
-			}
-		})
+		lib, err := get(uid)
+		a.post(func() { a.receiveMine(uid, gen, lib, err) })
 	}()
+}
+
+func (a *app) receiveMine(uid string, gen int, lib *spotify.Library, err error) {
+	if a.quitting || gen != a.mineGen || a.profile == nil || a.profile.UserID != uid {
+		return
+	}
+	a.mineLoading = false
+	if a.mineAgain {
+		a.mineAgain = false
+		a.loadMine(uid)
+		return
+	}
+	if err != nil {
+		log.Printf("library refresh: %v", err)
+		return
+	}
+	if lib != nil {
+		a.mine, a.saved, a.followed = lib.Made, lib.Saved, lib.Artists
+		a.keepHome()
+	}
+}
+
+func (a *app) refreshMine(now time.Time) {
+	if a.quitting || a.profile == nil || a.mineLoading || now.Sub(a.mineChecked) < 5*time.Second {
+		return
+	}
+	a.loadMine(a.profile.UserID)
+}
+
+func (a *app) scheduleMine() {
+	if a.quitting {
+		return
+	}
+	a.mineTimer = time.AfterFunc(30*time.Second, func() {
+		a.post(func() {
+			a.refreshMine(time.Now())
+			a.scheduleMine()
+		})
+	})
 }
 
 // myPlaylists lists the listener's playlists in the sidebar: those they

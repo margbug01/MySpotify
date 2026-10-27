@@ -45,10 +45,15 @@ const (
 type Player struct {
 	post func(func())
 	// Web plays what loads; without it, as in tests, nothing does.
-	Web *Web
+	Web     *Web
+	Cache   *Cache
+	NewWeb  func() (*Web, error)
+	idle    *time.Timer
+	idleGen int
 	// Changed, if set, hears that what plays, where it is or whether it
 	// plays changed.
 	Changed func()
+	Control func(string, any) bool
 
 	queue   []spotify.Track
 	order   []int // the queue's indices in play order: shuffled or not
@@ -81,6 +86,13 @@ type Player struct {
 
 	lyrics       []lyrics.Line
 	lyricsLoaded bool
+	// ahead are the lyrics of the track after this one, fetched as this
+	// one plays: LRCLIB, busy, can take seconds.
+	ahead struct {
+		id    string
+		lines []lyrics.Line
+	}
+	cover []byte // the cover the system shows of the track, once loaded
 
 	// pending holds a seek asked for while the track loads.
 	pending time.Duration
@@ -114,6 +126,7 @@ func New(post func(func())) *Player {
 
 // sync shows the system, and Changed, where playback is.
 func (p *Player) sync() {
+	p.updateIdle()
 	if p.Changed != nil {
 		defer p.Changed()
 	}
@@ -154,6 +167,9 @@ func (p *Player) ended() {
 			p.failed(licence, wait)
 			return
 		}
+	}
+	if p.control("advance", nil) {
+		return
 	}
 	p.throttles = 0
 	if p.repeat == RepeatOne {
@@ -236,6 +252,9 @@ func (p *Player) skip(at, skipped int) {
 
 // PlayQueue replaces the queue with tracks and plays the one at start.
 func (p *Player) PlayQueue(tracks []spotify.Track, start int) {
+	if len(tracks) > 0 && p.control("play", QueueRequest{tracks, min(max(start, 0), len(tracks)-1)}) {
+		return
+	}
 	if len(tracks) == 0 {
 		return
 	}
@@ -420,6 +439,9 @@ func (p *Player) shuffleOrder(first int) {
 }
 
 func (p *Player) ToggleShuffle() {
+	if p.control("shuffle", !p.shuffle) {
+		return
+	}
 	p.shuffle = !p.shuffle
 	if len(p.order) == 0 {
 		return
@@ -436,7 +458,13 @@ func (p *Player) ToggleShuffle() {
 	}
 }
 
-func (p *Player) CycleRepeat() { p.repeat = (p.repeat + 1) % 3 }
+func (p *Player) CycleRepeat() {
+	mode := (p.repeat + 1) % 3
+	if p.control("repeat", mode) {
+		return
+	}
+	p.repeat = mode
+}
 
 // Current returns the track playing or loading, or nil.
 func (p *Player) Current() *spotify.Track { return p.track }
@@ -467,6 +495,9 @@ func (p *Player) Lyrics() ([]lyrics.Line, bool) { return p.lyrics, p.lyricsLoade
 func (p *Player) PlayOrder() ([]int, int) { return p.order, p.at }
 
 func (p *Player) Next() {
+	if p.control("skip_next", nil) {
+		return
+	}
 	if len(p.order) == 0 {
 		return
 	}
@@ -483,6 +514,9 @@ func (p *Player) Next() {
 }
 
 func (p *Player) Prev() {
+	if p.control("skip_prev", nil) {
+		return
+	}
 	if len(p.order) == 0 {
 		return
 	}
@@ -497,6 +531,9 @@ func (p *Player) Prev() {
 // PrevTrack plays the track before this one, however far this one has
 // played, as flicking the cover back does.
 func (p *Player) PrevTrack() {
+	if p.control("skip_prev", nil) {
+		return
+	}
 	if len(p.order) == 0 {
 		return
 	}
@@ -509,6 +546,9 @@ func (p *Player) PrevTrack() {
 
 // Jump plays the queue's track i.
 func (p *Player) Jump(i int) {
+	if i >= 0 && i < len(p.queue) && (p.control("jump", i) || p.control("play", QueueRequest{p.queue, i})) {
+		return
+	}
 	for k, v := range p.order {
 		if v == i {
 			p.load(k)
@@ -519,6 +559,9 @@ func (p *Player) Jump(i int) {
 
 // TogglePlay pauses, fading out, or plays, fading in.
 func (p *Player) TogglePlay() {
+	if p.control("toggle", nil) {
+		return
+	}
 	if p.out == nil {
 		switch {
 		case p.loading || p.waiting:
@@ -564,6 +607,9 @@ const seekGap = 30 * time.Millisecond
 // which the audio player fades over a few milliseconds, rather than
 // cutting from one sound to the other with a click.
 func (p *Player) Seek(t time.Duration) {
+	if p.control("seek", t) {
+		return
+	}
 	if p.out == nil {
 		p.pending = t
 		return
@@ -597,6 +643,9 @@ func (p *Player) Seek(t time.Duration) {
 }
 
 func (p *Player) SetVolume(v float64) {
+	if p.control("volume", v) {
+		return
+	}
 	p.volume = v
 	p.applyGain()
 }
@@ -645,6 +694,47 @@ func (p *Player) Levels() ([Bands]float32, bool) {
 	return lv, true
 }
 
+func (p *Player) updateIdle() {
+	if p.Web == nil || p.playing || p.loading {
+		if p.idle != nil {
+			p.idle.Stop()
+			p.idle = nil
+		}
+		p.idleGen++
+		return
+	}
+	if p.idle != nil {
+		return
+	}
+	p.idleGen++
+	gen := p.idleGen
+	p.idle = time.AfterFunc(5*time.Minute, func() {
+		p.post(func() { p.releaseIdle(gen) })
+	})
+}
+
+func (p *Player) releaseIdle(gen int) {
+	if gen != p.idleGen || p.playing || p.loading || p.Web == nil {
+		return
+	}
+	p.pending = p.Position()
+	p.CloseWeb()
+	p.sync()
+}
+
+func (p *Player) CloseWeb() {
+	if p.idle != nil {
+		p.idle.Stop()
+		p.idle = nil
+	}
+	p.idleGen++
+	p.stop()
+	if p.Web != nil {
+		p.Web.Close()
+		p.Web = nil
+	}
+}
+
 func (p *Player) stop() {
 	if out := p.out; out != nil {
 		// Paused first, it fades out over a few milliseconds, rather than
@@ -667,13 +757,18 @@ func (p *Player) load(at int) {
 func (p *Player) loadSkipping(at, skipped int, play bool, from time.Duration) {
 	gen, t := p.cue(at, play, from)
 	p.loading, p.skipped = true, skipped
+	p.updateIdle()
+	resolveMedia := resolve
 	go func() {
-		m, err := resolve(t.URI())
+		m, err := resolveMedia(t.URI())
 		p.post(func() {
 			if gen != p.gen {
 				return
 			}
 			p.loading = false
+			if err == nil && p.Web == nil && p.NewWeb != nil {
+				p.Web, err = p.NewWeb()
+			}
 			if err == nil && p.Web == nil {
 				err = errNoWeb
 			}
@@ -730,6 +825,7 @@ func (p *Player) cue(at int, play bool, from time.Duration) (int, spotify.Track)
 	p.awaiting, p.waiting = false, false
 	p.lyrics, p.lyricsLoaded = nil, false
 	p.pending = from
+	p.cover = nil
 	p.announce(&t, nil)
 	p.refill()
 
@@ -738,28 +834,52 @@ func (p *Player) cue(at int, play bool, from time.Duration) (int, spotify.Track)
 		if err == nil {
 			p.post(func() {
 				if gen == p.gen {
-					p.announce(&t, cover)
+					// The track as it is now: Connect may have named its
+					// artist since.
+					p.cover = cover
+					p.announce(p.track, cover)
 				}
 			})
 		}
 	}()
 
+	if p.ahead.id == t.ID && len(p.ahead.lines) > 0 {
+		p.lyrics, p.lyricsLoaded = p.ahead.lines, true
+		p.lyricsAhead()
+		return gen, t
+	}
 	go func() {
-		var lines []lyrics.Line
-		// An episode has none, but maybe a transcript.
-		if !t.Episode {
-			if lrc, err := spotify.Lyrics(t.ID); err == nil {
-				lines = lyrics.Build(lrc, "", "")
-			}
-		}
+		lines := lyricsOf(t)
 		p.post(func() {
 			if gen == p.gen {
 				p.lyrics = lines
 				p.lyricsLoaded = true
+				p.lyricsAhead()
 			}
 		})
 	}()
 	return gen, t
+}
+
+// lyricsAhead fetches the lyrics of the track after this one, once this
+// one's are in, so they show as it begins.
+func (p *Player) lyricsAhead() {
+	if !p.lyricsLoaded || p.at+1 >= len(p.order) {
+		return
+	}
+	next := p.queue[p.order[p.at+1]]
+	if next.Episode || p.ahead.id == next.ID {
+		return
+	}
+	p.ahead.id, p.ahead.lines = next.ID, nil
+	go func() {
+		lines := lyricsOf(next)
+		p.post(func() {
+			if p.ahead.id == next.ID {
+				p.ahead.lines = lines
+			}
+		})
+	}()
 }
 
 var errNoWeb = errors.New("no web player to play in")

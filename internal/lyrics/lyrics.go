@@ -20,7 +20,8 @@ type Line struct {
 	Words       []Word
 	// Timed says the words carry their own times, as NetEase's word-timed
 	// lyrics give them; else they share the line's time evenly.
-	Timed bool
+	Timed    bool
+	Unsynced bool
 }
 
 // A Word is a word of a line, or a character of Chinese or Japanese,
@@ -211,6 +212,9 @@ func isCJK(r rune) bool {
 
 // Index returns the line sung at pos, or -1 before the first.
 func Index(lines []Line, pos time.Duration) int {
+	if len(lines) > 0 && lines[0].Unsynced {
+		return -1
+	}
 	i := sort.Search(len(lines), func(i int) bool { return lines[i].At > pos })
 	return i - 1
 }
@@ -224,6 +228,9 @@ type Quiet struct {
 // Quiets returns the stretches of a song length long, of at least least,
 // in which none of lines is sung. Credits, as 作词 and 作曲, are not sung.
 func Quiets(lines []Line, length, least time.Duration) []Quiet {
+	if len(lines) > 0 && lines[0].Unsynced {
+		return nil
+	}
 	var out []Quiet
 	add := func(from, to time.Duration) {
 		if to-from >= least {

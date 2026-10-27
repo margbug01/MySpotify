@@ -78,7 +78,8 @@ func (a *app) notePlayed() {
 		return
 	}
 	a.notePlayedFrom()
-	if len(a.played) > 0 && a.played[0].ID == tr.ID {
+	// Again if Connect named its artist since.
+	if len(a.played) > 0 && a.played[0].ID == tr.ID && a.played[0].ArtistNames() == tr.ArtistNames() {
 		return
 	}
 	t := *tr

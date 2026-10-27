@@ -236,21 +236,44 @@ func (a *app) shortcutTile(c *ui.Context, it *spotify.HomeItem) (ui.Color, bool)
 	return tint, hovered
 }
 
-// shelf is a section of the home page: its title, and as many of its cards
-// as fit across, with a way to see all of them.
+// shelf shows a section's cards in an independently scrolling row.
 func (a *app) shelf(c *ui.Context, s *spotify.HomeSection) {
 	cols := a.columns(c, homeCardMin)
-	ui.Row(c).AlignItems(ui.End).Gap(16).Margin(26, 0, 6, 0).Children(func() {
+	width, _ := c.Size()
+	cardWidth := max(float32(homeCardMin), (width-sidebarWidth-2*pagePad+24)/float32(cols))
+	key := a.homeFacet + ":" + sectionKey(s)
+	if a.homeShelves == nil {
+		a.homeShelves = map[string]*ui.ScrollState{}
+	}
+	state := a.homeShelves[key]
+	if state == nil {
+		state = &ui.ScrollState{}
+		a.homeShelves[key] = state
+	}
+	items := s.Items
+	if all := a.sectionAll[sectionKey(s)]; len(all) > len(items) {
+		items = all
+	}
+	ui.Row(c).AlignItems(ui.Center).Gap(10).Margin(26, 0, 6, 0).Children(func() {
 		ui.Text(c, s.Title).FontSize(22).FontWeight(700).LetterSpacing(-0.4).SingleLine().Grow(1).Shrink(1).MinWidth(0)
-		if max(s.Total, len(s.Items)) > cols && link(c.Key("all"), "显示全部", 13, a.pal.muted, a.pal.text).Clicked() {
+		if len(items) > cols {
+			step := cardWidth * float32(max(1, cols-1))
+			if iconButton(c.Key("left"), iconBack, 16, a.pal.muted, s.Title+"：向左滑动").Disabled(state.X <= 0).Clicked() {
+				state.ScrollTo(max(0, state.X-step), 0, ui.Smooth)
+			}
+			if iconButton(c.Key("right"), iconForward, 16, a.pal.muted, s.Title+"：向右滑动").Disabled(state.X >= state.MaxX && state.MaxX > 0).Clicked() {
+				state.ScrollTo(min(state.MaxX, state.X+step), 0, ui.Smooth)
+			}
+		}
+		if max(s.Total, len(items)) > cols && link(c.Key("all"), "显示全部", 13, a.pal.muted, a.pal.text).Clicked() {
 			a.goTo(route{page: pageSection, section: sectionKey(s)})
 		}
 	})
-	// The cards' padding reaches past the page's, so that their covers line
-	// up with the title.
-	ui.Grid(c).Columns(cols).Margin(0, -12, 0, -12).Children(func() {
-		for i := range s.Items[:min(cols, len(s.Items))] {
-			a.homeCard(c.Key(s.Items[i].ID()), &s.Items[i])
+	ui.ScrollHorizontal(c.Key("shelf:"+key)).TrackScroll(state).Height(cardWidth+80).Margin(0, -12, 0, -12).AlignItems(ui.Start).Children(func() {
+		for i := range items {
+			ui.Column(c.Key(items[i].ID())).Width(cardWidth).Shrink(0).Children(func() {
+				a.homeCard(c.Key("card"), &items[i])
+			})
 		}
 	})
 }

@@ -1,11 +1,13 @@
 package player
 
 import (
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/egoist/mygo/audio"
 
+	"vinyl/internal/lyrics"
 	"vinyl/internal/spotify"
 )
 
@@ -174,5 +176,36 @@ func TestRestoreLoadsOnPlay(t *testing.T) {
 	p.TogglePlay()
 	if !p.Loading() || !p.Playing() || p.Position() != 42*time.Second {
 		t.Fatalf("after play: loading %v playing %v at %v, want loading from 42s", p.Loading(), p.Playing(), p.Position())
+	}
+}
+
+// The next track's lyrics are fetched as this one plays, and show as it
+// begins.
+func TestLyricsOfTheNextTrackAreFetchedAhead(t *testing.T) {
+	var mu sync.Mutex
+	asked := map[string]int{}
+	old := lyricsOf
+	lyricsOf = func(tr spotify.Track) []lyrics.Line {
+		mu.Lock()
+		asked[tr.ID]++
+		mu.Unlock()
+		return []lyrics.Line{{Text: tr.Name}}
+	}
+	defer func() { lyricsOf = old }()
+	ch := make(chan func(), 16)
+	p := New(func(fn func()) { ch <- fn })
+	p.Cue([]spotify.Track{{ID: "one", Name: "One"}, {ID: "two", Name: "Two"}, {ID: "three", Name: "Three"}})
+	p.cue(0, false, 0)
+	next(t, ch) // One's lyrics
+	next(t, ch) // Two's, ahead
+	p.cue(1, false, 0)
+	if lines, loaded := p.Lyrics(); !loaded || len(lines) != 1 || lines[0].Text != "Two" {
+		t.Fatalf("Two began without its lyrics: %v %v", lines, loaded)
+	}
+	next(t, ch) // Three's, ahead
+	mu.Lock()
+	defer mu.Unlock()
+	if asked["one"] != 1 || asked["two"] != 1 || asked["three"] != 1 {
+		t.Fatalf("asked %v", asked)
 	}
 }

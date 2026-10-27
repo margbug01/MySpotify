@@ -99,3 +99,37 @@ func TestHomeFeedKeepsSpotifysSections(t *testing.T) {
 		t.Errorf("album = %+v", al)
 	}
 }
+
+// Decorate names only the tracks without names, keeping their places in the
+// queue, and does not take them for unplayable for want of a playability.
+func TestDecorateNamesWhatIsOnlyAURI(t *testing.T) {
+	var asked []any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var q struct {
+			Variables map[string][]any `json:"variables"`
+		}
+		json.NewDecoder(r.Body).Decode(&q)
+		asked = q.Variables["uris"]
+		fmt.Fprint(w, `{"data":{"tracks":[{"__typename":"Track","uri":"spotify:track:b","name":"B","duration":{"totalMilliseconds":1000},"artists":{"items":[{"profile":{"name":"Singer"},"uri":"spotify:artist:s"}]},"albumOfTrack":{"uri":"spotify:album:x","name":"X"}},{"__typename":"Track","uri":"spotify:track:c","name":"C","artists":{"items":[{"profile":{"name":"Singer"},"uri":"spotify:artist:s"}]}}]}}`)
+	}))
+	defer srv.Close()
+	pf := pathfinderURL
+	pathfinderURL = srv.URL
+	SetIdentity(Identity{Token: "t", Expires: time.Now().Add(time.Hour)})
+	defer func() {
+		pathfinderURL = pf
+		SetIdentity(Identity{})
+	}()
+
+	// b only by URI, twice; c named without its artist, as Connect can.
+	got, err := Decorate([]Track{{ID: "a", Name: "A", UID: "ua", Artists: []Artist{{Name: "Someone"}}}, {ID: "b", UID: "ub"}, {ID: "b", UID: "ub2"}, {ID: "c", Name: "C", Artists: []Artist{{ID: "spotify:artist:s"}}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(asked) != 2 || asked[0] != "spotify:track:b" || asked[1] != "spotify:track:c" {
+		t.Fatalf("asked of %v", asked)
+	}
+	if got[0].Name != "A" || got[1].Name != "B" || got[1].UID != "ub" || got[2].UID != "ub2" || got[1].ArtistNames() != "Singer" || got[1].Duration != 1000 || !got[1].Playable() || got[3].ArtistNames() != "Singer" {
+		t.Fatalf("decorated %+v", got)
+	}
+}

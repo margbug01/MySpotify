@@ -171,6 +171,41 @@ func init() {
 				}
 				time.Sleep(250 * time.Millisecond)
 			}
+			if os.Getenv("NM_SCENE") == "connect" {
+				events := make(chan spotify.ConnectEvent, 32)
+				client := spotify.NewConnect(fmt.Sprintf("%040x", time.Now().UnixNano()), "Vinyl · 连接验证", func(e spotify.ConnectEvent) {
+					select {
+					case events <- e:
+					default:
+					}
+				})
+				client.Start()
+				timer := time.NewTimer(35 * time.Second)
+				ready := map[string]bool{}
+			probe:
+				for {
+					select {
+					case e := <-events:
+						if e.Err != nil {
+							fmt.Println("connect probe:", e.Kind, e.Err)
+						} else {
+							fmt.Println("connect probe:", e.Kind)
+						}
+						ready[e.Kind] = true
+						if ready["observer_ready"] && ready["receiver_ready"] {
+							fmt.Println("connect probe: registration verified")
+							break probe
+						}
+					case <-timer.C:
+						fmt.Println("connect probe: timeout")
+						break probe
+					}
+				}
+				timer.Stop()
+				client.Close()
+				mygo.RunOnMain(mygo.App.Quit)
+				return
+			}
 			if os.Getenv("NM_SCENE") == "identity" {
 				// The identity the app signed in with, as CaptureJS notes it,
 				// for spotify's TestLive (LIVE=<dir>/identity.json): nothing plays.

@@ -295,6 +295,21 @@ func (a *app) lyricsPane(c *ui.Context, tr *spotify.Track, h float32) {
 		})
 		return
 	}
+	if lines[0].Unsynced {
+		if a.lyricTrack != tr.ID {
+			a.lyricTrack, a.lyricAt = tr.ID, -2
+			a.lyricScroll, a.lyricGlide = ui.ScrollState{}, lyricGlide{}
+		}
+		ui.Scroll(c.Key("plain-lyrics")).Grow(1).TrackScroll(&a.lyricScroll).Padding(0, 8, 24, 0).Children(func() {
+			ui.Column(c).Gap(16).Padding(10, 12).Children(func() {
+				ui.Text(c, "LRCLIB · 无时间轴歌词").FontSize(13).TextColor(white.Alpha(0.5))
+				for _, line := range lines {
+					ui.Text(c, line.Text).FontSize(30).FontWeight(800).LineHeight(1.25).TextColor(white.Alpha(0.85))
+				}
+			})
+		})
+		return
+	}
 	pos := pl.Position()
 	cur := lyrics.Index(lines, pos)
 	// Redraw as the next line begins.
@@ -496,5 +511,5 @@ func (a *app) queuePane(c *ui.Context) {
 		if row.Clicked() && tr.Playable() && !playing {
 			pl.Jump(i)
 		}
-	}).Grow(1).Padding(8, 0, 40, 0).Gap(2)
+	}).Grow(1).Padding(8, 14, 40, 0).Gap(2) // the right, the scrollbar's: it does not cover the rows
 }
