@@ -474,6 +474,12 @@ func (a *app) dailyBlurb() string {
 func (a *app) dailyPage(c *ui.Context) {
 	loading := len(a.daily) == 0
 	if loading && !a.homeLoading {
+		// The day's songs are the listener's own mix: Spotify makes none
+		// for a visitor, so signed out the page asks who is listening.
+		if a.profile == nil {
+			a.centered(c, "登录后每天都有为你挑的歌", a.openLogin)
+			return
+		}
 		a.centered(c, "暂时没有推荐", a.loadHome)
 		return
 	}
