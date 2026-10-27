@@ -92,6 +92,14 @@ type Player struct {
 		id    string
 		lines []lyrics.Line
 	}
+	// upNext is the track after this one resolved as this one plays
+	// (mediaAhead): its media, and when, as its CDN URLs are signed for a
+	// while.
+	upNext struct {
+		id string
+		m  *spotify.Media
+		at time.Time
+	}
 	cover []byte // the cover the system shows of the track, once loaded
 
 	// pending holds a seek asked for while the track loads.
@@ -759,6 +767,9 @@ func (p *Player) loadSkipping(at, skipped int, play bool, from time.Duration) {
 	p.loading, p.skipped = true, skipped
 	p.updateIdle()
 	resolveMedia := resolve
+	if m := p.takeAhead(t.ID); m != nil {
+		resolveMedia = func(string) (*spotify.Media, error) { return m, nil }
+	}
 	go func() {
 		m, err := resolveMedia(t.URI())
 		p.post(func() {
@@ -784,6 +795,7 @@ func (p *Player) loadSkipping(at, skipped int, play bool, from time.Duration) {
 				return
 			}
 			p.out = p.Web.Open(m)
+			p.mediaAhead()
 			// From its middle, as a session picked up again, it fades in.
 			level := 1.0
 			if p.pending > 0 {
@@ -880,6 +892,63 @@ func (p *Player) lyricsAhead() {
 			}
 		})
 	}()
+}
+
+// aheadDelay is how long after a track opens the next one is resolved:
+// once this one's start has come, so as not to slow it.
+var aheadDelay = 3 * time.Second
+
+// aheadFresh is how long media resolved ahead is played from: its CDN URLs
+// are signed for a while.
+const aheadFresh = 10 * time.Minute
+
+// mediaAhead resolves the track after this one as this one starts, and has
+// the web player fetch the start of its file: the next track then starts
+// without waiting on the service or the CDN, only on its licence. Only a
+// web player that serves its page fetches ahead.
+func (p *Player) mediaAhead() {
+	if p.Web == nil || p.Web.server == nil || len(p.order) < 2 {
+		return
+	}
+	// The one Next goes to: after the last, the first, but for a radio,
+	// which goes on with what its feed gives.
+	at := p.at + 1
+	if at >= len(p.order) {
+		if p.feed != nil {
+			return
+		}
+		at = 0
+	}
+	next := p.queue[p.order[at]]
+	if p.upNext.id == next.ID {
+		return
+	}
+	p.upNext.id, p.upNext.m = next.ID, nil
+	resolveMedia, web := resolve, p.Web
+	time.AfterFunc(aheadDelay, func() {
+		m, err := resolveMedia(next.URI())
+		if err != nil {
+			log.Printf("player: ahead %s: %v", next.URI(), err)
+			return
+		}
+		p.post(func() {
+			if p.upNext.id == next.ID {
+				p.upNext.m, p.upNext.at = m, time.Now()
+			}
+		})
+		web.Prefetch(m)
+	})
+}
+
+// takeAhead returns the media of track id resolved ahead, if it is still
+// fresh, and forgets it.
+func (p *Player) takeAhead(id string) *spotify.Media {
+	m, at := p.upNext.m, p.upNext.at
+	if p.upNext.id != id || m == nil || time.Since(at) > aheadFresh {
+		return nil
+	}
+	p.upNext.id, p.upNext.m = "", nil
+	return m
 }
 
 var errNoWeb = errors.New("no web player to play in")

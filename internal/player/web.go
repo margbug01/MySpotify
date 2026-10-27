@@ -47,6 +47,8 @@ type Web struct {
 	mu   sync.Mutex
 	gen  int
 	outs map[int]*webOut
+	// heads are the starts of files fetched ahead of playing (Prefetch).
+	heads []*head
 
 	// Cache, if set, keeps the parts of tracks the page asks for.
 	Cache *Cache
@@ -277,7 +279,7 @@ func (w *Web) serveMedia(rw http.ResponseWriter, r *http.Request, rest string) {
 		return
 	}
 	rg := r.Header.Get("Range")
-	if w.Cache.serve(rw, o.sources[i], rg) {
+	if w.serveHead(rw, o.sources[i], rg) || w.Cache.serve(rw, o.sources[i], rg) {
 		return
 	}
 	req, _ := http.NewRequestWithContext(r.Context(), http.MethodGet, o.sources[i], nil)
