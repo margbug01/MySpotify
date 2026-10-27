@@ -48,6 +48,9 @@ type Player struct {
 	Web     *Web
 	Cache   *Cache
 	NewWeb  func() (*Web, error)
+	// Video plays music videos, made by NewVideo the first time one plays.
+	Video    *Web
+	NewVideo func() (*Web, error)
 	idle    *time.Timer
 	idleGen int
 	// Changed, if set, hears that what plays, where it is or whether it
@@ -72,6 +75,12 @@ type Player struct {
 
 	track   *spotify.Track
 	out     Output
+	// media is where the track's audio is, once resolved; video whether
+	// its music video plays rather than its audio, when it has one, and
+	// showsVideo whether out is the video.
+	media      *spotify.Media
+	video      bool
+	showsVideo bool
 	fade    fader
 	loading bool
 	playing bool // what the listener wants: false while paused
@@ -172,6 +181,10 @@ func (p *Player) ended() {
 		Fault() (string, int, time.Duration)
 	}); ok {
 		if msg, licence, wait := f.Fault(); msg != "" {
+			if p.showsVideo {
+				p.videoFailed(msg)
+				return
+			}
 			p.failed(licence, wait)
 			return
 		}
@@ -678,6 +691,10 @@ func (p *Player) Duration() time.Duration {
 	if p.track == nil {
 		return 0
 	}
+	if p.showsVideo && p.out != nil {
+		// The video's own: it can run longer than the song, or shorter.
+		return p.out.Duration()
+	}
 	return p.track.Length()
 }
 
@@ -751,6 +768,7 @@ func (p *Player) stop() {
 		time.AfterFunc(100*time.Millisecond, out.Close)
 	}
 	p.out = nil
+	p.showsVideo = false
 	p.seeking = false
 	p.fade.attach(nil, 1)
 }
@@ -770,8 +788,13 @@ func (p *Player) loadSkipping(at, skipped int, play bool, from time.Duration) {
 	if m := p.takeAhead(t.ID); m != nil {
 		resolveMedia = func(string) (*spotify.Media, error) { return m, nil }
 	}
+	video := p.video
 	go func() {
 		m, err := resolveMedia(t.URI())
+		var v *spotify.Video
+		if err == nil && video && m.Video != "" {
+			v = videoOf(m)
+		}
 		p.post(func() {
 			if gen != p.gen {
 				return
@@ -794,33 +817,133 @@ func (p *Player) loadSkipping(at, skipped int, play bool, from time.Duration) {
 				p.skip(at, skipped)
 				return
 			}
-			p.out = p.Web.Open(m)
+			p.media = m
+			p.open(gen, m, v)
 			p.mediaAhead()
-			// From its middle, as a session picked up again, it fades in.
-			level := 1.0
-			if p.pending > 0 {
-				level = 0
-			}
-			p.fade.attach(p.out, level)
-			p.applyGain()
-			p.out.OnEnd(func() {
-				p.post(func() {
-					if gen == p.gen {
-						p.ended()
-					}
-				})
-			})
-			if p.pending > 0 {
-				p.out.Seek(p.pending)
-				p.pending = 0
-			}
-			if p.playing {
-				p.out.Play()
-				p.fade.fade(1, fadeIn, nil)
-			}
-			p.sync()
 		})
 	}()
+}
+
+// open plays the current track, of load gen, from p.pending: its music
+// video v, if there is one to play and somewhere to play it, or else its
+// audio m.
+func (p *Player) open(gen int, m *spotify.Media, v *spotify.Video) {
+	if v != nil && p.Video == nil && p.NewVideo != nil {
+		var err error
+		if p.Video, err = p.NewVideo(); err != nil {
+			log.Printf("player: video: %v", err)
+		}
+	}
+	if v != nil && p.Video != nil {
+		p.out, p.showsVideo = p.Video.OpenVideo(v), true
+	} else {
+		if p.Web == nil && p.NewWeb != nil {
+			var err error
+			if p.Web, err = p.NewWeb(); err != nil {
+				log.Printf("player: %v", err)
+			}
+		}
+		if p.Web == nil {
+			p.err, p.playing = "这首歌暂时无法播放", false
+			p.sync()
+			return
+		}
+		p.out = p.Web.Open(m)
+	}
+	// From its middle, as a session picked up again, it fades in.
+	level := 1.0
+	if p.pending > 0 {
+		level = 0
+	}
+	p.fade.attach(p.out, level)
+	p.applyGain()
+	p.out.OnEnd(func() {
+		p.post(func() {
+			if gen == p.gen {
+				p.ended()
+			}
+		})
+	})
+	if p.pending > 0 {
+		// Not past the end, as a video shorter than the song would be.
+		p.out.Seek(min(p.pending, max(p.out.Duration()-time.Second, 0)))
+		p.pending = 0
+	}
+	if p.playing {
+		p.out.Play()
+		p.fade.fade(1, fadeIn, nil)
+	}
+	p.sync()
+}
+
+// videoOf resolves m's music video, nil if it can't be: the song plays.
+func videoOf(m *spotify.Media) *spotify.Video {
+	v, err := resolveVideo(m.Video)
+	if err != nil {
+		log.Printf("player: video %s: %v", m.Video, err)
+	}
+	return v
+}
+
+// HasVideo reports whether the current track has a music video, as far as
+// is known: once its media is resolved.
+func (p *Player) HasVideo() bool { return p.media != nil && p.media.Video != "" }
+
+// VideoOn reports whether music videos play, for the tracks that have one.
+func (p *Player) VideoOn() bool { return p.video }
+
+// ShowsVideo reports whether the current track's music video plays, in
+// Video's page.
+func (p *Player) ShowsVideo() bool { return p.showsVideo && p.out != nil }
+
+// SetVideo plays music videos rather than the songs, or the songs again:
+// the current track's from where it is, and the tracks after it.
+func (p *Player) SetVideo(on bool) {
+	if p.video == on {
+		return
+	}
+	p.video = on
+	p.reopen()
+}
+
+// reopen plays the current track again from where it is: its music video
+// or its audio, as p.video says. Not playing or loading yet, it loads as
+// that says once it plays.
+func (p *Player) reopen() {
+	if p.out == nil || p.media == nil || p.showsVideo == (p.video && p.media.Video != "") {
+		p.sync()
+		return
+	}
+	m, gen, from := p.media, p.gen, p.Position()
+	p.stop()
+	p.pending = from
+	if !p.video {
+		p.open(gen, m, nil)
+		return
+	}
+	p.loading = true
+	go func() {
+		v := videoOf(m)
+		p.post(func() {
+			if gen != p.gen || p.out != nil {
+				return
+			}
+			p.loading = false
+			if v == nil {
+				p.video, p.err = false, "MV 暂时无法播放"
+			}
+			p.open(gen, m, v)
+		})
+	}()
+	p.sync()
+}
+
+// videoFailed goes back to the song from a music video that could not
+// play, from where the video was.
+func (p *Player) videoFailed(msg string) {
+	log.Printf("player: video failed, the song plays: %s", msg)
+	p.video, p.err = false, "MV 暂时无法播放"
+	p.reopen()
 }
 
 // cue makes the track at order[at] the current one, at from, to play or
@@ -834,6 +957,7 @@ func (p *Player) cue(at int, play bool, from time.Duration) (int, spotify.Track)
 	t := p.queue[p.order[at]]
 	p.track = &t
 	p.loading, p.playing, p.err = false, play, ""
+	p.media = nil
 	p.awaiting, p.waiting = false, false
 	p.lyrics, p.lyricsLoaded = nil, false
 	p.pending = from
@@ -953,8 +1077,12 @@ func (p *Player) takeAhead(id string) *spotify.Media {
 
 var errNoWeb = errors.New("no web player to play in")
 
-// resolve finds where a track's audio is; tests swap it.
-var resolve = spotify.ResolveMedia
+// resolve finds where a track's audio is, and resolveVideo its music
+// video; tests swap them.
+var (
+	resolve      = spotify.ResolveMedia
+	resolveVideo = spotify.ResolveVideo
+)
 
 // Session is where playback was left, to pick up again.
 type Session struct {

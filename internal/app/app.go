@@ -291,6 +291,9 @@ func Run() error {
 			BackgroundColor:      "light-dark(#ffffff, #141416)",
 			Content:              ui.View(a.view),
 		})
+		// Music videos play in a web view of the window, which Now Playing
+		// shows where the cover goes.
+		a.pl.NewVideo = func() (*player.Web, error) { return player.NewVideoWeb(a.win) }
 		// What the home page and the sidebar showed last time shows at
 		// once, while the app signs in and loads them again. Not before the
 		// window: their covers, from disk, would load as it lays out its

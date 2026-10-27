@@ -1,14 +1,21 @@
 <!doctype html>
 <meta charset="utf-8">
 <title>Vinyl</title>
+<style>
+/* A music video's page shows its picture, filling the web view. */
+html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+video { display: block; width: 100%; height: 100%; object-fit: contain; }
+</style>
 <script src="/hls.js"></script>
 <script>
 // Plays what Vinyl asks, one track at a time, each in an audio element of
-// its own, so that the events of one gone never pass for the next's.
+// its own, so that the events of one gone never pass for the next's: a
+// video element in the page that plays music videos, which shows it.
 let cur = null, volume = 1;
 // keySystem decrypts what plays: Widevine, or FairPlay where WebKit plays.
 const ks = typeof location === 'undefined' ? null : /[?&]ks=([^&]*)/.exec(location.search);
 const keySystem = ks ? decodeURIComponent(ks[1]) : 'com.widevine.alpha';
+const videoPage = typeof location !== 'undefined' && /[?&]video=1(&|$)/.test(location.search);
 const send = (gen, type, t, msg) => fetch('/event', {
   method: 'POST',
   body: JSON.stringify({ gen, type, t: t || 0, msg: msg || '' }),
@@ -86,14 +93,18 @@ function nativeFairPlay(gen, a) {
 window.vinyl = {
   load(gen) {
     vinyl.unload(cur && cur.gen);
-    const a = document.createElement('audio');
+    const a = document.createElement(videoPage ? 'video' : 'audio');
     a.volume = volume;
+    a.playsInline = true;
     document.body.append(a);
     const hls = keySystem === 'com.apple.fps.1_0' ? nativeFairPlay(gen, a) : new Hls({
       emeEnabled: true,
       maxBufferLength: 30,
       maxMaxBufferLength: 60,
-      maxBufferSize: 2 * 1024 * 1024,
+      // A video's 30 seconds take megabytes; its size no larger than it
+      // shows.
+      maxBufferSize: (videoPage ? 60 : 2) * 1024 * 1024,
+      capLevelToPlayerSize: videoPage,
       backBufferLength: 30,
       drmSystems: { [keySystem]: { licenseUrl: '/license?gen=' + gen, serverCertificateUrl: '/cert?gen=' + gen } },
     });

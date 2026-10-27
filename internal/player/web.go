@@ -34,6 +34,7 @@ var webFiles embed.FS
 type Web struct {
 	addr     string
 	win      *mygo.Window
+	view     *mygo.WebView // the page of NewVideoWeb, in its host's view
 	cmds     chan string
 	vol      chan float64 // the latest volume only
 	ready    chan struct{}
@@ -57,6 +58,43 @@ type Web struct {
 // NewWeb starts the page that plays, in a window never shown. It runs on
 // the main thread, once the app is ready.
 func NewWeb() (*Web, error) {
+	w, err := listen()
+	if err != nil {
+		return nil, err
+	}
+	w.win = mygo.NewWindow(mygo.WindowOptions{
+		Title: "Vinyl", Width: 320, Height: 240, Hidden: true, SkipTaskbar: true,
+		URL: "http://" + w.addr + "/?ks=" + keySystem,
+	})
+	go w.run()
+	return w, nil
+}
+
+// NewVideoWeb starts a page that plays music videos (OpenVideo), the
+// picture filling it, in a web view of host's, which host's view shows
+// where it places View with ui.WebView. It runs on the main thread.
+func NewVideoWeb(host *mygo.Window) (*Web, error) {
+	w, err := listen()
+	if err != nil {
+		return nil, err
+	}
+	w.view, err = host.NewWebView(mygo.WebViewOptions{
+		URL:             "http://" + w.addr + "/?video=1&ks=" + keySystem,
+		BackgroundColor: "#000000",
+	})
+	if err != nil {
+		w.Close()
+		return nil, err
+	}
+	go w.run()
+	return w, nil
+}
+
+// View is the web view of NewVideoWeb's page, nil for NewWeb's.
+func (w *Web) View() *mygo.WebView { return w.view }
+
+// listen serves a page on 127.0.0.1, for a web view to load.
+func listen() (*Web, error) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		return nil, err
@@ -72,11 +110,6 @@ func NewWeb() (*Web, error) {
 	w.ctx, w.cancel = context.WithCancel(context.Background())
 	w.server = &http.Server{Handler: w, BaseContext: func(net.Listener) context.Context { return w.ctx }}
 	go w.server.Serve(ln)
-	w.win = mygo.NewWindow(mygo.WindowOptions{
-		Title: "Vinyl", Width: 320, Height: 240, Hidden: true, SkipTaskbar: true,
-		URL: "http://" + w.addr + "/?ks=" + keySystem,
-	})
-	go w.run()
 	return w, nil
 }
 
@@ -93,6 +126,9 @@ func (w *Web) Close() {
 		}
 		if w.win != nil {
 			w.win.Close()
+		}
+		if w.view != nil {
+			w.view.Destroy()
 		}
 		w.mu.Lock()
 		clear(w.outs)
@@ -121,7 +157,11 @@ func (w *Web) run() {
 func (w *Web) eval(js string) {
 	ctx, cancel := context.WithTimeout(w.ctx, 5*time.Second)
 	defer cancel()
-	if _, err := w.win.Page().EvalContext(ctx, js); err != nil {
+	page := w.win.Page
+	if w.view != nil {
+		page = w.view.Page
+	}
+	if _, err := page().EvalContext(ctx, js); err != nil {
 		log.Printf("player: %s: %v", js, err)
 	}
 }
@@ -168,19 +208,49 @@ func (w *Web) Open(m *spotify.Media) Output {
 	return o
 }
 
+// OpenVideo loads v to play, paused at its start, and returns what plays
+// it: its master playlist is the track's, its other playlists beside it.
+func (w *Web) OpenVideo(v *spotify.Video) Output {
+	o := &webOut{w: w, dur: v.Duration, at: time.Now(), license: v.License, video: true}
+	w.mu.Lock()
+	w.gen++
+	o.gen = w.gen
+	l := localizer{prefix: "/m/" + strconv.Itoa(o.gen) + "/", index: map[string]int{}}
+	o.manifest, o.playlists = v.Master, map[string]string{}
+	for name, pl := range v.Playlists {
+		o.playlists[name] = l.local(pl)
+	}
+	o.sources = l.sources
+	w.outs[o.gen] = o
+	w.mu.Unlock()
+	w.send(fmt.Sprintf("vinyl.load(%d)", o.gen))
+	return o
+}
+
 // localManifest points the manifest's init section and segments at the
 // server, under prefix, and returns where they really are.
 func localManifest(manifest, prefix string) (string, []string) {
-	var sources []string
-	index := map[string]int{}
+	l := localizer{prefix: prefix, index: map[string]int{}}
+	return l.local(manifest), l.sources
+}
+
+// localizer points manifests at the server, under prefix, numbering what
+// they name in sources.
+type localizer struct {
+	prefix  string
+	sources []string
+	index   map[string]int
+}
+
+func (l *localizer) local(manifest string) string {
 	local := func(u string) string {
-		i, ok := index[u]
+		i, ok := l.index[u]
 		if !ok {
-			i = len(sources)
-			index[u] = i
-			sources = append(sources, u)
+			i = len(l.sources)
+			l.index[u] = i
+			l.sources = append(l.sources, u)
 		}
-		return prefix + strconv.Itoa(i)
+		return l.prefix + strconv.Itoa(i)
 	}
 	var out []string
 	sc := bufio.NewScanner(strings.NewReader(manifest))
@@ -197,7 +267,7 @@ func localManifest(manifest, prefix string) (string, []string) {
 		}
 		out = append(out, line)
 	}
-	return strings.Join(out, "\n") + "\n", sources
+	return strings.Join(out, "\n") + "\n"
 }
 
 func (w *Web) out(gen int) *webOut {
@@ -231,7 +301,19 @@ func (w *Web) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	case strings.HasPrefix(p, "/m/"):
 		w.serveMedia(rw, r, strings.TrimPrefix(p, "/m/"))
 	case p == "/license" && r.Method == http.MethodPost:
-		w.forward(rw, r, http.MethodPost, licenseHost+"/audio/license"+licenseQuery)
+		gen, _ := strconv.Atoi(r.URL.Query().Get("gen"))
+		o := w.out(gen)
+		if o == nil {
+			// Closed, its page about to unload it: Spotify isn't asked for
+			// a licence nothing plays, nor a video's at a song's address.
+			http.Error(rw, "gone", http.StatusGone)
+			return
+		}
+		target := licenseHost + "/audio/license" + licenseQuery
+		if o.license != "" {
+			target = licenseOrigin + o.license
+		}
+		w.forward(rw, r, http.MethodPost, target)
 	case p == "/cert":
 		w.forward(rw, r, http.MethodGet, licenseHost+"/application-certificate")
 
@@ -268,9 +350,12 @@ func (w *Web) serveMedia(rw http.ResponseWriter, r *http.Request, rest string) {
 		http.NotFound(rw, r)
 		return
 	}
-	if part == "track.m3u8" {
+	if pl, ok := o.playlists[part]; ok || part == "track.m3u8" {
+		if !ok {
+			pl = o.manifest
+		}
 		rw.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
-		io.WriteString(rw, o.manifest)
+		io.WriteString(rw, pl)
 		return
 	}
 	i, err := strconv.Atoi(part)
@@ -279,7 +364,13 @@ func (w *Web) serveMedia(rw http.ResponseWriter, r *http.Request, rest string) {
 		return
 	}
 	rg := r.Header.Get("Range")
-	if w.serveHead(rw, o.sources[i], rg) || w.Cache.serve(rw, o.sources[i], rg) {
+	// A video's segments, megabytes each, are not kept: the cache is for
+	// songs.
+	cache := w.Cache
+	if o.video {
+		cache = nil
+	}
+	if !o.video && w.serveHead(rw, o.sources[i], rg) || cache.serve(rw, o.sources[i], rg) {
 		return
 	}
 	req, _ := http.NewRequestWithContext(r.Context(), http.MethodGet, o.sources[i], nil)
@@ -298,10 +389,14 @@ func (w *Web) serveMedia(rw http.ResponseWriter, r *http.Request, rest string) {
 		}
 	}
 	rw.WriteHeader(res.StatusCode)
-	k := w.Cache.keep(o.sources[i], rg, res)
+	k := cache.keep(o.sources[i], rg, res)
 	_, err = io.Copy(rw, io.TeeReader(res.Body, k))
 	k.done(err == nil)
 }
+
+// licenseOrigin is where a music video's licence path (spotify.Video's
+// License) is; tests swap it for their own.
+var licenseOrigin = "https://spclient.wg.spotify.com"
 
 // forward sends the key system's request to Spotify's licence
 // service, as the web player: once more, renewed, if the service turned
@@ -368,6 +463,11 @@ type webOut struct {
 	dur      time.Duration
 	manifest string
 	sources  []string
+	// A music video's: the playlists its manifest names, where its licence
+	// comes from on spclient, and that it is one.
+	playlists map[string]string
+	license   string
+	video     bool
 
 	mu      sync.Mutex
 	pos     time.Duration // where it was at at

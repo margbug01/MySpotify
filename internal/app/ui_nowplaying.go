@@ -131,7 +131,11 @@ func (a *app) nowPlayingBody(c *ui.Context, tr *spotify.Track, art *artwork, acc
 			var coverTop float32
 			ui.Column(c).Width(side).Justify(ui.Center).Gap(0).Children(func() {
 				coverTop = ui.Box(c.Key("cover-top")).Height(0).LayoutBounds().Y
-				a.npCover(c, tr, art, coverSize)
+				if pl.ShowsVideo() && pl.Video != nil && pl.Video.View() != nil {
+					a.npVideo(c, side, coverSize)
+				} else {
+					a.npCover(c, tr, art, coverSize)
+				}
 
 				ui.Row(c).Gap(8).AlignItems(ui.Center).Margin(36, 0, 18, 0).Children(func() {
 					ui.Column(c).Grow(1).Shrink(1).MinWidth(0).Gap(4).Children(func() {
@@ -149,6 +153,9 @@ func (a *app) nowPlayingBody(c *ui.Context, tr *spotify.Track, art *artwork, acc
 							}
 						})
 					})
+					if pl.HasVideo() {
+						a.mvButton(c)
+					}
 					a.likeButton(c.Key("like"), tr, 22, white.Alpha(0.7))
 					a.songMenu(c.Key("more"), tr, 22, white.Alpha(0.7)).Margin(0, -8, 0, 0)
 				})

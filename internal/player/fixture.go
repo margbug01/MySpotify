@@ -45,3 +45,7 @@ func (p *Player) Attach(out *audio.Player) {
 type audioOut struct{ *audio.Player }
 
 func (o audioOut) SetVolume(v float64) { o.Player.SetVolume(v) }
+
+// SetMedia gives the current track its media, as resolved: whether it has
+// a music video.
+func (p *Player) SetMedia(m *spotify.Media) { p.media = m }
