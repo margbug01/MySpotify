@@ -198,9 +198,9 @@ func TestVideoGoesOnWithTheNextTrack(t *testing.T) {
 	}
 }
 
-// A music video a few seconds longer than its song most likely opens with
-// them: it picks up that much further on than the song is, back to the
-// song the song plays on that much less far, and the lyrics follow the
+// A music video a few seconds longer than its song is taken to open with
+// half of them: it picks up that much further on than the song is, back to
+// the song the song plays on that much less far, and the lyrics follow the
 // song. A lead the listener set goes first.
 func TestVideoRunsAheadOfTheSong(t *testing.T) {
 	// Four seconds shorter than its video.
@@ -208,14 +208,14 @@ func TestVideoRunsAheadOfTheSong(t *testing.T) {
 	p.out.Seek(30 * time.Second)
 	p.SetVideo(true)
 	until(t, ch, p.ShowsVideo)
-	if p.VideoLead() != 4*time.Second || p.Position() != 34*time.Second || p.SongPosition() != 30*time.Second {
+	if p.VideoLead() != 2*time.Second || p.Position() != 32*time.Second || p.SongPosition() != 30*time.Second {
 		t.Fatalf("video ahead by %v, at %v, the song at %v", p.VideoLead(), p.Position(), p.SongPosition())
 	}
-	if cmds := sent(p.Video); !slices.Contains(cmds, "vinyl.seek(1,34.000)") {
+	if cmds := sent(p.Video); !slices.Contains(cmds, "vinyl.seek(1,32.000)") {
 		t.Fatalf("the video's page was asked %q", cmds)
 	}
 	p.Leads = func(id string) (time.Duration, bool) { return 6 * time.Second, id == "1" }
-	if p.VideoLead() != 6*time.Second || p.SongPosition() != 28*time.Second {
+	if p.VideoLead() != 6*time.Second || p.SongPosition() != 26*time.Second {
 		t.Fatalf("the listener's lead: ahead by %v, the song at %v", p.VideoLead(), p.SongPosition())
 	}
 	p.out.Seek(50 * time.Second)
@@ -226,12 +226,12 @@ func TestVideoRunsAheadOfTheSong(t *testing.T) {
 }
 
 // Only a video a few seconds longer than its song is taken to open with
-// them.
+// some of them, half.
 func TestLeadGuess(t *testing.T) {
 	song := &spotify.Track{Duration: 170000}
 	for _, c := range []struct{ video, want time.Duration }{
-		{172900 * time.Millisecond, 2900 * time.Millisecond},
-		{180 * time.Second, 10 * time.Second},
+		{172900 * time.Millisecond, 1450 * time.Millisecond},
+		{180 * time.Second, 5 * time.Second},
 		{170 * time.Second, 0},
 		{165 * time.Second, 0},
 		{200 * time.Second, 0},
@@ -242,5 +242,21 @@ func TestLeadGuess(t *testing.T) {
 	}
 	if got := leadGuess(&spotify.Track{}, &spotify.Video{Duration: 3 * time.Second}); got != 0 {
 		t.Errorf("a song of no known length: %v ahead", got)
+	}
+}
+
+// Turned on for the track about to play, music videos leave the one
+// playing as it plays, its video not loaded; the next one's video plays.
+func TestVideoNextLeavesTheTrackPlaying(t *testing.T) {
+	ch, p, videos := videoPlayer(t, func(http.ResponseWriter, *http.Request) {})
+	song := p.out
+	p.VideoNext()
+	if p.out != song || p.ShowsVideo() || !p.VideoOn() || len(videos()) != 0 {
+		t.Fatalf("the song playing: video %v, on %v, videos loaded %q", p.ShowsVideo(), p.VideoOn(), videos())
+	}
+	p.PlayQueue([]spotify.Track{{ID: "3"}}, 0)
+	until(t, ch, p.ShowsVideo)
+	if !p.ShowsVideo() || len(videos()) != 1 {
+		t.Fatalf("the next track: video %v, videos loaded %q", p.ShowsVideo(), videos())
 	}
 }

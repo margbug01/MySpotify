@@ -298,3 +298,61 @@ func TestMVLyricsCanBeNudged(t *testing.T) {
 		t.Fatalf("[: the lyrics did not come back, ahead by %v", a.pl.VideoLead())
 	}
 }
+
+// The player bar offers the music video of the song playing, if it has
+// one: it plays it in Now Playing, and the song again.
+func TestMVInThePlayerBar(t *testing.T) {
+	a := newTestApp()
+	a.settings = defaultSettings()
+	a.pl.Cue([]spotify.Track{{ID: "1", Name: "APT.", Duration: 170000}})
+	tt := ui.NewTester(a.view, 1200, 800)
+	tt.Frame()
+	if _, ok := tt.Find("播放 MV"); ok {
+		t.Fatal("a song without a video offers one")
+	}
+	a.pl.SetMedia(&spotify.Media{Video: "video"})
+	tt.Frame()
+	if err := tt.Click("播放 MV"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if !a.pl.VideoOn() || !a.nowPlaying {
+		t.Fatalf("video on %v, Now Playing open %v", a.pl.VideoOn(), a.nowPlaying)
+	}
+	a.nowPlaying = false
+	tt.Advance(time.Second)
+	tt.Frame()
+	if err := tt.Click("关闭 MV"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if a.pl.VideoOn() || a.nowPlaying {
+		t.Fatalf("turned off: video on %v, Now Playing open %v", a.pl.VideoOn(), a.nowPlaying)
+	}
+}
+
+// A list marks the songs that have a music video: the mark plays the list
+// from that song, its video, in Now Playing.
+func TestMVTagsInTrackLists(t *testing.T) {
+	a := newTestApp()
+	a.settings = defaultSettings()
+	a.playlists["42"] = &spotify.Playlist{ID: "42", Name: "热歌", Owner: "spotify", Tracks: []spotify.Track{
+		{ID: "1", Name: "一张相片", Duration: 200000},
+		{ID: "2", Name: "APT.", Duration: 170000, Video: true},
+	}}
+	a.route = route{page: pagePlaylist, playlist: "42"}
+	tt := ui.NewTester(a.view, 1200, 900)
+	tt.Frame()
+	tag, ok := tt.Find("播放 MV")
+	row, _ := tt.Find("APT.")
+	if !ok || tag.Y < row.Y || tag.Y+tag.H > row.Y+row.H {
+		t.Fatalf("the mark is at %v, the song with a video at %v", tag, row)
+	}
+	if err := tt.Click("播放 MV"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if cur := a.pl.Current(); cur == nil || cur.ID != "2" || !a.pl.VideoOn() || !a.nowPlaying || len(a.pl.Queue()) != 2 {
+		t.Fatalf("playing %+v, video on %v, Now Playing open %v", cur, a.pl.VideoOn(), a.nowPlaying)
+	}
+}

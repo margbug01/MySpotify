@@ -38,6 +38,8 @@ type Track struct {
 	// Episode says it is a podcast's episode, its album the podcast and
 	// its artist who publishes it.
 	Episode bool `json:"episode,omitempty"`
+	// Video says Spotify has a music video of it.
+	Video bool `json:"video,omitempty"`
 }
 
 // ArtistNames joins the track's artists as the credits read.
@@ -219,6 +221,14 @@ type gqlTrack struct {
 		Playable bool `json:"playable"`
 	} `json:"playability"`
 	uid string // its place in a playlist
+
+	// AssociationsV3 counts its music videos, as playlists, albums, the
+	// artist's page and the library give it.
+	AssociationsV3 struct {
+		VideoAssociations struct {
+			TotalCount int `json:"totalCount"`
+		} `json:"videoAssociations"`
+	} `json:"associationsV3"`
 }
 
 // track returns t as a Track, on album if its own isn't given.
@@ -230,6 +240,7 @@ func (t *gqlTrack) track(album *Album) Track {
 		Duration:   max(t.Duration.TotalMilliseconds, t.TrackDuration.TotalMilliseconds),
 		Unplayable: !t.Playability.Playable,
 		UID:        t.uid,
+		Video:      t.AssociationsV3.VideoAssociations.TotalCount > 0,
 	}
 	if album != nil {
 		tr.Album = *album

@@ -729,14 +729,15 @@ func (p *Player) leadFor(v *spotify.Video) time.Duration {
 }
 
 // maxLeadGuess is the most a music video runs longer than its song by to
-// be taken for an opening before the song: longer ones may as well end
-// with a scene of their own.
+// be taken for a few seconds before it and after: longer ones may as well
+// have scenes of their own.
 const maxLeadGuess = 10 * time.Second
 
 // leadGuess is how far v, the music video of tr, likely runs ahead of it:
-// Spotify tells nothing of it, nor do the lyrics. A video a few seconds
-// longer than the song most likely opens with them; else the two are
-// taken to start together.
+// Spotify tells nothing of it, nor do the lyrics, which follow the song.
+// What a video a few seconds longer than its song has more may come before
+// the song or after it: taken for half before, the lyrics are at most half
+// of it off, wherever it is. Else the two are taken to start together.
 func leadGuess(tr *spotify.Track, v *spotify.Video) time.Duration {
 	if tr == nil || v == nil || tr.Length() <= 0 {
 		return 0
@@ -745,7 +746,7 @@ func leadGuess(tr *spotify.Track, v *spotify.Video) time.Duration {
 	if extra <= 0 || extra > maxLeadGuess {
 		return 0
 	}
-	return extra
+	return extra / 2
 }
 
 func (p *Player) Duration() time.Duration {
@@ -960,6 +961,14 @@ func (p *Player) VideoOn() bool { return p.video }
 // ShowsVideo reports whether the current track's music video plays, in
 // Video's page.
 func (p *Player) ShowsVideo() bool { return p.showsVideo && p.out != nil }
+
+// VideoNext turns music videos on for the track about to be played, its
+// video playing rather than the song first; the one playing plays on as it
+// does, rather than load its own video only to stop.
+func (p *Player) VideoNext() {
+	p.video = true
+	p.sync()
+}
 
 // SetVideo plays music videos rather than the songs, or the songs again:
 // the current track's from where it is, and the tracks after it.

@@ -35,21 +35,24 @@ func (a *app) mvButton(c *ui.Context) {
 	if on {
 		label = "关闭 MV"
 	}
-	if badge(c.Key("mv"), "MV", label, on) {
+	if badge(c.Key("mv"), "MV", label, on, white, ink) {
 		a.pl.SetVideo(!on)
 	}
 }
 
-// badge is a little button of text, filled while what it turns on is, and
-// reports whether it was clicked.
-func badge(c *ui.Context, text, label string, on bool) bool {
+// ink is the text of a badge filled white.
+var ink = ui.Hex("#0b0b0d")
+
+// badge is a little button of text in color, filled with it, its text
+// in ink, while what it turns on is; it reports whether it was clicked.
+func badge(c *ui.Context, text, label string, on bool, color, ink ui.Color) bool {
 	b := ui.ButtonBase(c).Padding(2, 6, 2, 6).Radius(5).AlignItems(ui.Center).FocusRing(false).Label(label).Tooltip(label)
-	edge, bg, fg := white.Alpha(0.45), ui.Transparent, white.Alpha(0.7)
+	edge, bg, fg := color.Alpha(0.45), ui.Transparent, color.Alpha(0.7)
 	switch {
 	case on:
-		edge, bg, fg = white.Alpha(0.9), white.Alpha(0.9), ui.Hex("#0b0b0d")
+		edge, bg, fg = color.Alpha(0.9), color.Alpha(0.9), ink
 	case b.Hovered():
-		edge, fg = white.Alpha(0.8), white
+		edge, fg = color.Alpha(0.8), color
 	}
 	b.Border(1, edge).Background(b.AnimateColor("bg", bg, ui.Animation{Duration: 120 * time.Millisecond})).TextColor(fg)
 	b.Children(func() {
@@ -250,7 +253,7 @@ func (a *app) npTheater(c *ui.Context, tr *spotify.Track, art *artwork, accent u
 								a.nudgeLyrics(-lyricsNudge)
 							}
 						}
-						if badge(c.Key("on"), "歌词", label, a.settings.MVLyrics) {
+						if badge(c.Key("on"), "歌词", label, a.settings.MVLyrics, white, ink) {
 							a.settings.MVLyrics = !a.settings.MVLyrics
 							a.settings.save()
 						}
@@ -378,4 +381,47 @@ func (a *app) nudgeLyrics(d time.Duration) {
 	}
 	a.toast = fmt.Sprintf("歌词%s %.1f 秒（偏移 %+.1f 秒）", way, d.Seconds(), lead.Seconds())
 	a.mvMoved = true
+}
+
+// barMVButton plays the song's music video in Now Playing from the player
+// bar, or the song again: shown for a song that has one.
+func (a *app) barMVButton(c *ui.Context) {
+	pl := a.pl
+	on := pl.VideoOn()
+	label := "播放 MV"
+	if on {
+		label = "关闭 MV"
+	}
+	if badge(c.Key("mv"), "MV", label, on, a.pal.text, a.pal.bg) {
+		pl.SetVideo(!on)
+		if !on {
+			a.nowPlaying = true
+		}
+	}
+}
+
+// mvTag marks a track of a list that has a music video, and plays it.
+func (a *app) mvTag(c *ui.Context) ui.Element {
+	p := a.pal
+	b := ui.ButtonBase(c).Padding(0, 4).Radius(3).FocusRing(false).Label("播放 MV").Tooltip("播放 MV")
+	color := p.muted
+	if b.Hovered() {
+		color = p.text
+	}
+	b.Border(1, color.Alpha(0.6)).Children(func() {
+		ui.Text(c, "MV").FontSize(9).FontWeight(800).TextColor(color)
+	})
+	return b
+}
+
+// playMV plays tracks from i as a list does, the music video of the one at
+// i rather than it, and shows it in Now Playing.
+func (a *app) playMV(from spotify.HomeItem, tracks []spotify.Track, i int) {
+	if cur := a.pl.Current(); cur != nil && cur.ID == tracks[i].ID {
+		a.pl.SetVideo(true)
+	} else {
+		a.pl.VideoNext()
+		a.playFrom(from, tracks, i)
+	}
+	a.nowPlaying = true
 }

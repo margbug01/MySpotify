@@ -408,6 +408,9 @@ func (a *app) playerBar(c *ui.Context) {
 
 		// Lyrics and volume.
 		ui.Row(c).Grow(1).Basis(0).MinWidth(controls).Justify(ui.End).AlignItems(ui.Center).Gap(4).Children(func() {
+			if tr != nil && pl.HasVideo() {
+				a.barMVButton(c)
+			}
 			lyr := p.muted
 			if a.nowPlaying {
 				lyr = p.accent
