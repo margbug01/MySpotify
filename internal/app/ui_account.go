@@ -42,6 +42,17 @@ func (a *app) boot() {
 	// anonymous visitor has, instead of waiting for someone to sign in.
 	spotify.RenewGuest = spotify.AnonymousIdentity
 	go func() {
+		// Nobody ever signed in: there is nothing to renew, and loading
+		// the web player would only take ten seconds to say so. The
+		// visitor's pages show at once instead.
+		if accountCookies() == "" {
+			a.post(func() {
+				if a.profile == nil {
+					a.signedIn(nil)
+				}
+			})
+			return
+		}
 		// Through package spotify, so that a page opened meanwhile, from
 		// what restoreHome shows, waits on this renewal rather than
 		// loading the web player a second time.

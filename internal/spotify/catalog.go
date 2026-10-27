@@ -894,6 +894,12 @@ func Account() (*Profile, error) {
 	if err := query("profileAttributes", map[string]any{}, &res); err != nil {
 		return nil, err
 	}
+	if res.Me.Profile.Username == "" {
+		// The visitor's profile, which has no name: nobody is signed in.
+		// Saying so rather than answering with an empty profile keeps the
+		// app from taking a guest for a listener.
+		return nil, ErrSignedOut
+	}
 	p := res.Me.Profile
 	return &Profile{UserID: p.Username, Nickname: p.Name, AvatarURL: p.Avatar.best(), AvatarColor: p.Color}, nil
 }
