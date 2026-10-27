@@ -59,6 +59,7 @@ func (a *app) nowPlayingLayer(c *ui.Context, open, settled bool) {
 		// Closed: nothing to paint or click.
 		layer.Invisible()
 		a.queueAt = -1
+		a.mvShown = false
 		return
 	}
 	if !open {
@@ -93,6 +94,11 @@ func (a *app) nowPlayingView(c *ui.Context) {
 	// The pointer is over the view whenever it is in the window.
 	pointerIn := root.Hovered()
 	root.Children(func() {
+		if a.theater() {
+			a.npTheater(c, tr, art, accent)
+			return
+		}
+		a.mvShown = false
 		a.backdrop(c, shown, tint)
 		// Over the backdrop, which is positioned too: positioned elements
 		// paint over those in the flow.
@@ -131,7 +137,7 @@ func (a *app) nowPlayingBody(c *ui.Context, tr *spotify.Track, art *artwork, acc
 			var coverTop float32
 			ui.Column(c).Width(side).Justify(ui.Center).Gap(0).Children(func() {
 				coverTop = ui.Box(c.Key("cover-top")).Height(0).LayoutBounds().Y
-				if pl.ShowsVideo() && pl.Video != nil && pl.Video.View() != nil {
+				if pl.ShowsVideo() && a.mvPage() != nil {
 					a.npVideo(c, side, coverSize)
 				} else {
 					a.npCover(c, tr, art, coverSize)

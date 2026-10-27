@@ -162,6 +162,14 @@ type app struct {
 	sig                   playerSig
 	quitting              bool
 
+	// How the music video shows (mvInCover, mvTheater, mvFullScreen), and
+	// the way it showed before full screen, which leaving it goes back to.
+	mvMode, mvFrom int
+	mvMadeFull     bool      // the window went full screen for the video, to leave with it
+	mvShown        bool      // the video filled Now Playing in the last frame
+	mvMoved        bool      // the pointer moved over the video since the last frame
+	mvMovedAt      time.Time // when the pointer last moved over the video
+
 	settings    settings
 	settingsWin *mygo.Window
 	cacheUsed   int64 // the bytes the cache of tracks takes, -1 until measured
@@ -294,6 +302,18 @@ func Run() error {
 		// Music videos play in a web view of the window, which Now Playing
 		// shows where the cover goes.
 		a.pl.NewVideo = func() (*player.Web, error) { return player.NewVideoWeb(a.win) }
+		// Full screen left with the system's own button or keys: the video
+		// shows as it did before.
+		a.win.OnLeaveFullScreen(func() {
+			a.post(func() {
+				if a.mvMadeFull {
+					a.mvMadeFull = false
+					if a.mvMode == mvFullScreen {
+						a.mvMode = a.mvFrom
+					}
+				}
+			})
+		})
 		// What the home page and the sidebar showed last time shows at
 		// once, while the app signs in and loads them again. Not before the
 		// window: their covers, from disk, would load as it lays out its

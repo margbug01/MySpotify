@@ -45,6 +45,7 @@ func (a *app) view(c *ui.Context) {
 		c.OnShortcut(0, ui.KeySpace, a.pl.TogglePlay)
 	}
 	npOpen, npSettled := a.npState(c)
+	a.syncFullScreen(npOpen)
 	root.Children(func() {
 		page := ui.Row(c).Fill().AlignItems(ui.Stretch)
 		page.Children(func() {
@@ -98,7 +99,10 @@ func (a *app) shortcuts(c *ui.Context) {
 		a.searchBox.Focus(c)
 	})
 	if a.nowPlaying {
-		c.OnShortcut(0, ui.KeyEscape, func() { a.nowPlaying = false })
+		c.OnShortcut(0, ui.KeyEscape, a.npEscape)
+		if a.pl.ShowsVideo() && a.mvPage() != nil {
+			c.OnShortcut(0, ui.KeyF, a.toggleMVFullScreen)
+		}
 	}
 }
 
