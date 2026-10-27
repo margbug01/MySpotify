@@ -45,14 +45,14 @@ const (
 type Player struct {
 	post func(func())
 	// Web plays what loads; without it, as in tests, nothing does.
-	Web     *Web
-	Cache   *Cache
-	NewWeb  func() (*Web, error)
+	Web    *Web
+	Cache  *Cache
+	NewWeb func() (*Web, error)
 	// Video plays music videos, made by NewVideo the first time one plays.
 	Video    *Web
 	NewVideo func() (*Web, error)
-	idle    *time.Timer
-	idleGen int
+	idle     *time.Timer
+	idleGen  int
 	// Changed, if set, hears that what plays, where it is or whether it
 	// plays changed.
 	Changed func()
@@ -73,20 +73,20 @@ type Player struct {
 	feeding  bool // the feed is asked
 	awaiting bool // at the queue's end, for what the feed gives
 
-	track   *spotify.Track
-	out     Output
+	track *spotify.Track
+	out   Output
 	// media is where the track's audio is, once resolved; video whether
 	// its music video plays rather than its audio, when it has one, and
 	// showsVideo whether out is the video.
 	media      *spotify.Media
 	video      bool
 	showsVideo bool
-	fade    fader
-	loading bool
-	playing bool // what the listener wants: false while paused
-	err     string
-	gen     int // counts loads, to drop the results of stale ones
-	skipped int // the tracks skipped, as they could not play, before this one
+	fade       fader
+	loading    bool
+	playing    bool // what the listener wants: false while paused
+	err        string
+	gen        int // counts loads, to drop the results of stale ones
+	skipped    int // the tracks skipped, as they could not play, before this one
 
 	// Spotify turned the track away for asking too often: it loads again
 	// once the wait is over, if it is to play then.
@@ -788,12 +788,12 @@ func (p *Player) loadSkipping(at, skipped int, play bool, from time.Duration) {
 	if m := p.takeAhead(t.ID); m != nil {
 		resolveMedia = func(string) (*spotify.Media, error) { return m, nil }
 	}
-	video := p.video
+	video, findVideo := p.video, resolveVideo
 	go func() {
 		m, err := resolveMedia(t.URI())
 		var v *spotify.Video
 		if err == nil && video && m.Video != "" {
-			v = videoOf(m)
+			v = videoOf(m, findVideo)
 		}
 		p.post(func() {
 			if gen != p.gen {
@@ -876,9 +876,11 @@ func (p *Player) open(gen int, m *spotify.Media, v *spotify.Video) {
 	p.sync()
 }
 
-// videoOf resolves m's music video, nil if it can't be: the song plays.
-func videoOf(m *spotify.Media) *spotify.Video {
-	v, err := resolveVideo(m.Video)
+// videoOf resolves m's music video with find, nil if it can't be: the song
+// plays. find is resolveVideo, read before the goroutine videoOf runs on,
+// as tests put theirs back.
+func videoOf(m *spotify.Media, find func(string) (*spotify.Video, error)) *spotify.Video {
+	v, err := find(m.Video)
 	if err != nil {
 		log.Printf("player: video %s: %v", m.Video, err)
 	}
@@ -922,8 +924,9 @@ func (p *Player) reopen() {
 		return
 	}
 	p.loading = true
+	find := resolveVideo
 	go func() {
-		v := videoOf(m)
+		v := videoOf(m, find)
 		p.post(func() {
 			if gen != p.gen || p.out != nil {
 				return

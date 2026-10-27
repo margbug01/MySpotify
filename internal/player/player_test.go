@@ -184,14 +184,12 @@ func TestRestoreLoadsOnPlay(t *testing.T) {
 func TestLyricsOfTheNextTrackAreFetchedAhead(t *testing.T) {
 	var mu sync.Mutex
 	asked := map[string]int{}
-	old := lyricsOf
-	lyricsOf = func(tr spotify.Track) []lyrics.Line {
+	useLyrics(t, func(tr spotify.Track) []lyrics.Line {
 		mu.Lock()
 		asked[tr.ID]++
 		mu.Unlock()
 		return []lyrics.Line{{Text: tr.Name}}
-	}
-	defer func() { lyricsOf = old }()
+	})
 	ch := make(chan func(), 16)
 	p := New(func(fn func()) { ch <- fn })
 	p.Cue([]spotify.Track{{ID: "one", Name: "One"}, {ID: "two", Name: "Two"}, {ID: "three", Name: "Three"}})

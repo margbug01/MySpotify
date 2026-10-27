@@ -50,9 +50,7 @@ func videoPlayer(t *testing.T, licence http.HandlerFunc) (chan func(), *Player, 
 	p := New(func(fn func()) { ch <- fn })
 	p.Web = web()
 	p.NewVideo = func() (*Web, error) { return web(), nil }
-	// Episodes: a song's lyrics would be fetched behind the test's back,
-	// racing the tests that swap lyricsOf.
-	p.PlayQueue([]spotify.Track{{ID: "1", Episode: true}, {ID: "2", Episode: true}}, 0)
+	p.PlayQueue([]spotify.Track{{ID: "1"}, {ID: "2"}}, 0)
 	until(t, ch, func() bool { return p.out != nil })
 	if p.out == nil || p.ShowsVideo() || !p.HasVideo() {
 		t.Fatal("the song did not load")
@@ -192,7 +190,7 @@ func TestVideoGoesOnWithTheNextTrack(t *testing.T) {
 	if p.Current().ID != "2" || !p.ShowsVideo() || p.out != Output(p.Video.out(2)) {
 		t.Fatalf("track %s, video %v", p.Current().ID, p.ShowsVideo())
 	}
-	if v := videos(); len(v) != 2 || v[1] != "video of "+(&spotify.Track{ID: "2", Episode: true}).URI() {
+	if v := videos(); len(v) != 2 || v[1] != "video of "+(&spotify.Track{ID: "2"}).URI() {
 		t.Fatalf("videos resolved: %q", v)
 	}
 }

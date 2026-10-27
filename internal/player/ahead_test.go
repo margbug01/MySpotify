@@ -59,8 +59,7 @@ func TestPrefetchedStartAnswersThePage(t *testing.T) {
 
 // aheadPlayer plays in a Web that serves no page but counts as one,
 // resolving at once, each URI asked for on asked. The tests queue episodes,
-// whose lyrics are never looked for: lyricsOf stays as it is, as goroutines
-// that fetch lyrics would read it as the test puts it back.
+// whose lyrics are never looked for.
 func aheadPlayer(t *testing.T) (*Player, chan string, func(string, func() bool)) {
 	t.Helper()
 	asked := make(chan string, 16)
