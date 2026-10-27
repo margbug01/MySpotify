@@ -72,7 +72,7 @@ func (a *app) signinWindow(url string) *mygo.Window {
 	}
 	w := mygo.NewWindow(mygo.WindowOptions{
 		Title: "登录 Spotify", Width: 480, Height: 720, Hidden: true, URL: url,
-		Page: mygo.PageOptions{PreloadScript: spotify.CaptureJS},
+		Page: mygo.PageOptions{PreloadScript: spotify.CaptureJS, UserAgentSuffix: spotify.WebViewAgentSuffix},
 	})
 	w.OnClosed(func() {
 		// Closed by the listener, as they gave up signing in.
