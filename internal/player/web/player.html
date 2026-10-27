@@ -16,6 +16,11 @@ let cur = null, volume = 1;
 const ks = typeof location === 'undefined' ? null : /[?&]ks=([^&]*)/.exec(location.search);
 const keySystem = ks ? decodeURIComponent(ks[1]) : 'com.widevine.alpha';
 const videoPage = typeof location !== 'undefined' && /[?&]video=1(&|$)/.test(location.search);
+// Anything the page throws is the app's to see: a page that fails quietly
+// is a page that fails for good.
+if (typeof window !== 'undefined' && typeof addEventListener !== 'undefined') {
+  addEventListener('error', (e) => send(cur ? cur.gen : 0, 'js', 0, (e && e.message) + ' @' + (e && e.lineno)));
+}
 const send = (gen, type, t, msg) => fetch('/event', {
   method: 'POST',
   body: JSON.stringify({ gen, type, t: t || 0, msg: msg || '' }),
@@ -23,6 +28,65 @@ const send = (gen, type, t, msg) => fetch('/event', {
 
 // certificate is FairPlay's, asked for once: the licence service's key.
 let certificate = null;
+
+// spectrum reads what the element plays, as sound: the page has decrypted
+// it by the time it reaches here, so a Web Audio analyser over it sees the
+// real thing. The app draws its bars from this rather than from a shape
+// made up out of the position, which looks like music without being it.
+//
+// One graph for the page: an element is played through it once, and the
+// spectrum follows whichever element plays now.
+let audioCtx = null, analyser = null, analyserFor = null, lastSrc = null;
+const bands = new Uint8Array(24);
+
+function hear(a) {
+  if (typeof AudioContext === 'undefined') return;
+  if (analyserFor === a) return;
+  try {
+    if (!audioCtx) {
+      audioCtx = new AudioContext();
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 1024;
+      analyser.smoothingTimeConstant = 0.72;
+      analyser.connect(audioCtx.destination);
+    }
+    // A fresh source per element: the last one is disconnected, and its
+    // element plays on through the graph no more.
+    if (lastSrc) {
+      try { lastSrc.disconnect(); } catch (e) {}
+    }
+    const src = audioCtx.createMediaElementSource(a);
+    src.connect(analyser);
+    analyserFor = a;
+    lastSrc = src;
+    // Autoplay policy: the graph starts only once the page is allowed to
+    // make a sound, which it is as soon as the listener pressed play.
+    if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+    // Something to read now: the bars start moving.
+    pump();
+  } catch (e) {
+    // A page without Web Audio, or one whose content is protected and may
+    // not be routed, draws bars the old way: the app is told why.
+    send(cur ? cur.gen : 0, 'levels', 0, 'no analyser: ' + (e && e.name) + ': ' + (e && e.message));
+  }
+}
+
+// levels returns the spectrum now, in 24 bands from the lowest to the
+// highest, each from 0 to 1.
+function levels() {
+  if (!analyser) return null;
+  analyser.getByteFrequencyData(bands);
+  const out = new Array(24);
+  // The bands of an analyser crowd the low end; spread them out so the
+  // high ones are not a sliver at the right.
+  for (let i = 0; i < 24; i++) {
+    const t = i / 23;
+    const at = Math.pow(t, 1.7) * (bands.length - 1);
+    const lo = Math.floor(at), hi = Math.min(bands.length - 1, lo + 1), f = at - lo;
+    out[i] = ((bands[lo] * (1 - f) + bands[hi] * f) / 255);
+  }
+  return out;
+}
 
 // nativeFairPlay plays as Safari's web player does, in WebKit's own HLS:
 // it asks for the key of the skd:// URI the manifest names (webkitneedkey),
@@ -88,6 +152,33 @@ function nativeFairPlay(gen, a) {
       a.load();
     },
   };
+}
+
+// The app asks for the spectrum, and this answers with the next it has: a
+// poll a frame apart, so that the bars move as the music does.
+//
+// It starts once there is an analyser to read — a page that never plays, or
+// has no Web Audio, sends nothing at all, and the app draws its bars the
+// way it always did.
+let pumping = false;
+async function pump() {
+  if (pumping) return;
+  pumping = true;
+  for (;;) {
+    let lv = null;
+    try { lv = levels(); } catch (e) {}
+    if (lv) {
+      try {
+        await fetch('/levels', {
+          method: 'POST',
+          body: JSON.stringify({ gen: cur ? cur.gen : 0, lv }),
+        });
+      } catch (e) {}
+    }
+    // A frame apart while there is something to read; a slower beat while
+    // there is not, so a paused page costs nothing.
+    await new Promise((ok) => setTimeout(ok, lv ? 20 : 250));
+  }
 }
 
 window.vinyl = {
@@ -163,7 +254,7 @@ window.vinyl = {
       fail({ type: d.type === Hls.ErrorTypes.KEY_SYSTEM_ERROR ? 'licence' : d.type, details: d.details, msg });
     });
     for (const n of ['playing', 'pause', 'waiting', 'seeked']) a.addEventListener(n, () => {
-      if (n === 'playing') t.heard = true;
+      if (n === 'playing') { t.heard = true; hear(a); }
       send(gen, n, a.currentTime);
     });
     a.addEventListener('ended', () => finish('media ended'));

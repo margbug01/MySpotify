@@ -760,15 +760,22 @@ func (p *Player) Duration() time.Duration {
 	return p.track.Length()
 }
 
-// Levels returns the spectrum of what plays now. The page decrypts and
-// plays the audio out of reach, so it is a stand-in, as Spotify's own apps
-// animate theirs: waves across the bands, neighbors rising together,
-// moving with the position, and still while paused.
+// Levels returns the spectrum of what plays now, and whether there is one.
+//
+// The bars are the music itself: the page plays through a Web Audio
+// analyser, which sees the sound once it is decrypted, and long-polls what
+// it read. Where that is not to be had — a page without Web Audio, or one
+// that just went away — the bands are a stand-in, as before: waves across
+// them, neighbors rising together, moving with the position, and still
+// while paused.
 func (p *Player) Levels() ([Bands]float32, bool) {
-	var lv [Bands]float32
 	if p.out == nil || !p.playing {
-		return lv, false
+		return [Bands]float32{}, false
 	}
+	if lv, ok := p.LiveLevels(); ok {
+		return lv, true
+	}
+	var lv [Bands]float32
 	t := p.Position().Seconds()
 	for i := range lv {
 		f := float64(i) / (Bands - 1) // from the lowest band to the highest
