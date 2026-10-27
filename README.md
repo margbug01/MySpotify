@@ -4,11 +4,11 @@
 
 # MySpotify
 
-Windows 上的 Spotify 播放器：Go 写的原生界面，免费账号也能整首播放。
+Windows 和 macOS 上的 Spotify 播放器：Go 写的原生界面，免费账号也能整首播放，还能看 MV。
 
-![Windows 10/11](https://img.shields.io/badge/Windows-10%20%7C%2011-3a6ea5?style=flat-square) ![Go](https://img.shields.io/badge/Go-1.27-00add8?style=flat-square) ![MyGo](https://img.shields.io/badge/UI-MyGo-6a717c?style=flat-square) ![AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-c2410c?style=flat-square)
+![Windows 10/11](https://img.shields.io/badge/Windows-10%20%7C%2011-3a6ea5?style=flat-square) ![macOS Apple Silicon](https://img.shields.io/badge/macOS-Apple%20Silicon-555555?style=flat-square) ![Go](https://img.shields.io/badge/Go-1.27-00add8?style=flat-square) ![MyGo](https://img.shields.io/badge/UI-MyGo-6a717c?style=flat-square) ![AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-c2410c?style=flat-square)
 
-**[下载最新版](https://github.com/margbug01/MySpotify/releases/latest)** · 解压就能用，不用安装
+**[下载最新版](https://github.com/margbug01/MySpotify/releases/latest)** · Windows 解压就能用，macOS 拖进「应用程序」，不用安装
 
 <img src="docs/screenshots/hero.webp" width="860" alt="首页，浅色和深色">
 
@@ -21,7 +21,9 @@ Windows 上的 Spotify 播放器：Go 写的原生界面，免费账号也能整
 
 **像个桌面软件。** 界面是 [MyGo](https://github.com/egoist/mygo) 画的原生界面，不是套一层网页：侧栏、播放栏、全屏播放页、逐行滚动的歌词、律动舞台、系统媒体键、浅色和深色主题都有。关窗口收进托盘接着放，托盘图标跟着任务栏的深浅色变。只浏览时整个程序约 190MB，放歌时多一个约 60MB 的解密进程。
 
-**免费账号整首放。** 登录走 Spotify 官方的登录页，MySpotify 只是借用网页播放器拿到的身份。音频由 WebView2 自带的 Widevine 模块解密，和你在浏览器里听是同一条路，128k AAC。
+**免费账号整首放。** 登录走 Spotify 官方的登录页，MySpotify 只是借用网页播放器拿到的身份。音频由系统网页组件自带的 DRM 模块解密，和你在浏览器里听是同一条路，128k AAC：Windows 上是 WebView2 的 Widevine（同 Edge、Chrome），macOS 上是 WebKit 的 FairPlay（同 Safari）。
+
+**能看 MV。** 有 MV 的歌在列表里带个「MV」小标，点它就放 MV，播放栏和播放页也能随时切换。MV 可以放在封面的位置、铺满窗口或者全屏；铺满时控制栏浮在画面上，鼠标停 3 秒就隐藏，旁边是待播清单，下方显示当前这句歌词。MV 往往比原曲多一段开头，歌词会自动往后挪；不准的话按 `[` / `]` 每次调 0.5 秒，按歌记住。
 
 **Spotify 有的大部分都在。** 首页（照 Spotify 的分区和标题，音乐/播客筛选）、每日推荐、排行榜、浏览全部分类、歌单和专辑、艺人页、单曲页（制作人员、播放次数、相似歌曲）、个人主页、播客、搜索（歌曲、艺人、专辑、歌单、播客）、喜欢、关注、收藏、自建歌单的增删改、下一首播放和待播清单、从歌曲或艺人开电台、最近播放。网页或手机上新加的歌单会自己同步过来。
 
@@ -33,7 +35,7 @@ Windows 上的 Spotify 播放器：Go 写的原生界面，免费账号也能整
 
 **听过的不用再下。** 放过的歌（加密分段，原样存下）留在本机，再放更快、不耗流量；上限可以在设置里选，也能一键清除。
 
-**数据只在本机。** 设置、播放进度、本机播放记录在 `%APPDATA%\Vinyl`，登录态在 `%LOCALAPPDATA%\Vinyl\WebView2`（文件夹叫 Vinyl 是这个项目原来的名字，改名时没动，免得大家被登出）。除了 Spotify、Gravatar（取账号邮箱的头像），以及查歌词时的网易云和 LRCLIB（只收到歌名、歌手、专辑和时长），MySpotify 不连别的服务器，也没有统计和自动更新。
+**数据只在本机。** 设置、播放进度、本机播放记录在 `%APPDATA%\Vinyl`（macOS：`~/Library/Application Support/Vinyl`），登录态在 `%LOCALAPPDATA%\Vinyl\WebView2`（macOS：`~/Library/WebKit/dev.margbug.vinyl`）。文件夹叫 Vinyl 是这个项目原来的名字，改名时没动，免得大家被登出。除了 Spotify、Gravatar（取账号邮箱的头像），以及查歌词时的网易云和 LRCLIB（只收到歌名、歌手、专辑和时长），MySpotify 不连别的服务器，也没有统计和自动更新。
 
 ## 截图
 
@@ -70,14 +72,23 @@ Windows 上的 Spotify 播放器：Go 写的原生界面，免费账号也能整
 
 ## 开始使用
 
+**Windows**
+
 1. 到 [Releases](https://github.com/margbug01/MySpotify/releases/latest) 下载 `MySpotify-<版本>-windows-amd64.zip`，解压到任意文件夹，双击 `MySpotify.exe`。
 2. exe 没有代码签名，第一次打开 Windows 可能弹「Windows 已保护你的电脑」：点「更多信息 › 仍要运行」。不放心可以对一下 Release 里写的 sha256，或者按下面「从源码构建」自己编。
 3. 需要 Windows 10 或 11，以及 [WebView2 运行时](https://developer.microsoft.com/microsoft-edge/webview2/)（Windows 11 自带，Windows 10 大多也已经装了）。
-4. 点「登录 Spotify」，在弹出的 Spotify 官方登录页里登录。登录态会留在本机，下次打开不用再登。
 
 升级：右键托盘图标 › 退出 MySpotify，用新的 `MySpotify.exe` 覆盖旧的再打开。设置和登录都不在 exe 旁边，不会丢。
 
-快捷键：空格 播放/暂停，Ctrl+← / Ctrl+→ 上一首/下一首，Ctrl+D 喜欢正在放的歌，Ctrl+L 打开播放页，Ctrl+F 搜索，Ctrl+N 新建歌单，Ctrl+, 设置，鼠标侧键前进后退。
+**macOS**（Apple 芯片）
+
+1. 下载 `MySpotify-<版本>-macos-arm64.dmg`，打开后把 MySpotify 拖进「应用程序」。
+2. app 没有经过 Apple 公证，第一次打开会被拦下：到「系统设置 › 隐私与安全性」最下面点「仍要打开」。也可以在终端里执行 `xattr -dr com.apple.quarantine /Applications/MySpotify.app` 再打开。
+3. 升级：退出旧版，用新的覆盖「应用程序」里的旧版。设置和登录不在 app 里，不会丢。
+
+两边都是：点「登录 Spotify」，在弹出的 Spotify 官方登录页里登录。登录态会留在本机，下次打开不用再登。
+
+快捷键：空格 播放/暂停，Ctrl+← / Ctrl+→ 上一首/下一首，Ctrl+D 喜欢正在放的歌，Ctrl+L 打开播放页，Ctrl+F 搜索，Ctrl+N 新建歌单，Ctrl+, 设置，鼠标侧键前进后退（macOS 上 Ctrl 换成 ⌘）。看 MV 时：F 全屏，Esc 一级级退回，`[` / `]` 让歌词提前、延后 0.5 秒。
 
 ## 手机和电脑接力（实验性）
 
@@ -85,14 +96,14 @@ Windows 上的 Spotify 播放器：Go 写的原生界面，免费账号也能整
 - **在电脑上管手机**：底部音量旁的「设备」能看到同账号在线的手机、网页和本机。别的设备在放时，电脑显示它的歌和进度，播放/暂停、上一首/下一首、拖进度、音量、随机/循环都发给那台设备。
 - 同一时间只有一台设备出声。播放被转走、或者连接断了，电脑这边会停下，不会两边一起响。
 
-这一块还在实验：免费账号的注册和接力实测能用，长时间挂着、各种设备组合还没测全。偶尔会提示「Spotify 没有接受这个操作」，Spotify 给的原因会写进日志 `%APPDATA%\Vinyl\vinyl.log`（搜 `connect:`），遇到了欢迎把那一行贴到 issue 里。
+这一块还在实验：免费账号的注册和接力实测能用，长时间挂着、各种设备组合还没测全。偶尔会提示「Spotify 没有接受这个操作」，Spotify 给的原因会写进日志 `vinyl.log`（在上面说的设置文件夹里，搜 `connect:`），遇到了欢迎把那一行贴到 issue 里。
 
 ## 风险和边界
 
 - **不是官方客户端。** 数据走网页播放器的 Pathfinder GraphQL 和 spclient 接口，这些都没有公开文档，Spotify 改了 MySpotify 就会坏。
 - **条款。** Spotify 的用户条款不允许用第三方程序访问它的服务。用 MySpotify 可能导致账号被限制或封禁。只用你自己的账号，别拿它做任何商业用途。
 - **广告。** 网页播放器的免费版会插广告，MySpotify 不放。这一点 Spotify 很可能不喜欢；如果你在意，请用官方客户端或订阅 Premium。
-- **不碰密钥。** MySpotify 不破解 DRM：解密在 WebView2 的 Widevine 模块里完成，程序拿不到密钥，也拿不到解密后的音频。缓存里存的是 CDN 给的加密分段，每次播放仍要向 Spotify 申请许可证，不能离线。
+- **不碰密钥。** MySpotify 不破解 DRM：解密在 WebView2 的 Widevine 或 WebKit 的 FairPlay 模块里完成，程序拿不到密钥，也拿不到解密后的音频和画面（所以在 macOS 上截图、录屏时 MV 画面是黑的）。缓存里存的是 CDN 给的加密分段，每次播放仍要向 Spotify 申请许可证，不能离线。
 - **歌词来源。** 补歌词用的网易云接口没有公开文档，频繁搜索会被它限流，哪天也可能改掉；它和 LRCLIB 都只收到歌名、歌手、专辑和时长。
 - **别频繁起播。** 许可证接口按设备限流，短时间里反复起播（比如半小时十几次）会被 429 一阵子。
 
@@ -104,9 +115,10 @@ Windows 上的 Spotify 播放器：Go 写的原生界面，免费账号也能整
 | 逐字歌词 | Spotify 只给网页播放器逐行时间；网易云的逐字歌词还没接 |
 | 离线下载 | 需要 Premium，而且要官方客户端 |
 | Jam、DJ | 需要 Premium 或手机端 |
-| 视频播客 | 只能放音频 |
+| 视频播客 | 只能放音频（MV 能看） |
 | 频谱 | 音频在解密模块里，拿不到；播放中的小音柱是按位置算的动画 |
-| macOS、Linux | 只做了 Windows：播放靠 WebView2 里的 Widevine，macOS 的 WebKit 不支持它 |
+| Intel Mac、Linux | 只打了 Apple 芯片 Mac 的包；Linux 没做 |
+| MV 和歌词精确对齐 | Spotify 不给 MV 和原曲之间差多少，只能按时长估，偏了用 `[` / `]` 手动调 |
 | 好友动态、本地文件、Blend | 暂时没做 |
 
 ## 常见问题
@@ -114,7 +126,7 @@ Windows 上的 Spotify 播放器：Go 写的原生界面，免费账号也能整
 <details>
 <summary>为什么点了播放显示「这首歌暂时无法播放」？</summary>
 
-这首歌在你所在地区不可播，或者 Spotify 拒绝了许可证（403）。同一首在网页版也放不了的话，就是版权问题。日志在 `%APPDATA%\Vinyl\vinyl.log`，可以看到具体原因。
+这首歌在你所在地区不可播，或者 Spotify 拒绝了许可证（403）。同一首在网页版也放不了的话，就是版权问题。日志 `vinyl.log`（Windows 在 `%APPDATA%\Vinyl`，macOS 在 `~/Library/Application Support/Vinyl`）里可以看到具体原因。
 </details>
 
 <details>
@@ -144,7 +156,13 @@ Spotify、网易云、LRCLIB 三家都没有，或者只有不带时间轴的纯
 <details>
 <summary>代理怎么设？</summary>
 
-MySpotify 用 Windows 的系统代理（设置 › 网络和 Internet › 代理），环境变量 `HTTPS_PROXY` 优先。
+MySpotify 用系统代理：Windows 在「设置 › 网络和 Internet › 代理」，macOS 在「系统设置 › 网络 › 详细信息 › 代理」。环境变量 `HTTPS_PROXY` 优先。
+</details>
+
+<details>
+<summary>macOS 上截图、录屏，MV 画面怎么是黑的？</summary>
+
+MV 是 FairPlay 加密的，macOS 不让任何截图、录屏软件拿到加密视频的画面，Safari 里看 Apple TV+ 也一样。界面、歌词照常能截。
 </details>
 
 <details>
@@ -163,10 +181,11 @@ MySpotify 用 Windows 的系统代理（设置 › 网络和 Internet › 代理
 
 - **登录**：一个平时隐藏的窗口打开 open.spotify.com，`internal/spotify/capture.js` 记下网页播放器自己拿到的 token 和 client-token；没登录就把这个窗口显示成 Spotify 的登录页。token 快过期时在后台重新加载一次。
 - **数据**：Pathfinder GraphQL 的持久化查询（哈希在 `internal/spotify/spotify.go` 的 `ops` 里）加 spclient（歌词、播放清单、歌单改动、电台、最近播放、个人主页）。公开 Web API 对这个身份一律 429，不用。哈希失效时（412「Invalid query hash」）`internal/spotify/ops.go` 重读主脚本和按需加载的分块脚本，换上新哈希重试一次，存到 `%APPDATA%\Vinyl\queries.json`，10 分钟内不重复读。收藏列表在切回窗口时（5 秒内不重复）和每 30 秒检查一次，网络失败时保留上次的。
-- **播放**：另一个隐藏的 WebView 页面（`internal/player/web/player.html`）用 hls.js + Widevine 播加密的 MP4。清单、分段和许可证请求都经本机 127.0.0.1 的小服务转发，分段在这里顺手存进缓存，键是 CDN 路径加字节范围（CDN 的签名每天变，不进键）。播客的单集和歌曲走同一条路。这个页面第一次真放歌时才建，闲置 5 分钟就关掉，下次放再从原位置接上；它不用 GPU，主界面照常用 GPU。
+- **播放**：另一个隐藏的 WebView 页面（`internal/player/web/player.html`）播加密的 MP4。Windows 用 hls.js + Widevine；macOS 照 Safari 版网页播放器，要 cbcs 格式的文件，用 WebKit 原生 HLS + FairPlay（`skd://` 加文件 ID，`fairplay-license/v1`）。清单、分段和许可证请求都经本机 127.0.0.1 的小服务转发，分段在这里顺手存进缓存，键是 CDN 路径加字节范围（CDN 的签名每天变，不进键）。播客的单集和歌曲走同一条路。这个页面第一次真放歌时才建，闲置 5 分钟就关掉，下次放再从原位置接上；它不用 GPU，主界面照常用 GPU。
 - **出错**：许可证 401 换身份再要一次；429 按 Retry-After 等（没给就从 30 秒起翻倍），等完从原位置重来；403 停在这首。页面里的网络错误（`startLoad`，清单出错就重新 `loadSource`）和媒体错误（`recoverMediaError`）每首各重试 2 次，不行再跳下一首。结束事件没送到时，音频停在最后 0.25 秒、尾部已缓冲完、连续约 4 秒不动，才算播完。
 - **歌词**：Spotify 的同步歌词 → 网易云（`/api/cloudsearch/pc` 按歌名和主艺人搜，取同名、时长差不超过 2 秒里最接近的一首，它的时长和 Spotify 基本精确到毫秒；文字是简体）→ LRCLIB 精确查询（歌名、主艺人、专辑、时长都要对上）→ LRCLIB 搜索同名同歌手、时长差 2 秒内带时间轴的那条 → 都没有时间轴才用纯文本。Connect 给的歌手名缺失或是外文拼写（Yitai Wang）时，先换成 Spotify 给的中文名（王以太）再查。站点忙或限流（LRCLIB 503、网易云 405/406）时隔 3 秒、10 秒各再试一次，播客不查。
 - **Connect**：协议结构参考 [Flutify](https://github.com/is-hp-is-mad/Flutify)，不用 Premium 才能用的 Web Playback SDK。两条 Dealer 长连接：`connect-state` 用一个隐藏的观察者设备看和遥控，`track-playback` 把本机注册成能放歌的设备并处理状态机。状态机只带当前和下一首，所以待播清单按 connect-state 的 `next_tracks` 显示（隐藏的循环副本不显示，只有 URI 的曲目用 `decorateContextTracks` 补上名字）；点其中一首发 `skip_next` 带那首的 uid。本机插队和电台续队还没接进 Connect。
+- **MV**：`track-playback/v1/media` 多要一种 `manifest_ids_video`，返回里的 `video_version_uri` 就是这首的 MV。视频清单转成 HLS，在主窗口里一个看得见的 WebView 里放（Windows Widevine、macOS FairPlay），改放 MV 自带的音轨。原生控件盖在视频上：一层透明的框接鼠标，控制栏和字幕都画在 WebView 上面。歌单、专辑、艺人页、喜欢的歌的数据里本来就有 `associationsV3.videoAssociations`，列表的「MV」小标靠它，不用多发请求。
 - **头像**：账号的头像依次用 Spotify 上设的、账号邮箱在 Gravatar 上的、名字首字母（底色用 Spotify 给的颜色）。邮箱是带着 WebView 的 cookie 问 `www.spotify.com/api/account-settings/v1/profile` 拿的。
 
 ## 从源码构建
@@ -178,13 +197,19 @@ go test ./...
 CGO_ENABLED=0 go build -trimpath -ldflags="-H windowsgui -s -w" -o outputs/MySpotify.exe .
 ```
 
+macOS 的 app 和 dmg 用 MyGo 自带的打包命令（在 Mac 上跑，产物在 `build/darwin-arm64/`，加 `-skip-dmg` 只出 app）：
+
+```
+go tool mygo build
+```
+
 图标都由 `tools/icons.py` 画（Windows，要 Pillow，用 Edge 无头模式渲染 SVG）：`resources/icon.svg`/`icon.png` 是程序图标，`icon-small.svg` 是 16–24 像素用的简化版（两道纹、更粗），`icon.ico` 把两者按尺寸合在一起；`internal/app/tray.png` 是托盘和 Mac 菜单栏的模板图标（只有黑色和透明，Windows 深色任务栏上自动画成白色，macOS 自己染色）；`AppIcon.icon` 是 Mac Dock 用的 Icon Composer 文档（浅色/深色两种底，`mygo.json` 的 `macos.icon`，要在装了 Xcode 26 的 Mac 上 `mygo build` 才会编进去，否则退回 `icon.png` 生成的 `.icns`）。改了图标或版本号，先跑 `python tools/icons.py`，再重新生成图标、版本信息和 manifest 所在的 `rsrc_windows_amd64.syso`（版本号同时改 `mygo.json`）：
 
 ```
-go run github.com/tc-hib/go-winres@v0.3.3 simply --icon resources/icon.ico --manifest gui --product-name MySpotify --file-description MySpotify --product-version 0.2.0 --file-version 0.2.0 --original-filename MySpotify.exe --arch amd64 --out rsrc
+go run github.com/tc-hib/go-winres@v0.3.3 simply --icon resources/icon.ico --manifest gui --product-name MySpotify --file-description MySpotify --product-version 0.3.0 --file-version 0.3.0 --original-filename MySpotify.exe --arch amd64 --out rsrc
 ```
 
-日志（含崩溃时的堆栈）写在 `%APPDATA%\Vinyl\vinyl.log`，超过 1MB 挪成 `vinyl.log.1` 重新开始。
+日志（含崩溃时的堆栈）写在设置文件夹里的 `vinyl.log`，超过 1MB 挪成 `vinyl.log.1` 重新开始。
 
 ### 调试
 
