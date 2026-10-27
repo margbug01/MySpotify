@@ -207,6 +207,9 @@ func (a *app) showMain() {
 }
 
 // Run runs the app until it quits.
+// appName is the name the app shows.
+const appName = "MySpotify"
+
 func Run() error {
 	a := &app{
 		playlists:  map[string]*spotify.Playlist{},
@@ -222,6 +225,9 @@ func Run() error {
 	}
 	// Its data, the web player's sign-in among it, lives under this name,
 	// whatever the executable is called.
+	// Vinyl names where the app keeps its data (settings, the log, the
+	// sign-in in WebView2), as before it was MySpotify: appName is what it
+	// shows.
 	mygo.App.SetName("Vinyl")
 	// One runs: launched again, it shows the window of the one running,
 	// hidden in the notification area perhaps. The scenes run beside it.
@@ -269,7 +275,7 @@ func Run() error {
 		a.volume = a.settings.Volume
 		a.pl.SetVolume(a.volume)
 		a.win = mygo.NewWindow(mygo.WindowOptions{
-			Title:         mygo.App.Name(),
+			Title:         appName,
 			Width:         1180,
 			Height:        780,
 			MinWidth:      880,

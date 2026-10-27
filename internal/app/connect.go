@@ -4,6 +4,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log"
 	"os"
 	"sort"
@@ -58,7 +60,7 @@ func (a *app) startConnect() {
 	hostname, _ := os.Hostname()
 	sum := sha256.Sum256([]byte("Vinyl/" + a.profile.UserID + "/" + hostname))
 	state := &connectState{user: a.profile.UserID, jobs: make(chan func() error, 32), done: make(chan struct{})}
-	state.client = spotify.NewConnect(hex.EncodeToString(sum[:20]), "Vinyl · "+hostname, func(event spotify.ConnectEvent) {
+	state.client = spotify.NewConnect(hex.EncodeToString(sum[:20]), appName+" · "+hostname, func(event spotify.ConnectEvent) {
 		a.post(func() {
 			if a.connect == state {
 				a.connectEvent(event)
@@ -79,9 +81,10 @@ func (a *app) startConnect() {
 				default:
 				}
 				if err := job(); err != nil {
+					log.Printf("connect: %v", err)
 					a.post(func() {
 						if a.connect == state {
-							state.err = err.Error()
+							state.err = connectMessage(err)
 							a.toast = state.err
 						}
 					})
@@ -433,6 +436,7 @@ func (a *app) connectControl(action string, value any) bool {
 		a.connectJob(func() error {
 			err := state.client.Command(target, "skip_next", map[string]any{"track": track})
 			if err != nil {
+				log.Printf("connect: jump: %v; playing the queue from there instead", err)
 				err = state.client.Command(target, "play", connectPlayBody(request))
 			}
 			return err
@@ -444,6 +448,16 @@ func (a *app) connectControl(action string, value any) bool {
 	}
 	a.connectJob(func() error { return state.client.Command(target, action, extra) })
 	return true
+}
+
+// connectMessage is err as the listener reads it: a request Spotify turned
+// down says only so, what Spotify said of why going to the log.
+func connectMessage(err error) string {
+	var turned *spotify.ConnectError
+	if errors.As(err, &turned) {
+		return fmt.Sprintf("Spotify 没有接受这个操作（%d），原因已写进日志", turned.Status)
+	}
+	return err.Error()
 }
 
 func connectPlayBody(request player.QueueRequest) map[string]any {
@@ -496,7 +510,7 @@ func (a *app) connectButton(c *ui.Context) {
 				for _, id := range ids {
 					name := state.cluster.Devices[id].Name
 					if id == state.client.ID {
-						name = "此电脑 · Vinyl"
+						name = "此电脑 · " + appName
 					}
 					if name == "" {
 						name = "Spotify 设备"

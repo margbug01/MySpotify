@@ -173,7 +173,7 @@ func init() {
 			}
 			if os.Getenv("NM_SCENE") == "connect" {
 				events := make(chan spotify.ConnectEvent, 32)
-				client := spotify.NewConnect(fmt.Sprintf("%040x", time.Now().UnixNano()), "Vinyl · 连接验证", func(e spotify.ConnectEvent) {
+				client := spotify.NewConnect(fmt.Sprintf("%040x", time.Now().UnixNano()), appName+" · 连接验证", func(e spotify.ConnectEvent) {
 					select {
 					case events <- e:
 					default:

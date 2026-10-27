@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="docs/icon.png" width="112" alt="Vinyl">
+<img src="docs/icon.png" width="112" alt="MySpotify">
 
-# Vinyl
+# MySpotify
 
 Windows 上的 Spotify 播放器：Go 写的原生界面，免费账号也能整首播放。
 
@@ -13,21 +13,21 @@ Windows 上的 Spotify 播放器：Go 写的原生界面，免费账号也能整
 </div>
 
 > [!IMPORTANT]
-> Vinyl 是个人项目，和 Spotify 没有任何关系，也没有得到它的认可。它用的是 Spotify 网页播放器自己的内部接口，不是公开 API，Spotify 随时可能改掉；这样用 Spotify 很可能不符合它的用户条款，账号有被限制的风险。只用你自己的账号，后果自负。详见下面的[「风险和边界」](#风险和边界)。
+> MySpotify 是个人项目，和 Spotify 没有任何关系，也没有得到它的认可。它用的是 Spotify 网页播放器自己的内部接口，不是公开 API，Spotify 随时可能改掉；这样用 Spotify 很可能不符合它的用户条款，账号有被限制的风险。只用你自己的账号，后果自负。详见下面的[「风险和边界」](#风险和边界)。
 
 ## 为什么用它
 
 **像个桌面软件。** 界面是 [MyGo](https://github.com/egoist/mygo) 画的原生界面，不是套一层网页：侧栏、播放栏、全屏播放页、逐行滚动的歌词、律动舞台、系统媒体键、浅色和深色主题都有。只浏览时整个程序约 190MB，放歌时多一个约 60MB 的解密进程。
 
-**免费账号整首放。** 登录走 Spotify 官方的登录页，Vinyl 只是借用网页播放器拿到的身份。音频由 WebView2 自带的 Widevine 模块解密，和你在浏览器里听是同一条路，128k AAC。
+**免费账号整首放。** 登录走 Spotify 官方的登录页，MySpotify 只是借用网页播放器拿到的身份。音频由 WebView2 自带的 Widevine 模块解密，和你在浏览器里听是同一条路，128k AAC。
 
 **Spotify 有的大部分都在。** 首页推荐和每日推荐、排行榜、浏览全部分类、歌单和专辑、艺人页、单曲页（制作人员、播放次数、相似歌曲）、个人主页、播客、搜索（歌曲、艺人、专辑、歌单、播客）、喜欢、关注、收藏、自建歌单的增删改、下一首播放和待播清单、从歌曲或艺人开电台、最近播放。
 
-**出错不会卡死。** 许可证过期就自动换身份重试；被 Spotify 限流时播放栏会写「Spotify 暂时限流，稍后重试」，按它要求的时间等完再从原位置接着放；网络或解码出错会先在页面里重试两次。Spotify 更新网页播放器、旧的查询失效时，Vinyl 会自己去线上脚本里找新的。
+**出错不会卡死。** 许可证过期就自动换身份重试；被 Spotify 限流时播放栏会写「Spotify 暂时限流，稍后重试」，按它要求的时间等完再从原位置接着放；网络或解码出错会先在页面里重试两次。Spotify 更新网页播放器、旧的查询失效时，MySpotify 会自己去线上脚本里找新的。
 
 **听过的不用再下。** 放过的歌（加密分段，原样存下）留在本机，再放更快、不耗流量；上限可以在设置里选，也能一键清除。
 
-**数据只在本机。** 设置、播放进度、本机播放记录在 `%APPDATA%\Vinyl`，登录态在 `%LOCALAPPDATA%\Vinyl\WebView2`。除了 Spotify 和 Gravatar（取账号邮箱的头像），Vinyl 不连别的服务器，也没有统计和自动更新。
+**数据只在本机。** 设置、播放进度、本机播放记录在 `%APPDATA%\Vinyl`，登录态在 `%LOCALAPPDATA%\Vinyl\WebView2`。除了 Spotify 和 Gravatar（取账号邮箱的头像），MySpotify 不连别的服务器，也没有统计和自动更新。
 
 ## 截图
 
@@ -65,17 +65,17 @@ Windows 上的 Spotify 播放器：Go 写的原生界面，免费账号也能整
 ## 开始使用
 
 1. 需要 Windows 10 或 11，以及 [WebView2 运行时](https://developer.microsoft.com/microsoft-edge/webview2/)（Windows 11 自带，Windows 10 大多也已经装了）。
-2. 按下面「从源码构建」编出 `Vinyl.exe`，双击打开。
+2. 按下面「从源码构建」编出 `MySpotify.exe`，双击打开。
 3. 点「登录 Spotify」，在弹出的 Spotify 官方登录页里登录。登录态会留在本机，下次打开不用再登。
 
 快捷键：空格 播放/暂停，Ctrl+← / Ctrl+→ 上一首/下一首，Ctrl+D 喜欢正在放的歌，Ctrl+L 打开播放页，Ctrl+F 搜索，Ctrl+N 新建歌单，Ctrl+, 设置，鼠标侧键前进后退。
 
 ## 风险和边界
 
-- **不是官方客户端。** 数据走网页播放器的 Pathfinder GraphQL 和 spclient 接口，这些都没有公开文档，Spotify 改了 Vinyl 就会坏。
-- **条款。** Spotify 的用户条款不允许用第三方程序访问它的服务。用 Vinyl 可能导致账号被限制或封禁。只用你自己的账号，别拿它做任何商业用途。
-- **广告。** 网页播放器的免费版会插广告，Vinyl 不放。这一点 Spotify 很可能不喜欢；如果你在意，请用官方客户端或订阅 Premium。
-- **不碰密钥。** Vinyl 不破解 DRM：解密在 WebView2 的 Widevine 模块里完成，程序拿不到密钥，也拿不到解密后的音频。缓存里存的是 CDN 给的加密分段，每次播放仍要向 Spotify 申请许可证，不能离线。
+- **不是官方客户端。** 数据走网页播放器的 Pathfinder GraphQL 和 spclient 接口，这些都没有公开文档，Spotify 改了 MySpotify 就会坏。
+- **条款。** Spotify 的用户条款不允许用第三方程序访问它的服务。用 MySpotify 可能导致账号被限制或封禁。只用你自己的账号，别拿它做任何商业用途。
+- **广告。** 网页播放器的免费版会插广告，MySpotify 不放。这一点 Spotify 很可能不喜欢；如果你在意，请用官方客户端或订阅 Premium。
+- **不碰密钥。** MySpotify 不破解 DRM：解密在 WebView2 的 Widevine 模块里完成，程序拿不到密钥，也拿不到解密后的音频。缓存里存的是 CDN 给的加密分段，每次播放仍要向 Spotify 申请许可证，不能离线。
 - **歌词来源。** 补歌词用的网易云接口没有公开文档，频繁搜索会被它限流，哪天也可能改掉；它和 LRCLIB 都只收到歌名、歌手、专辑和时长。
 - **别频繁起播。** 许可证接口按设备限流，短时间里反复起播（比如半小时十几次）会被 429 一阵子。
 
@@ -102,7 +102,7 @@ Windows 上的 Spotify 播放器：Go 写的原生界面，免费账号也能整
 <details>
 <summary>播放栏写「Spotify 暂时限流，稍后重试」怎么办？</summary>
 
-什么都不用做。Vinyl 会按 Spotify 要求的时间等完，再从刚才的位置接着放。限流对象是 Vinyl 这个设备，浏览器里的网页版不受影响。
+什么都不用做。MySpotify 会按 Spotify 要求的时间等完，再从刚才的位置接着放。限流对象是 MySpotify 这个设备，浏览器里的网页版不受影响。
 </details>
 
 <details>
@@ -120,7 +120,7 @@ Windows 上的 Spotify 播放器：Go 写的原生界面，免费账号也能整
 <details>
 <summary>代理怎么设？</summary>
 
-Vinyl 用 Windows 的系统代理（设置 › 网络和 Internet › 代理），环境变量 `HTTPS_PROXY` 优先。
+MySpotify 用 Windows 的系统代理（设置 › 网络和 Internet › 代理），环境变量 `HTTPS_PROXY` 优先。
 </details>
 
 <details>
@@ -132,7 +132,7 @@ Vinyl 用 Windows 的系统代理（设置 › 网络和 Internet › 代理）�
 <details>
 <summary>关掉窗口怎么还在放歌？怎么真正退出？</summary>
 
-关窗口只是收进托盘，音乐照常放，点托盘图标或者再打开一次 Vinyl 就回来。要退出：右键托盘图标 › 退出 Vinyl。
+关窗口只是收进托盘，音乐照常放，点托盘图标或者再打开一次 MySpotify 就回来。要退出：右键托盘图标 › 退出 MySpotify。
 </details>
 
 播放 WebView 只在首次实际加载歌曲时创建。暂停 30 秒后停止继续加载分段，连续闲置 5 分钟后保存播放位置并关闭播放窗口、本地服务和命令循环；再次播放时重新加载并恢复位置，可能需要重新申请许可证。短暂停与切歌不会反复重建播放环境。缓存管理独立于播放窗口，未播放时也能查看或清理缓存。Windows 的 WebView2 使用软件渲染，减少隐藏音频页面的 GPU 开销；临时登录页共用这个设置，原生 MyGo 主界面仍保留 GPU 加速。
@@ -143,9 +143,9 @@ Vinyl 用 Windows 的系统代理（设置 › 网络和 Internet › 代理）�
 
 ### Spotify Connect（实验性）
 
-登录后自动注册 `Vinyl · 电脑名`，底部音量旁的「设备」可选择同账号在线的手机、网页或本机。设备播放时，Vinyl 显示远端歌曲与进度，播放/暂停、上一首/下一首、拖动进度、音量及随机/循环操作发给活动设备；转回本机则由原有 Widevine 播放。播放转走或接收连接丢失时暂停本机，避免两个端争抢声音。这里是单活动设备的接力，不是多设备同时出声。
+登录后自动注册 `MySpotify · 电脑名`，底部音量旁的「设备」可选择同账号在线的手机、网页或本机。设备播放时，MySpotify 显示远端歌曲与进度，播放/暂停、上一首/下一首、拖动进度、音量及随机/循环操作发给活动设备；转回本机则由原有 Widevine 播放。播放转走或接收连接丢失时暂停本机，避免两个端争抢声音。这里是单活动设备的接力，不是多设备同时出声。
 
-协议结构参考 [Flutify](https://github.com/is-hp-is-mad/Flutify)：两个独立 Dealer 长连接，`connect-state` 负责观察/遥控，`track-playback` 注册本机并处理状态机。不使用 Premium Web Playback SDK。免费账号的双通道注册已实测通过；手机/网页与 Vinyl 的完整音频接力、长时间重连仍需实机验证，不能把注册成功等同于完整兼容。状态机只带当前和下一首，待播清单因此按 connect-state 的 `next_tracks` 显示，与手机一致（隐藏的循环副本不显示，只有 URI 的曲目用 `decorateContextTracks` 补全）；点其中一首发 `skip_next` 带该曲 uid，在原上下文里跳过去。本机插队和电台续队尚未接入 Connect；不支持的内容类型会暂停并提示，不会擅自越过。
+协议结构参考 [Flutify](https://github.com/is-hp-is-mad/Flutify)：两个独立 Dealer 长连接，`connect-state` 负责观察/遥控，`track-playback` 注册本机并处理状态机。不使用 Premium Web Playback SDK。免费账号的双通道注册已实测通过；手机/网页与 MySpotify 的完整音频接力、长时间重连仍需实机验证，不能把注册成功等同于完整兼容。状态机只带当前和下一首，待播清单因此按 connect-state 的 `next_tracks` 显示，与手机一致（隐藏的循环副本不显示，只有 URI 的曲目用 `decorateContextTracks` 补全）；点其中一首发 `skip_next` 带该曲 uid，在原上下文里跳过去。本机插队和电台续队尚未接入 Connect；不支持的内容类型会暂停并提示，不会擅自越过。
 
 `NM_SHOTS=<已有目录> NM_SCENE=connect` 运行不播放音频的注册探针，结束后注销测试设备；使用不带 `-H windowsgui` 的构建查看输出。离线测试覆盖双连接注册/注销、推送解码、远端状态与控制路由、控制权释放、设备菜单以及本机音频停止。
 
@@ -163,13 +163,13 @@ Vinyl 用 Windows 的系统代理（设置 › 网络和 Internet › 代理）�
 
 ```
 go test ./...
-CGO_ENABLED=0 go build -trimpath -ldflags="-H windowsgui -s -w" -o outputs/Vinyl.exe .
+CGO_ENABLED=0 go build -trimpath -ldflags="-H windowsgui -s -w" -o outputs/MySpotify.exe .
 ```
 
 图标都由 `tools/icons.py` 画（Windows，要 Pillow，用 Edge 无头模式渲染 SVG）：`resources/icon.svg`/`icon.png` 是程序图标，`icon-small.svg` 是 16–24 像素用的简化版（两道纹、更粗），`icon.ico` 把两者按尺寸合在一起；`internal/app/tray.png` 是托盘和 Mac 菜单栏的模板图标（只有黑色和透明，Windows 深色任务栏上自动画成白色，macOS 自己染色）；`AppIcon.icon` 是 Mac Dock 用的 Icon Composer 文档（浅色/深色两种底，`mygo.json` 的 `macos.icon`，要在装了 Xcode 26 的 Mac 上 `mygo build` 才会编进去，否则退回 `icon.png` 生成的 `.icns`）。改了图标先跑 `python tools/icons.py`，再重新生成图标、版本信息和 manifest 所在的 `rsrc_windows_amd64.syso`：
 
 ```
-go run github.com/tc-hib/go-winres@v0.3.3 simply --icon resources/icon.ico --manifest gui --product-name Vinyl --product-version 0.1.0 --file-version 0.1.0 --original-filename Vinyl.exe --arch amd64 --out rsrc
+go run github.com/tc-hib/go-winres@v0.3.3 simply --icon resources/icon.ico --manifest gui --product-name MySpotify --file-description MySpotify --product-version 0.1.0 --file-version 0.1.0 --original-filename MySpotify.exe --arch amd64 --out rsrc
 ```
 
 日志（含崩溃时的堆栈）写在 `%APPDATA%\Vinyl\vinyl.log`，超过 1MB 挪成 `vinyl.log.1` 重新开始。
@@ -193,4 +193,4 @@ go run github.com/tc-hib/go-winres@v0.3.3 simply --icon resources/icon.ico --man
 
 ## 许可证
 
-[AGPL-3.0](LICENSE)，随上游。图标是 Vinyl 自己画的（`tools/icons.py`，「转动的唱片」：一张黑胶，三道纹路接住光）。Spotify 是 Spotify AB 的商标，截图里的封面和照片版权归各自的权利人。
+[AGPL-3.0](LICENSE)，随上游。图标是 MySpotify 自己画的（`tools/icons.py`，「转动的唱片」：一张黑胶，三道纹路接住光）。Spotify 是 Spotify AB 的商标，截图里的封面和照片版权归各自的权利人。

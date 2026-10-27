@@ -123,7 +123,7 @@ func TestConnectDeviceMenu(t *testing.T) {
 		}
 		file.Close()
 	}
-	if err := tt.Click("此电脑 · Vinyl"); err != nil {
+	if err := tt.Click("此电脑 · " + appName); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()

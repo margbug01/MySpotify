@@ -18,7 +18,7 @@ var trayIcon []byte
 // window is closed: a click shows the window, a right click the player's
 // controls and a way to quit. It returns nil where there is none.
 func (a *app) newTray() *mygo.Tray {
-	name := mygo.App.Name()
+	name := appName
 	t, err := mygo.NewTray(mygo.TrayOptions{ID: "main", Icon: trayIcon, IconIsTemplate: true, ToolTip: name})
 	if err != nil {
 		log.Printf("tray: %v", err)

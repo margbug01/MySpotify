@@ -103,7 +103,15 @@ func (c *Connect) requestOnce(ctx context.Context, method, path, connection stri
 		return c.requestOnce(ctx, method, path, connection, body, false)
 	}
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		return nil, fmt.Errorf("Connect: %s HTTP %d", path, res.StatusCode)
+		turned := &ConnectError{Path: path, Status: res.StatusCode}
+		var why struct {
+			Type    string `json:"error_type"`
+			Message string `json:"message"`
+		}
+		if json.Unmarshal(data, &why) == nil {
+			turned.Type, turned.Message = why.Type, why.Message
+		}
+		return nil, turned
 	}
 	return data, nil
 }
@@ -300,7 +308,30 @@ func (c *Connect) Command(target, endpoint string, extra map[string]any) error {
 		command[key] = value
 	}
 	_, err := c.request(c.ctx, http.MethodPost, "/connect-state/v1/player/command/from/"+c.ID+"-observer/to/"+url.PathEscape(target), "", map[string]any{"command": command})
+	var turned *ConnectError
+	if errors.As(err, &turned) {
+		turned.Endpoint = endpoint
+	}
 	return err
+}
+
+// ConnectError is Spotify turning a Connect request down: the command, if it
+// was one, and what Spotify said of why.
+type ConnectError struct {
+	Endpoint, Path string
+	Status         int
+	Type, Message  string // the error_type and message of its answer
+}
+
+func (e *ConnectError) Error() string {
+	s := fmt.Sprintf("Connect: %s HTTP %d", e.Path, e.Status)
+	if e.Endpoint != "" {
+		s = fmt.Sprintf("Connect: %s %s HTTP %d", e.Endpoint, e.Path, e.Status)
+	}
+	if why := strings.TrimSpace(e.Type + " " + e.Message); why != "" {
+		s += ": " + why
+	}
+	return s
 }
 
 func (c *Connect) Report(ref any, position, duration int64, paused bool) error {

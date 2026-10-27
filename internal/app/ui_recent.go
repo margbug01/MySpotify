@@ -194,14 +194,14 @@ func (a *app) recentPage(c *ui.Context) {
 				a.artistRow(c, a.recentArtists)
 			}
 			ui.Box(c).Height(16)
-			title(c, "在 Vinyl 里")
+			title(c, "在 "+appName+" 里")
 		})
 	}
 	if len(a.played) == 0 {
 		top, bottom := a.insets(c)
 		ui.Column(c).Grow(1).Padding(top+pageGap, pagePad, bottom, pagePad).Children(func() {
 			header(c)
-			a.centered(c, "在 Vinyl 里听过的歌会出现在这里", nil)
+			a.centered(c, "在 "+appName+" 里听过的歌会出现在这里", nil)
 		})
 		return
 	}
