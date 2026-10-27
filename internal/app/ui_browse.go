@@ -186,7 +186,7 @@ func (a *app) categoryPage(c *ui.Context) {
 				lists = lists[:min(len(lists), cols)]
 			}
 			if len(lists) > 0 {
-				ui.Grid(c.Key(key+"l")).Columns(cols).GapX(20).GapY(28).Children(func() {
+				ui.Grid(c.Key(key + "l")).Columns(cols).GapX(20).GapY(28).Children(func() {
 					for j := range lists {
 						a.playlistCard(c.Key(lists[j].ID), &lists[j])
 					}
