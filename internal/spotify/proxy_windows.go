@@ -1,39 +1,13 @@
 package spotify
 
 import (
-	"net/http"
 	"net/url"
 	"strings"
-	"sync"
-	"time"
 
 	"golang.org/x/sys/windows/registry"
 )
 
-// systemProxy routes requests through the proxy Windows is set to, read
-// again every few seconds, so switching it needs no restart. Go reads only
-// the environment, which wins here too.
-func systemProxy(req *http.Request) (*url.URL, error) {
-	if u, err := http.ProxyFromEnvironment(req); u != nil || err != nil {
-		return u, err
-	}
-	if h := req.URL.Hostname(); h == "localhost" || h == "127.0.0.1" {
-		return nil, nil
-	}
-	proxyMu.Lock()
-	defer proxyMu.Unlock()
-	if time.Since(proxyRead) > 5*time.Second {
-		proxyRead, proxyURL = time.Now(), readSystemProxy()
-	}
-	return proxyURL, nil
-}
-
-var (
-	proxyMu   sync.Mutex
-	proxyRead time.Time
-	proxyURL  *url.URL
-)
-
+// readSystemProxy reads the proxy Windows is set to.
 func readSystemProxy() *url.URL {
 	k, err := registry.OpenKey(registry.CURRENT_USER, `Software\Microsoft\Windows\CurrentVersion\Internet Settings`, registry.QUERY_VALUE)
 	if err != nil {
