@@ -86,7 +86,7 @@ func (a *app) radioLoaded(name, uri string, tracks []spotify.Track, err error) {
 	if cur := a.pl.Current(); cur != nil && cur.URI() == uri {
 		a.pl.RadioFrom(name, tracks, a.radioFeed())
 	} else {
-		a.pl.PlayRadio(name, tracks, a.radioFeed())
+		a.playRadio(name, tracks)
 	}
 	a.toast = "已开启" + radioLabel(name)
 }

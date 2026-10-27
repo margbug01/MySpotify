@@ -368,7 +368,10 @@ func (a *app) pageTop(c *ui.Context) {
 func (a *app) content(c *ui.Context) {
 	// Pages mark where their content is, as they scroll.
 	a.underTop, a.underBottom = false, false
-	if a.profile == nil && !a.homeLoading {
+	// Signed out, the pages everyone's are still there, browsed as an
+	// anonymous visitor: only a page that has nothing to show says to sign
+	// in, and it says so itself.
+	if a.profile == nil && !a.homeLoading && a.homeErr != "" && a.route.page == pageHome {
 		a.signedOutPage(c)
 		return
 	}

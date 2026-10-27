@@ -38,6 +38,9 @@ var captureMu sync.Mutex
 func (a *app) boot() {
 	a.homeLoading = true
 	spotify.Renew = a.renewIdentity
+	// Browsing works signed out too: the app gets itself the identity an
+	// anonymous visitor has, instead of waiting for someone to sign in.
+	spotify.RenewGuest = spotify.AnonymousIdentity
 	go func() {
 		// Through package spotify, so that a page opened meanwhile, from
 		// what restoreHome shows, waits on this renewal rather than
@@ -232,11 +235,18 @@ func (a *app) signedIn(prof *spotify.Profile) {
 	a.plErr = map[string]string{}
 	if prof == nil {
 		a.signin.cookies = ""
-		// Spotify plays nothing to nobody.
-		a.homeLoading, a.homeErr = false, ""
-		a.daily, a.homeSections, a.homeShortcuts, a.charts = nil, nil, nil, nil
-		a.facets, a.sectionAll = nil, nil
+		// Nobody is signed in: the app browses as the visitor the web
+		// player shows someone who has not signed in, so search, the home
+		// page and every page Spotify keeps for everyone stay. What is a
+		// listener's own stays empty.
+		a.mine, a.saved, a.followed, a.liked = nil, nil, nil, nil
+		a.recentLists, a.recentArtists = nil, nil
 		a.keepHome()
+		a.show(a.route)
+		if a.searched != "" {
+			a.runSearch(a.searched)
+		}
+		a.loadHome()
 		return
 	}
 	// Playback picks up where it was left, once there is someone to play to.
@@ -329,7 +339,9 @@ func (a *app) profileAvatar(c *ui.Context, prof *spotify.Profile, size float32) 
 
 func (a *app) signOut() {
 	a.signin.gen++
-	spotify.SetIdentity(spotify.Identity{})
+	// Forgets the guest too, so that browsing goes on as a new one rather
+	// than as whoever was here before.
+	spotify.SignOut()
 	if a.pl.Playing() {
 		a.pl.TogglePlay()
 	}
@@ -341,15 +353,20 @@ func (a *app) signOut() {
 	}()
 }
 
-// signedOutPage stands in for the pages while nobody is signed in.
+// signedOutPage stands in for the home page when even the visitor's one
+// could not be loaded, signed out: the way in, which needs nothing of the
+// network the page did not reach.
 func (a *app) signedOutPage(c *ui.Context) {
 	p := a.pal
 	top, bottom := a.insets(c)
 	ui.Column(c).Grow(1).Padding(top, 0, bottom, 0).Center().Gap(10).Children(func() {
-		ui.Text(c, "登录 Spotify 开始听歌").FontSize(20).FontWeight(700)
-		ui.Text(c, "免费账号也能完整播放").FontSize(13).TextColor(p.muted).Margin(0, 0, 8, 0)
+		ui.Text(c, "连不上 Spotify").FontSize(20).FontWeight(700)
+		ui.Text(c, "登录后可以听歌，免费账号也能完整播放").FontSize(13).TextColor(p.muted).Margin(0, 0, 8, 0)
 		if pillButton(c.Key("login"), iconUser, "登录 Spotify", p.accent, p.onAccent).Clicked() {
 			a.openLogin()
+		}
+		if ui.Button(c, "重试").Clicked() {
+			a.loadHome()
 		}
 	})
 }

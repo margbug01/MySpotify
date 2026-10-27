@@ -119,7 +119,75 @@ var (
 	// Renew, set by the app, gets a fresh identity from the web player,
 	// blocking until it has one.
 	Renew func() (Identity, error)
+
+	// guest is the identity of nobody: what browsing goes as while nobody
+	// is signed in. It is kept apart from current, so that signing in
+	// replaces it rather than having to tell one anonymous token from
+	// another.
+	guest      Identity
+	guestMu    sync.Mutex
+	guestGoing chan struct{} // closed once the guest ask under way ends
+	guestErr   error
+	// RenewGuest, set by the app if it wants browsing to work signed out,
+	// gets an anonymous identity, blocking until it has one.
+	RenewGuest func() (Identity, error)
 )
+
+// Guests says whether browsing works with nobody signed in: the app set
+// RenewGuest.
+func Guests() bool { return RenewGuest != nil }
+
+// guestIdentity returns the identity of nobody, asking for one first if the
+// one kept has run out.
+func guestIdentity() (Identity, error) {
+	guestMu.Lock()
+	if g := guest; g.Token != "" && time.Until(g.Expires) > 2*time.Minute {
+		guestMu.Unlock()
+		return g, nil
+	}
+	if RenewGuest == nil {
+		g := guest
+		guestMu.Unlock()
+		return g, ErrSignedOut
+	}
+	// One ask at a time; whoever else asks waits for it.
+	wait := guestGoing
+	if wait == nil {
+		wait = make(chan struct{})
+		guestGoing = wait
+		go func() {
+			next, err := RenewGuest()
+			guestMu.Lock()
+			if err == nil {
+				guest = next
+			}
+			guestErr, guestGoing = err, nil
+			guestMu.Unlock()
+			close(wait)
+		}()
+	}
+	guestMu.Unlock()
+	<-wait
+	guestMu.Lock()
+	defer guestMu.Unlock()
+	if guestErr != nil {
+		return guest, guestErr
+	}
+	if guest.Token == "" {
+		return guest, ErrSignedOut
+	}
+	return guest, nil
+}
+
+// SignOut forgets who was signed in and what browsing went as.
+func SignOut() {
+	idMu.Lock()
+	current = Identity{}
+	idMu.Unlock()
+	guestMu.Lock()
+	guest = Identity{}
+	guestMu.Unlock()
+}
 
 // SetIdentity makes id the one requests go as.
 func SetIdentity(id Identity) {
@@ -187,6 +255,14 @@ func identity(stale bool) (Identity, error) {
 func do(build func() (*http.Request, error)) ([]byte, error) {
 	for attempt := 0; ; attempt++ {
 		id, err := identity(attempt > 0)
+		asGuest := false
+		if errors.Is(err, ErrSignedOut) {
+			// Nobody is signed in: browse as nobody, which is what the web
+			// player shows a visitor who has not signed in either. Only the
+			// pages that want a listener's own things are left out.
+			id, err = guestIdentity()
+			asGuest = true
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -214,6 +290,13 @@ func do(build func() (*http.Request, error)) ([]byte, error) {
 		case res.StatusCode == http.StatusOK:
 			return body, nil
 		case res.StatusCode == http.StatusUnauthorized && attempt == 0:
+			if asGuest {
+				// The guest ask itself was turned down: forget it, so that
+				// the retry gets a new one.
+				guestMu.Lock()
+				guest = Identity{}
+				guestMu.Unlock()
+			}
 			continue
 		case res.StatusCode == http.StatusNotFound:
 			return nil, ErrNotFound

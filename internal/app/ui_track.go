@@ -85,7 +85,7 @@ func (a *app) trackHeader(c *ui.Context, pg *spotify.TrackPage) {
 			ui.Row(c).Gap(10).Margin(10, 0, 0, 0).AlignItems(ui.Center).Children(func() {
 				if pillButton(c.Key("play"), iconPlay, "播放", p.accent, p.onAccent).Clicked() && tr.Playable() {
 					// The track, then songs like it.
-					a.pl.PlayQueue(append([]spotify.Track{*tr}, pg.Recommended...), 0)
+					a.playQueue(append([]spotify.Track{*tr}, pg.Recommended...), 0)
 				}
 				label := "电台"
 				if a.radioStarting == radioName(tr.URI(), tr.Name) {
