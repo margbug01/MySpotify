@@ -6,10 +6,82 @@
 // Plays what Vinyl asks, one track at a time, each in an audio element of
 // its own, so that the events of one gone never pass for the next's.
 let cur = null, volume = 1;
+// keySystem decrypts what plays: Widevine, or FairPlay where WebKit plays.
+const ks = typeof location === 'undefined' ? null : /[?&]ks=([^&]*)/.exec(location.search);
+const keySystem = ks ? decodeURIComponent(ks[1]) : 'com.widevine.alpha';
 const send = (gen, type, t, msg) => fetch('/event', {
   method: 'POST',
   body: JSON.stringify({ gen, type, t: t || 0, msg: msg || '' }),
 }).catch(() => {});
+
+// certificate is FairPlay's, asked for once: the licence service's key.
+let certificate = null;
+
+// nativeFairPlay plays as Safari's web player does, in WebKit's own HLS:
+// it asks for the key of the skd:// URI the manifest names (webkitneedkey),
+// which the prefixed key system turns into a licence request with the
+// asset's ID and the certificate. It answers what load uses of hls.js.
+function nativeFairPlay(gen, a) {
+  const handlers = [];
+  let src = '', session = null;
+  const fail = (details, code) => handlers.forEach((h) => h(Hls.Events.ERROR, { fatal: true, type: Hls.ErrorTypes.KEY_SYSTEM_ERROR, details, response: code ? { code } : undefined }));
+  a.addEventListener('webkitneedkey', async (e) => {
+    try {
+      if (!certificate) certificate = fetch('/cert?gen=' + gen).then((r) => {
+        if (!r.ok) throw new Error('certificate http=' + r.status);
+        return r.arrayBuffer();
+      });
+      const cert = new Uint8Array(await certificate.catch((err) => { certificate = null; throw err; }));
+      const init = new Uint8Array(e.initData);
+      const view = new DataView(init.buffer, init.byteOffset, init.byteLength);
+      const uri = init.byteLength > 4 && view.getUint32(0, true) + 4 === init.byteLength
+        ? String.fromCharCode(...new Uint16Array(init.slice(4).buffer)) : '';
+      const id = /^skd:\/\/([0-9a-fA-F]+)/.exec(uri);
+      if (!id) throw new Error('no skd:// asset in ' + JSON.stringify(uri));
+      // The init data, then the asset's ID and the certificate, each after
+      // its length: what the prefixed key system takes.
+      const data = new Uint8Array(init.byteLength + 4 + id[1].length * 2 + 4 + cert.byteLength);
+      const out = new DataView(data.buffer);
+      let at = 0;
+      data.set(init, at); at += init.byteLength;
+      out.setUint32(at, id[1].length * 2, true); at += 4;
+      for (const c of id[1]) { out.setUint16(at, c.charCodeAt(0), true); at += 2; }
+      out.setUint32(at, cert.byteLength, true); at += 4;
+      data.set(cert, at);
+      if (!a.webkitKeys) a.webkitSetMediaKeys(new WebKitMediaKeys('com.apple.fps.1_0'));
+      session = a.webkitKeys.createSession('video/mp4', data);
+      session.addEventListener('webkitkeymessage', async (m) => {
+        const r = await fetch('/license?gen=' + gen, { method: 'POST', body: m.message });
+        if (!r.ok) return fail('keySystemLicenseRequestFailed', r.status);
+        session.update(new Uint8Array(await r.arrayBuffer()));
+      });
+      session.addEventListener('webkitkeyerror', () => {
+        const err = session.error;
+        fail('keySystemSessionError ' + (err ? err.code + '/' + err.systemCode : ''));
+      });
+    } catch (err) {
+      fail('keySystemNoSession ' + err.message);
+    }
+  });
+  return {
+    on(name, fn) { if (name === Hls.Events.ERROR) handlers.push(fn); },
+    loadSource(s) { src = s; if (a.src) a.src = s; },
+    attachMedia() { a.src = src; },
+    // WebKit loads on its own, and stops while paused.
+    startLoad() {},
+    stopLoad() {},
+    recoverMediaError() {
+      const at = a.currentTime;
+      a.addEventListener('loadedmetadata', () => { a.currentTime = at; }, { once: true });
+      a.src = src;
+    },
+    destroy() {
+      if (session) session.close();
+      a.removeAttribute('src');
+      a.load();
+    },
+  };
+}
 
 window.vinyl = {
   load(gen) {
@@ -17,13 +89,13 @@ window.vinyl = {
     const a = document.createElement('audio');
     a.volume = volume;
     document.body.append(a);
-    const hls = new Hls({
+    const hls = keySystem === 'com.apple.fps.1_0' ? nativeFairPlay(gen, a) : new Hls({
       emeEnabled: true,
       maxBufferLength: 30,
       maxMaxBufferLength: 60,
       maxBufferSize: 2 * 1024 * 1024,
       backBufferLength: 30,
-      drmSystems: { 'com.widevine.alpha': { licenseUrl: '/license?gen=' + gen, serverCertificateUrl: '/cert?gen=' + gen } },
+      drmSystems: { [keySystem]: { licenseUrl: '/license?gen=' + gen, serverCertificateUrl: '/cert?gen=' + gen } },
     });
     // tries counts the recoveries, two at most; want is whether to play.
     const t = { gen, a, hls, seek: null, tries: 0, want: false, endSeq: 0, ending: false, lastTime: 0, still: 0, heard: false };

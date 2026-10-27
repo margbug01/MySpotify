@@ -25,11 +25,9 @@ import (
 //go:embed web/player.html web/hls.min.js
 var webFiles embed.FS
 
-// licenseHost is Spotify's licence service; tests swap it for their own.
-var licenseHost = "https://spclient.wg.spotify.com/widevine-license/v1"
-
-// Web plays tracks in a web view that never shows, whose Widevine module
-// decrypts what Spotify streams, as the web player's does: the one way a
+// Web plays tracks in a web view that never shows, whose key system
+// (keySystem: Widevine, or FairPlay on macOS) decrypts what Spotify
+// streams, as the web player's does: the one way a
 // free account plays whole songs. Its page (web/player.html) takes
 // commands through Eval, and reports what plays back to the server on
 // 127.0.0.1 it is served from, which passes the media and licences through.
@@ -74,7 +72,7 @@ func NewWeb() (*Web, error) {
 	go w.server.Serve(ln)
 	w.win = mygo.NewWindow(mygo.WindowOptions{
 		Title: "Vinyl", Width: 320, Height: 240, Hidden: true, SkipTaskbar: true,
-		URL: "http://" + w.addr + "/",
+		URL: "http://" + w.addr + "/?ks=" + keySystem,
 	})
 	go w.run()
 	return w, nil
@@ -231,7 +229,7 @@ func (w *Web) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	case strings.HasPrefix(p, "/m/"):
 		w.serveMedia(rw, r, strings.TrimPrefix(p, "/m/"))
 	case p == "/license" && r.Method == http.MethodPost:
-		w.forward(rw, r, http.MethodPost, licenseHost+"/audio/license")
+		w.forward(rw, r, http.MethodPost, licenseHost+"/audio/license"+licenseQuery)
 	case p == "/cert":
 		w.forward(rw, r, http.MethodGet, licenseHost+"/application-certificate")
 
@@ -303,7 +301,7 @@ func (w *Web) serveMedia(rw http.ResponseWriter, r *http.Request, rest string) {
 	k.done(err == nil)
 }
 
-// forward sends the Widevine module's request to Spotify's licence
+// forward sends the key system's request to Spotify's licence
 // service, as the web player: once more, renewed, if the service turned
 // the identity down. The track it is for, gen in the query, notes the
 // answer.

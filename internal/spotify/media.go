@@ -10,8 +10,9 @@ import (
 )
 
 // Media is how a track plays in the web player: an HLS manifest of the
-// encrypted MP4 the CDN serves, which the browser's Widevine module
-// decrypts with a licence Spotify issues to the web player.
+// encrypted MP4 the CDN serves, which the browser's key system decrypts
+// with a licence Spotify issues to the web player: Widevine, or FairPlay
+// on macOS (see mediaFormat).
 type Media struct {
 	Manifest string // HLS, its init and segments signed CDN URLs with byte ranges
 	Duration time.Duration
@@ -45,7 +46,7 @@ func (n *looseInt) UnmarshalJSON(b []byte) error {
 // track's or a podcast episode's: 128k, which a free account is licensed to
 // play; the licence of the 256k one it is refused (403).
 func ResolveMedia(uri string) (*Media, error) {
-	raw, err := spGet("/track-playback/v1/media/"+uri+"?manifestFileFormat=file_ids_mp4", "application/json")
+	raw, err := spGet("/track-playback/v1/media/"+uri+"?manifestFileFormat="+mediaFormat, "application/json")
 	if err != nil {
 		return nil, err
 	}
@@ -55,9 +56,7 @@ func ResolveMedia(uri string) (*Media, error) {
 				Metadata struct {
 					Duration int64 `json:"duration"`
 				} `json:"metadata"`
-				Manifest struct {
-					MP4 []mediaFile `json:"file_ids_mp4"`
-				} `json:"manifest"`
+				Manifest map[string][]mediaFile `json:"manifest"`
 			} `json:"item"`
 		} `json:"media"`
 	}
@@ -72,7 +71,7 @@ func ResolveMedia(uri string) (*Media, error) {
 		}
 	}
 	var files []mediaFile
-	for _, f := range entry.Item.Manifest.MP4 {
+	for _, f := range entry.Item.Manifest[mediaFormat] {
 		if f.TrackType == "" || f.TrackType == "AUDIO" {
 			files = append(files, f)
 		}
@@ -90,7 +89,7 @@ func ResolveMedia(uri string) (*Media, error) {
 		return nil, err
 	}
 	return &Media{
-		Manifest: string(manifest),
+		Manifest: adaptManifest(string(manifest), f.FileID),
 		Duration: time.Duration(entry.Item.Metadata.Duration) * time.Millisecond,
 		Bitrate:  int(f.Bitrate),
 	}, nil
