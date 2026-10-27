@@ -8,7 +8,7 @@ Windows 上的 Spotify 播放器：Go 写的原生界面，免费账号也能整
 
 ![Windows 10/11](https://img.shields.io/badge/Windows-10%20%7C%2011-3a6ea5?style=flat-square) ![Go](https://img.shields.io/badge/Go-1.27-00add8?style=flat-square) ![MyGo](https://img.shields.io/badge/UI-MyGo-6a717c?style=flat-square) ![AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-c2410c?style=flat-square)
 
-**[下载最新版](https://github.com/margbug01/Vinyl/releases/latest)** · 解压就能用，不用安装
+**[下载最新版](https://github.com/margbug01/MySpotify/releases/latest)** · 解压就能用，不用安装
 
 <img src="docs/screenshots/hero.webp" width="860" alt="首页，浅色和深色">
 
@@ -70,7 +70,7 @@ Windows 上的 Spotify 播放器：Go 写的原生界面，免费账号也能整
 
 ## 开始使用
 
-1. 到 [Releases](https://github.com/margbug01/Vinyl/releases/latest) 下载 `MySpotify-<版本>-windows-amd64.zip`，解压到任意文件夹，双击 `MySpotify.exe`。
+1. 到 [Releases](https://github.com/margbug01/MySpotify/releases/latest) 下载 `MySpotify-<版本>-windows-amd64.zip`，解压到任意文件夹，双击 `MySpotify.exe`。
 2. exe 没有代码签名，第一次打开 Windows 可能弹「Windows 已保护你的电脑」：点「更多信息 › 仍要运行」。不放心可以对一下 Release 里写的 sha256，或者按下面「从源码构建」自己编。
 3. 需要 Windows 10 或 11，以及 [WebView2 运行时](https://developer.microsoft.com/microsoft-edge/webview2/)（Windows 11 自带，Windows 10 大多也已经装了）。
 4. 点「登录 Spotify」，在弹出的 Spotify 官方登录页里登录。登录态会留在本机，下次打开不用再登。
