@@ -1,0 +1,28 @@
+{
+  "fill-specializations": [
+    {
+      "value": {
+        "solid": "extended-gray:0.97000,1.00000"
+      }
+    },
+    {
+      "appearance": "dark",
+      "value": {
+        "solid": "extended-gray:0.12000,1.00000"
+      }
+    }
+  ],
+  "groups": [
+    {
+      "layers": [
+        {
+          "image-name": "record.png",
+          "name": "record"
+        }
+      ]
+    }
+  ],
+  "supported-platforms": {
+    "squares": "shared"
+  }
+}

@@ -166,10 +166,10 @@ go test ./...
 CGO_ENABLED=0 go build -trimpath -ldflags="-H windowsgui -s -w" -o outputs/Vinyl.exe .
 ```
 
-图标、版本信息和 manifest 在 `rsrc_windows_amd64.syso`。改了 `resources/icon.svg` 后，先渲染成 1024px 透明 PNG（Edge 无头模式：`msedge --headless=new --default-background-color=00000000 --window-size=1024,1024 --screenshot=resources/icon.png resources/icon.svg`），再重新生成：
+图标都由 `tools/icons.py` 画（Windows，要 Pillow，用 Edge 无头模式渲染 SVG）：`resources/icon.svg`/`icon.png` 是程序图标，`icon-small.svg` 是 16–24 像素用的简化版（两道纹、更粗），`icon.ico` 把两者按尺寸合在一起；`internal/app/tray.png` 是托盘和 Mac 菜单栏的模板图标（只有黑色和透明，Windows 深色任务栏上自动画成白色，macOS 自己染色）；`AppIcon.icon` 是 Mac Dock 用的 Icon Composer 文档（浅色/深色两种底，`mygo.json` 的 `macos.icon`，要在装了 Xcode 26 的 Mac 上 `mygo build` 才会编进去，否则退回 `icon.png` 生成的 `.icns`）。改了图标先跑 `python tools/icons.py`，再重新生成图标、版本信息和 manifest 所在的 `rsrc_windows_amd64.syso`：
 
 ```
-go run github.com/tc-hib/go-winres@v0.3.3 simply --icon resources/icon.png --manifest gui --product-name Vinyl --product-version 0.1.0 --file-version 0.1.0 --original-filename Vinyl.exe --arch amd64 --out rsrc
+go run github.com/tc-hib/go-winres@v0.3.3 simply --icon resources/icon.ico --manifest gui --product-name Vinyl --product-version 0.1.0 --file-version 0.1.0 --original-filename Vinyl.exe --arch amd64 --out rsrc
 ```
 
 日志（含崩溃时的堆栈）写在 `%APPDATA%\Vinyl\vinyl.log`，超过 1MB 挪成 `vinyl.log.1` 重新开始。
@@ -193,4 +193,4 @@ go run github.com/tc-hib/go-winres@v0.3.3 simply --icon resources/icon.png --man
 
 ## 许可证
 
-[AGPL-3.0](LICENSE)，随上游。图标是 Vinyl 自己画的（`resources/icon.svg`，「落日唱片」）。Spotify 是 Spotify AB 的商标，截图里的封面和照片版权归各自的权利人。
+[AGPL-3.0](LICENSE)，随上游。图标是 Vinyl 自己画的（`tools/icons.py`，「转动的唱片」：一张黑胶，三道纹路接住光）。Spotify 是 Spotify AB 的商标，截图里的封面和照片版权归各自的权利人。

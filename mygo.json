@@ -3,5 +3,6 @@
   "identifier": "dev.margbug.vinyl",
   "slug": "vinyl",
   "version": "0.1.0",
-  "out": "build"
+  "out": "build",
+  "macos": { "icon": "AppIcon.icon" }
 }

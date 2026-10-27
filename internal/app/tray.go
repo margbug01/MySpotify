@@ -7,7 +7,9 @@ import (
 	"github.com/egoist/mygo"
 )
 
-// trayIcon is the app's icon, as small as the notification area shows it.
+// trayIcon is the record, as small as the notification area shows it, and
+// as a template: black and clear, which Windows draws white on a dark
+// taskbar and macOS tints as its menu bar is (tools/icons.py draws it).
 //
 //go:embed tray.png
 var trayIcon []byte
@@ -17,7 +19,7 @@ var trayIcon []byte
 // controls and a way to quit. It returns nil where there is none.
 func (a *app) newTray() *mygo.Tray {
 	name := mygo.App.Name()
-	t, err := mygo.NewTray(mygo.TrayOptions{ID: "main", Icon: trayIcon, ToolTip: name})
+	t, err := mygo.NewTray(mygo.TrayOptions{ID: "main", Icon: trayIcon, IconIsTemplate: true, ToolTip: name})
 	if err != nil {
 		log.Printf("tray: %v", err)
 		return nil
