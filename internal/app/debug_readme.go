@@ -1,6 +1,7 @@
 package app
 
 import (
+	"strings"
 	"time"
 
 	"github.com/egoist/mygo"
@@ -27,8 +28,20 @@ func readmeScene(a *app, shot func(string, *mygo.Window), step func(time.Duratio
 		})
 		time.Sleep(time.Second)
 	}
+	// Spotify names the listener in some of the home's titles too ("根据 …
+	// 的喜好推荐"): Alex there as well, again before each page, the home
+	// being fetched again meanwhile.
+	var real string
+	mygo.RunOnMain(func() { real = a.profile.Nickname })
+	alias := func() {
+		for i := range a.homeSections {
+			if real != "" {
+				a.homeSections[i].Title = strings.ReplaceAll(a.homeSections[i].Title, real, "Alex")
+			}
+		}
+	}
 	page := func(name string, r route, wait time.Duration) {
-		step(0, func() { a.nowPlaying = false; a.open(r) })
+		step(0, func() { alias(); a.nowPlaying = false; a.open(r) })
 		time.Sleep(wait)
 		shot(name, a.win)
 	}
