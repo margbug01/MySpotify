@@ -258,6 +258,7 @@ func Run() error {
 		a.settings = loadSettings()
 		a.settings.applyAppearance()
 		a.npPane = a.lyricsPaneChosen()
+		a.mvMode = a.mvModeChosen()
 		// Before the window: on Windows it lays out its content as it is
 		// made, and the view asks the player what plays.
 		a.art = newArtCache(a.post)

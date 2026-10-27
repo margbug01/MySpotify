@@ -6,6 +6,7 @@ import (
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
+	"vinyl/internal/lyrics"
 	"vinyl/internal/spotify"
 )
 
@@ -33,7 +34,15 @@ func (a *app) mvButton(c *ui.Context) {
 	if on {
 		label = "关闭 MV"
 	}
-	b := ui.ButtonBase(c.Key("mv")).Padding(2, 6, 2, 6).Radius(5).AlignItems(ui.Center).FocusRing(false).Label(label).Tooltip(label)
+	if badge(c.Key("mv"), "MV", label, on) {
+		a.pl.SetVideo(!on)
+	}
+}
+
+// badge is a little button of text, filled while what it turns on is, and
+// reports whether it was clicked.
+func badge(c *ui.Context, text, label string, on bool) bool {
+	b := ui.ButtonBase(c).Padding(2, 6, 2, 6).Radius(5).AlignItems(ui.Center).FocusRing(false).Label(label).Tooltip(label)
 	edge, bg, fg := white.Alpha(0.45), ui.Transparent, white.Alpha(0.7)
 	switch {
 	case on:
@@ -43,11 +52,9 @@ func (a *app) mvButton(c *ui.Context) {
 	}
 	b.Border(1, edge).Background(b.AnimateColor("bg", bg, ui.Animation{Duration: 120 * time.Millisecond})).TextColor(fg)
 	b.Children(func() {
-		ui.Text(c, "MV").FontSize(11).FontWeight(800).LetterSpacing(0.4)
+		ui.Text(c, text).FontSize(11).FontWeight(800).LetterSpacing(0.4)
 	})
-	if b.Clicked() {
-		a.pl.SetVideo(!on)
-	}
+	return b.Clicked()
 }
 
 // mvPage is the web view music videos play in, nil before one has played.
@@ -65,9 +72,26 @@ func (a *app) theater() bool {
 	return a.mvMode != mvInCover && a.mvPage() != nil && (pl.ShowsVideo() || pl.VideoOn() && pl.Loading())
 }
 
-// showMV shows the music video the way m says, its controls with it.
+// mvModeChosen is the way the listener last had music videos show: full
+// screen is not kept, which a video would go into by itself next time.
+func (a *app) mvModeChosen() int {
+	if a.settings.MVFill {
+		return mvTheater
+	}
+	return mvInCover
+}
+
+// showMV shows the music video the way m says, its controls with it, and
+// keeps whether it fills Now Playing for the next time.
 func (a *app) showMV(m int) {
 	a.mvMode, a.mvMoved = m, true
+	if m == mvFullScreen {
+		return
+	}
+	if fill := m == mvTheater; a.settings.MVFill != fill {
+		a.settings.MVFill = fill
+		a.settings.save()
+	}
 }
 
 // toggleMVFullScreen has the video fill the screen, or show again as it
@@ -201,6 +225,9 @@ func (a *app) npTheater(c *ui.Context, tr *spotify.Track, art *artwork, accent u
 			head.PassThrough()
 			foot.PassThrough()
 		}
+		if a.settings.MVLyrics {
+			a.mvLyrics(c, shown)
+		}
 		reveal(head, shown).Children(func() {
 			// The top strip drags the window; the ways to show the video sit
 			// below it, clear of the window's buttons (Windows).
@@ -210,6 +237,16 @@ func (a *app) npTheater(c *ui.Context, tr *spotify.Track, art *artwork, accent u
 				}
 			})
 			ui.Row(c).Justify(ui.End).AlignItems(ui.Center).Gap(10).Padding(0, 28, 0, 28).Children(func() {
+				if lines, _ := pl.Lyrics(); timed(lines) {
+					label := "显示歌词"
+					if a.settings.MVLyrics {
+						label = "隐藏歌词"
+					}
+					if badge(c.Key("lyrics"), "歌词", label, a.settings.MVLyrics) {
+						a.settings.MVLyrics = !a.settings.MVLyrics
+						a.settings.save()
+					}
+				}
 				a.mvButton(c)
 				if iconButton(c.Key("shrink"), iconShrink, 20, white.Alpha(0.85), "还原").Clicked() {
 					a.showMV(mvInCover)
@@ -225,4 +262,74 @@ func (a *app) npTheater(c *ui.Context, tr *spotify.Track, art *artwork, accent u
 		})
 		reveal(foot, shown).Children(func() { a.stageBar(c, tr, art, accent) })
 	})
+}
+
+// timed reports whether lines are lyrics with their times, which can show
+// as they are sung.
+func timed(lines []lyrics.Line) bool {
+	return len(lines) > 0 && !lines[0].Unsynced
+}
+
+// mvLyrics shows the line sung over the music video, its translation under
+// it, as subtitles: above the controls while they show, lower once they
+// go. Nothing shows before the first line, in a long break between lines
+// or after the last.
+func (a *app) mvLyrics(c *ui.Context, controls bool) {
+	pl := a.pl
+	lines, _ := pl.Lyrics()
+	if !timed(lines) {
+		return
+	}
+	pos := pl.Position()
+	cur := lyrics.Index(lines, pos)
+	if pl.Playing() {
+		if wait := lyricChange(lines, cur, pos); wait > 0 {
+			c.After(wait)
+		}
+	}
+	if cur < 0 || lines[cur].Text == "" {
+		return
+	}
+	l := &lines[cur]
+	if pos > l.End+time.Second && (cur+1 == len(lines) || lines[cur+1].At-l.End > 4*time.Second) {
+		return
+	}
+	w, _ := c.Size()
+	f := min(34, max(20, w*0.022))
+	pose := ui.Pose{}
+	if controls {
+		pose.Y = -64 // clear of the bar at the foot
+	}
+	// Under the pointer, it lets it through to the video, which watches
+	// its moves.
+	ui.Column(c.Key("mv-lyrics")).Absolute().Left(48).Right(48).Bottom(48).AlignItems(ui.Center).Gap(6).PassThrough().
+		AnimatePose(pose, ui.Animation{Duration: 200 * time.Millisecond}).Children(func() {
+		caption := func(text string, size float32, color ui.Color) {
+			ui.Box(c).Padding(4, 12).Radius(8).Background(black.Alpha(0.55)).PassThrough().Children(func() {
+				ui.Text(c, text).FontSize(size).FontWeight(700).TextColor(color).TextAlign(ui.Center).PassThrough()
+			})
+		}
+		caption(l.Text, f, white)
+		if l.Translation != "" {
+			caption(l.Translation, f*0.62, white.Alpha(0.85))
+		}
+	})
+}
+
+// lyricChange returns how long from pos the subtitles change: the next
+// line comes, or a break begins. 0 when they no longer do.
+func lyricChange(lines []lyrics.Line, cur int, pos time.Duration) time.Duration {
+	next := time.Duration(0)
+	at := func(t time.Duration) {
+		if t > pos && (next == 0 || t-pos < next) {
+			next = t - pos
+		}
+	}
+	if cur+1 < len(lines) {
+		at(lines[cur+1].At)
+	}
+	if cur >= 0 {
+		at(lines[cur].End + time.Second)
+	}
+	return next
 }

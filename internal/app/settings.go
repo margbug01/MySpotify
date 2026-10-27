@@ -37,6 +37,10 @@ type settings struct {
 	// rising and swelling with the bass: an experiment the listener turns
 	// on.
 	Fog bool `json:"fog"`
+	// MVFill has music videos fill Now Playing, rather than show where
+	// the cover goes; and MVLyrics shows the lines sung over them then.
+	MVFill   bool `json:"mvFill"`
+	MVLyrics bool `json:"mvLyrics"`
 
 	// CacheMB is how many megabytes the parts of tracks kept on disk may
 	// take; 0 keeps none.
@@ -46,7 +50,7 @@ type settings struct {
 }
 
 func defaultSettings() settings {
-	return settings{NotchActivity: true, Appearance: "system", Volume: 0.8, CacheMB: 1024}
+	return settings{NotchActivity: true, Appearance: "system", Volume: 0.8, CacheMB: 1024, MVLyrics: true}
 }
 
 func settingsPath() (string, error) {

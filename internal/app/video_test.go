@@ -1,12 +1,16 @@
 package app
 
 import (
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
+	"vinyl/internal/lyrics"
 	"vinyl/internal/spotify"
 )
 
@@ -110,5 +114,134 @@ func TestMVFillsTheWindowAndTheScreen(t *testing.T) {
 	tt.Frame()
 	if a.nowPlaying {
 		t.Fatal("Esc did not close Now Playing")
+	}
+}
+
+// Filling Now Playing, the music video shows the line sung over it, above
+// the controls and lower once they go, letting the pointer through to the
+// video; the next line takes its place as it comes. The listener turns
+// the subtitles off and on.
+func TestMVShowsTheLyricsAsSubtitles(t *testing.T) {
+	a := newTestApp()
+	a.settings = defaultSettings()
+	a.pl.Cue([]spotify.Track{{ID: "1", Name: "APT.", Duration: 170000}})
+	a.pl.SetLyrics([]lyrics.Line{
+		{At: 10 * time.Second, End: 14 * time.Second, Text: "Hold on, hold on", Translation: "等等，等等"},
+		{At: 15 * time.Second, End: 18 * time.Second, Text: "I'm on my way"},
+	})
+	a.pl.ShowVideo(&mygo.WebView{})
+	a.pl.Seek(11 * time.Second)
+	a.mvMode = mvTheater
+	tt := ui.NewTester(a.view, 1200, 800)
+	a.nowPlaying = true
+	tt.Frame()
+	tt.Advance(time.Second)
+	tt.Frame()
+	line := func(text string) (ui.Rect, bool) {
+		t.Helper()
+		tt.Advance(300 * time.Millisecond)
+		tt.Frame()
+		return tt.Find(text)
+	}
+	up, ok := line("Hold on, hold on")
+	if !ok {
+		t.Fatal("no subtitle over the video")
+	}
+	if _, ok := tt.Find("等等，等等"); !ok {
+		t.Fatal("no translation under it")
+	}
+	// Moving over the subtitle, the pointer moves over the video: the
+	// controls stay.
+	tt.Move(600, 300)
+	tt.Frame()
+	tt.Advance(time.Second)
+	tt.Frame()
+	tt.Move(up.X+up.W/2, up.Y+3)
+	tt.Frame()
+	tt.Advance(mvIdle - time.Second/2)
+	tt.Frame()
+	if r, _ := line("Hold on, hold on"); r.Y != up.Y {
+		t.Fatalf("moved over the subtitle, the controls went: it is at %v, was %v", r, up)
+	}
+	tt.Advance(mvIdle + time.Second)
+	tt.Frame()
+	down, ok := line("Hold on, hold on")
+	if !ok || down.Y <= up.Y || tt.Cursor() != ui.CursorNone {
+		t.Fatalf("with the controls gone, the subtitle is at %v, was %v; the pointer %v", down, up, tt.Cursor())
+	}
+	a.pl.Seek(15500 * time.Millisecond)
+	if _, ok := line("I'm on my way"); !ok {
+		t.Fatal("the next line did not come")
+	}
+	if _, ok := tt.Find("Hold on, hold on"); ok {
+		t.Fatal("the line before stays")
+	}
+	tt.Move(600, 300)
+	tt.Frame()
+	if err := tt.Click("隐藏歌词"); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := line("I'm on my way"); ok || a.settings.MVLyrics {
+		t.Fatal("the subtitles stay, turned off")
+	}
+	if err := tt.Click("显示歌词"); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := line("I'm on my way"); !ok {
+		t.Fatal("the subtitles did not come back")
+	}
+	a.pl.Seek(20 * time.Second)
+	if _, ok := line("I'm on my way"); ok {
+		t.Fatal("the last line stays after it was sung")
+	}
+}
+
+// Whether the music video fills Now Playing is kept, for the next time the
+// app opens; full screen is not, the way before it is.
+func TestMVModeIsKept(t *testing.T) {
+	a := newTestApp()
+	a.settings = defaultSettings()
+	a.settings.path = filepath.Join(t.TempDir(), "settings.json")
+	a.pl.Cue([]spotify.Track{{ID: "1", Name: "APT.", Duration: 170000}})
+	a.pl.SetLyrics(nil)
+	a.pl.ShowVideo(&mygo.WebView{})
+	tt := ui.NewTester(a.view, 1200, 800)
+	a.nowPlaying = true
+	tt.Frame()
+	tt.Advance(time.Second)
+	tt.Frame()
+	saved := func() int {
+		t.Helper()
+		s := defaultSettings()
+		b, err := os.ReadFile(a.settings.path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		json.Unmarshal(b, &s)
+		return (&app{settings: s}).mvModeChosen()
+	}
+	r, _ := tt.Find("MV 画面")
+	tt.Move(r.X+r.W/2, r.Y+r.H/2)
+	tt.Frame()
+	if err := tt.Click("铺满窗口"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if m := saved(); m != mvTheater {
+		t.Fatalf("kept %d, want filling Now Playing", m)
+	}
+	tt.Key(0, ui.KeyF)
+	tt.Frame()
+	if a.mvMode != mvFullScreen || saved() != mvTheater {
+		t.Fatalf("full screen: mode %d, kept %d", a.mvMode, saved())
+	}
+	tt.Key(0, ui.KeyEscape)
+	tt.Key(0, ui.KeyEscape)
+	tt.Frame()
+	if a.mvMode != mvInCover || saved() != mvInCover {
+		t.Fatalf("back by the lyrics: mode %d, kept %d", a.mvMode, saved())
+	}
+	if defaultSettings().MVLyrics != true {
+		t.Fatal("subtitles are off at first")
 	}
 }
