@@ -373,11 +373,9 @@ func (w *Web) serveMedia(rw http.ResponseWriter, r *http.Request, rest string) {
 	if !o.video && w.serveHead(rw, o.sources[i], rg) || cache.serve(rw, o.sources[i], rg) {
 		return
 	}
-	req, _ := http.NewRequestWithContext(r.Context(), http.MethodGet, o.sources[i], nil)
-	if rg != "" {
-		req.Header.Set("Range", rg)
-	}
-	res, err := spotify.Client.Do(req)
+	// The part comes from the CDN the manifest names, or, when that one does
+	// not answer, from another that serves the same file.
+	res, err := fetchPart(r, o.sources[i], rg)
 	if err != nil {
 		http.Error(rw, err.Error(), http.StatusBadGateway)
 		return
