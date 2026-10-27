@@ -245,3 +245,56 @@ func TestMVModeIsKept(t *testing.T) {
 		t.Fatal("subtitles are off at first")
 	}
 }
+
+// The lyrics over a music video come later or earlier with ] and [, and
+// so they stay for the song.
+func TestMVLyricsCanBeNudged(t *testing.T) {
+	a := newTestApp()
+	a.settings = defaultSettings()
+	a.settings.path = filepath.Join(t.TempDir(), "settings.json")
+	a.pl.Cue([]spotify.Track{{ID: "1", Name: "APT.", Duration: 170000}})
+	a.pl.SetLyrics([]lyrics.Line{
+		{At: 10 * time.Second, End: 14 * time.Second, Text: "Hold on, hold on"},
+		{At: 15 * time.Second, End: 18 * time.Second, Text: "I'm on my way"},
+	})
+	a.pl.ShowVideo(&mygo.WebView{})
+	a.pl.Seek(15200 * time.Millisecond)
+	a.mvMode = mvTheater
+	tt := ui.NewTester(a.view, 1200, 800)
+	a.nowPlaying = true
+	frame := func() {
+		tt.Advance(300 * time.Millisecond)
+		tt.Frame()
+	}
+	frame()
+	if _, ok := tt.Find("I'm on my way"); !ok {
+		t.Fatal("no subtitle")
+	}
+	tt.Key(0, ui.KeyBracketRight)
+	frame()
+	if _, ok := tt.Find("Hold on, hold on"); !ok || a.pl.VideoLead() != 500*time.Millisecond {
+		t.Fatalf("]: the lyrics did not come later, ahead by %v", a.pl.VideoLead())
+	}
+	tt.Move(600, 300)
+	frame()
+	if err := tt.Click("歌词延后 0.5 秒 (])"); err != nil {
+		t.Fatal(err)
+	}
+	frame()
+	b, err := os.ReadFile(a.settings.path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var kept settings
+	json.Unmarshal(b, &kept)
+	if kept.MVLeads["1"] != 1000 || a.pl.VideoLead() != time.Second {
+		t.Fatalf("kept %v, ahead by %v", kept.MVLeads, a.pl.VideoLead())
+	}
+	for range 2 {
+		tt.Key(0, ui.KeyBracketLeft)
+	}
+	frame()
+	if _, ok := tt.Find("I'm on my way"); !ok || a.pl.VideoLead() != 0 {
+		t.Fatalf("[: the lyrics did not come back, ahead by %v", a.pl.VideoLead())
+	}
+}

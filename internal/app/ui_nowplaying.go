@@ -323,7 +323,7 @@ func (a *app) lyricsPane(c *ui.Context, tr *spotify.Track, h float32) {
 		})
 		return
 	}
-	pos := pl.Position()
+	pos := pl.SongPosition()
 	cur := lyrics.Index(lines, pos)
 	// Redraw as the next line begins.
 	if pl.Playing() && cur+1 < len(lines) {

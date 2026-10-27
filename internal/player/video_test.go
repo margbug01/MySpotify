@@ -16,7 +16,7 @@ import (
 // music videos, which play in a Web of their own, with no page either:
 // tracks 1 and 2, the first loaded and playing. It returns what the player
 // posts, the player, and the videos it resolved.
-func videoPlayer(t *testing.T, licence http.HandlerFunc) (chan func(), *Player, func() []string) {
+func videoPlayer(t *testing.T, licence http.HandlerFunc, tracks ...spotify.Track) (chan func(), *Player, func() []string) {
 	t.Helper()
 	srv := httptest.NewServer(licence)
 	origin, res, resVideo := licenseOrigin, resolve, resolveVideo
@@ -50,7 +50,10 @@ func videoPlayer(t *testing.T, licence http.HandlerFunc) (chan func(), *Player, 
 	p := New(func(fn func()) { ch <- fn })
 	p.Web = web()
 	p.NewVideo = func() (*Web, error) { return web(), nil }
-	p.PlayQueue([]spotify.Track{{ID: "1"}, {ID: "2"}}, 0)
+	if tracks == nil {
+		tracks = []spotify.Track{{ID: "1"}, {ID: "2"}}
+	}
+	p.PlayQueue(tracks, 0)
 	until(t, ch, func() bool { return p.out != nil })
 	if p.out == nil || p.ShowsVideo() || !p.HasVideo() {
 		t.Fatal("the song did not load")
@@ -192,5 +195,52 @@ func TestVideoGoesOnWithTheNextTrack(t *testing.T) {
 	}
 	if v := videos(); len(v) != 2 || v[1] != "video of "+(&spotify.Track{ID: "2"}).URI() {
 		t.Fatalf("videos resolved: %q", v)
+	}
+}
+
+// A music video a few seconds longer than its song most likely opens with
+// them: it picks up that much further on than the song is, back to the
+// song the song plays on that much less far, and the lyrics follow the
+// song. A lead the listener set goes first.
+func TestVideoRunsAheadOfTheSong(t *testing.T) {
+	// Four seconds shorter than its video.
+	ch, p, _ := videoPlayer(t, func(http.ResponseWriter, *http.Request) {}, spotify.Track{ID: "1", Duration: 236000}, spotify.Track{ID: "2"})
+	p.out.Seek(30 * time.Second)
+	p.SetVideo(true)
+	until(t, ch, p.ShowsVideo)
+	if p.VideoLead() != 4*time.Second || p.Position() != 34*time.Second || p.SongPosition() != 30*time.Second {
+		t.Fatalf("video ahead by %v, at %v, the song at %v", p.VideoLead(), p.Position(), p.SongPosition())
+	}
+	if cmds := sent(p.Video); !slices.Contains(cmds, "vinyl.seek(1,34.000)") {
+		t.Fatalf("the video's page was asked %q", cmds)
+	}
+	p.Leads = func(id string) (time.Duration, bool) { return 6 * time.Second, id == "1" }
+	if p.VideoLead() != 6*time.Second || p.SongPosition() != 28*time.Second {
+		t.Fatalf("the listener's lead: ahead by %v, the song at %v", p.VideoLead(), p.SongPosition())
+	}
+	p.out.Seek(50 * time.Second)
+	p.SetVideo(false)
+	if p.ShowsVideo() || p.Position() != 44*time.Second || p.SongPosition() != 44*time.Second || p.VideoLead() != 0 {
+		t.Fatalf("song: video %v, at %v", p.ShowsVideo(), p.Position())
+	}
+}
+
+// Only a video a few seconds longer than its song is taken to open with
+// them.
+func TestLeadGuess(t *testing.T) {
+	song := &spotify.Track{Duration: 170000}
+	for _, c := range []struct{ video, want time.Duration }{
+		{172900 * time.Millisecond, 2900 * time.Millisecond},
+		{180 * time.Second, 10 * time.Second},
+		{170 * time.Second, 0},
+		{165 * time.Second, 0},
+		{200 * time.Second, 0},
+	} {
+		if got := leadGuess(song, &spotify.Video{Duration: c.video}); got != c.want {
+			t.Errorf("a video of %v: %v ahead, want %v", c.video, got, c.want)
+		}
+	}
+	if got := leadGuess(&spotify.Track{}, &spotify.Video{Duration: 3 * time.Second}); got != 0 {
+		t.Errorf("a song of no known length: %v ahead", got)
 	}
 }

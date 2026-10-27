@@ -102,6 +102,8 @@ func (a *app) shortcuts(c *ui.Context) {
 		c.OnShortcut(0, ui.KeyEscape, a.npEscape)
 		if a.pl.ShowsVideo() && a.mvPage() != nil {
 			c.OnShortcut(0, ui.KeyF, a.toggleMVFullScreen)
+			c.OnShortcut(0, ui.KeyBracketLeft, func() { a.nudgeLyrics(-lyricsNudge) })
+			c.OnShortcut(0, ui.KeyBracketRight, func() { a.nudgeLyrics(lyricsNudge) })
 		}
 	}
 }

@@ -53,6 +53,9 @@ type Player struct {
 	NewVideo func() (*Web, error)
 	idle     *time.Timer
 	idleGen  int
+	// Leads, if set, returns how far the listener has the music video of
+	// a song run ahead of it, where they set it (VideoLead).
+	Leads func(id string) (time.Duration, bool)
 	// Changed, if set, hears that what plays, where it is or whether it
 	// plays changed.
 	Changed func()
@@ -81,6 +84,7 @@ type Player struct {
 	media      *spotify.Media
 	video      bool
 	showsVideo bool
+	lead       time.Duration // how far the video shown likely runs ahead of the song
 	fade       fader
 	loading    bool
 	playing    bool // what the listener wants: false while paused
@@ -170,7 +174,7 @@ func (p *Player) announce(t *spotify.Track, artwork []byte) {
 		Album:    t.Album.Name,
 		Artwork:  artwork,
 		Duration: t.Length(),
-		Position: p.Position(),
+		Position: p.SongPosition(),
 		State:    state,
 		Commands: mygo.MediaPlay | mygo.MediaPause | mygo.MediaNext | mygo.MediaPrevious | mygo.MediaSeek,
 	})
@@ -687,6 +691,63 @@ func (p *Player) Position() time.Duration {
 	return p.out.Position()
 }
 
+// SongPosition is where the song is: the position, or as its music video
+// plays, the moment of the song the video is at, which its lyrics follow.
+func (p *Player) SongPosition() time.Duration {
+	pos := p.Position()
+	if p.showsVideo {
+		pos = max(pos-p.VideoLead(), 0)
+		if p.track != nil && p.track.Length() > 0 {
+			pos = min(pos, p.track.Length())
+		}
+	}
+	return pos
+}
+
+// VideoLead is how far the music video playing runs ahead of the song:
+// what is sung at the song's t is at the video's t+VideoLead. It is the
+// listener's, where they set it (Leads), else a guess (leadGuess).
+func (p *Player) VideoLead() time.Duration {
+	if !p.showsVideo {
+		return 0
+	}
+	return p.leadFor(nil)
+}
+
+// leadFor is VideoLead for the current track with its video v, or the one
+// shown when v is nil.
+func (p *Player) leadFor(v *spotify.Video) time.Duration {
+	if p.track != nil && p.Leads != nil {
+		if d, ok := p.Leads(p.track.ID); ok {
+			return d
+		}
+	}
+	if v != nil {
+		return leadGuess(p.track, v)
+	}
+	return p.lead
+}
+
+// maxLeadGuess is the most a music video runs longer than its song by to
+// be taken for an opening before the song: longer ones may as well end
+// with a scene of their own.
+const maxLeadGuess = 10 * time.Second
+
+// leadGuess is how far v, the music video of tr, likely runs ahead of it:
+// Spotify tells nothing of it, nor do the lyrics. A video a few seconds
+// longer than the song most likely opens with them; else the two are
+// taken to start together.
+func leadGuess(tr *spotify.Track, v *spotify.Video) time.Duration {
+	if tr == nil || v == nil || tr.Length() <= 0 {
+		return 0
+	}
+	extra := v.Duration - tr.Length()
+	if extra <= 0 || extra > maxLeadGuess {
+		return 0
+	}
+	return extra
+}
+
 func (p *Player) Duration() time.Duration {
 	if p.track == nil {
 		return 0
@@ -834,8 +895,10 @@ func (p *Player) open(gen int, m *spotify.Media, v *spotify.Video) {
 			log.Printf("player: video: %v", err)
 		}
 	}
+	p.lead = 0
 	if v != nil && p.Video != nil {
 		p.out, p.showsVideo = p.Video.OpenVideo(v), true
+		p.lead = leadGuess(p.track, v)
 	} else {
 		if p.Web == nil && p.NewWeb != nil {
 			var err error
@@ -916,7 +979,8 @@ func (p *Player) reopen() {
 		p.sync()
 		return
 	}
-	m, gen, from := p.media, p.gen, p.Position()
+	// Where the song is, which the song or its video goes on from.
+	m, gen, from := p.media, p.gen, p.SongPosition()
 	p.stop()
 	p.pending = from
 	if !p.video {
@@ -934,6 +998,8 @@ func (p *Player) reopen() {
 			p.loading = false
 			if v == nil {
 				p.video, p.err = false, "MV 暂时无法播放"
+			} else if from > 0 {
+				p.pending = max(from+p.leadFor(v), 0)
 			}
 			p.open(gen, m, v)
 		})
@@ -1109,7 +1175,7 @@ func (p *Player) Session() (Session, bool) {
 		At:       p.at,
 		Shuffle:  p.shuffle,
 		Repeat:   p.repeat,
-		Position: p.Position().Milliseconds(),
+		Position: p.SongPosition().Milliseconds(),
 		Radio:    p.radio,
 	}, true
 }

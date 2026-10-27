@@ -41,6 +41,9 @@ type settings struct {
 	// the cover goes; and MVLyrics shows the lines sung over them then.
 	MVFill   bool `json:"mvFill"`
 	MVLyrics bool `json:"mvLyrics"`
+	// MVLeads is how many milliseconds the listener has the music videos
+	// of songs, by their IDs, run ahead of them: the lyrics follow.
+	MVLeads map[string]int64 `json:"mvLeads,omitempty"`
 
 	// CacheMB is how many megabytes the parts of tracks kept on disk may
 	// take; 0 keeps none.

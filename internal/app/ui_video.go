@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/egoist/mygo"
@@ -242,10 +243,23 @@ func (a *app) npTheater(c *ui.Context, tr *spotify.Track, art *artwork, accent u
 					if a.settings.MVLyrics {
 						label = "隐藏歌词"
 					}
-					if badge(c.Key("lyrics"), "歌词", label, a.settings.MVLyrics) {
-						a.settings.MVLyrics = !a.settings.MVLyrics
-						a.settings.save()
-					}
+					// The lyrics, and on either side, earlier and later.
+					ui.Row(c.Key("lyrics")).Gap(2).AlignItems(ui.Center).Margin(0, 6, 0, 0).Children(func() {
+						if a.settings.MVLyrics {
+							if iconButton(c.Key("earlier"), iconMinus, 15, white.Alpha(0.75), "歌词提前 0.5 秒 ([)").Clicked() {
+								a.nudgeLyrics(-lyricsNudge)
+							}
+						}
+						if badge(c.Key("on"), "歌词", label, a.settings.MVLyrics) {
+							a.settings.MVLyrics = !a.settings.MVLyrics
+							a.settings.save()
+						}
+						if a.settings.MVLyrics {
+							if iconButton(c.Key("later"), iconPlus, 15, white.Alpha(0.75), "歌词延后 0.5 秒 (])").Clicked() {
+								a.nudgeLyrics(lyricsNudge)
+							}
+						}
+					})
 				}
 				a.mvButton(c)
 				if iconButton(c.Key("shrink"), iconShrink, 20, white.Alpha(0.85), "还原").Clicked() {
@@ -280,7 +294,7 @@ func (a *app) mvLyrics(c *ui.Context, controls bool) {
 	if !timed(lines) {
 		return
 	}
-	pos := pl.Position()
+	pos := pl.SongPosition()
 	cur := lyrics.Index(lines, pos)
 	if pl.Playing() {
 		if wait := lyricChange(lines, cur, pos); wait > 0 {
@@ -332,4 +346,36 @@ func lyricChange(lines []lyrics.Line, cur int, pos time.Duration) time.Duration 
 		at(lines[cur].End + time.Second)
 	}
 	return next
+}
+
+// lyricsNudge is how far a press moves the lyrics over a music video.
+const lyricsNudge = 500 * time.Millisecond
+
+// mvLead is how far the listener has the music video of the song id run
+// ahead of it, if they set it.
+func (a *app) mvLead(id string) (time.Duration, bool) {
+	ms, ok := a.settings.MVLeads[id]
+	return time.Duration(ms) * time.Millisecond, ok
+}
+
+// nudgeLyrics has the lyrics of the song whose music video plays come d
+// later, as its video runs further ahead of it, for this song from now on.
+func (a *app) nudgeLyrics(d time.Duration) {
+	pl := a.pl
+	tr := pl.Current()
+	if tr == nil || !pl.ShowsVideo() {
+		return
+	}
+	lead := pl.VideoLead() + d
+	if a.settings.MVLeads == nil {
+		a.settings.MVLeads = map[string]int64{}
+	}
+	a.settings.MVLeads[tr.ID] = lead.Milliseconds()
+	a.settings.save()
+	way := "延后"
+	if d < 0 {
+		way, d = "提前", -d
+	}
+	a.toast = fmt.Sprintf("歌词%s %.1f 秒（偏移 %+.1f 秒）", way, d.Seconds(), lead.Seconds())
+	a.mvMoved = true
 }

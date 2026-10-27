@@ -267,6 +267,7 @@ func Run() error {
 			go pruneCovers(a.art.dir, coversMax)
 		}
 		a.pl = player.New(a.post)
+		a.pl.Leads = a.mvLead
 		a.pl.Cache = newPartCache(a.settings.CacheMB)
 		a.pl.NewWeb = func() (*player.Web, error) {
 			web, err := player.NewWeb()

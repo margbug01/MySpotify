@@ -14,6 +14,7 @@ func newTestApp() *app {
 	a.profile = &spotify.Profile{UserID: "listener", Nickname: "听众"}
 	a.art = newArtCache(func(func()) {})
 	a.pl = player.New(func(func()) {})
+	a.pl.Leads = a.mvLead
 	a.pl.SetVolume(0.5)
 	return a
 }
