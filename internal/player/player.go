@@ -739,7 +739,8 @@ const maxLeadGuess = 10 * time.Second
 // the song or after it: taken for half before, the lyrics are at most half
 // of it off, wherever it is. Else the two are taken to start together.
 func leadGuess(tr *spotify.Track, v *spotify.Video) time.Duration {
-	if tr == nil || v == nil || tr.Length() <= 0 {
+	// A video podcast's episode is its video: the two keep the same time.
+	if tr == nil || v == nil || tr.Episode || tr.Length() <= 0 {
 		return 0
 	}
 	extra := v.Duration - tr.Length()
@@ -875,7 +876,21 @@ func (p *Player) loadSkipping(at, skipped int, play bool, from time.Duration) {
 					p.throttled(thr.Wait)
 					return
 				}
-				p.err = "这首歌暂时无法播放"
+				if errors.Is(err, spotify.ErrNoAudioHere) {
+					p.err = "这一集在这台电脑上放不了"
+					// Its podcast's other episodes are kept as it is, and
+					// would not play either: they are not asked for one
+					// after another, as the songs after one that fails are.
+					if n := len(p.order); n > 1 {
+						if after := p.queue[p.order[(at+1)%n]]; after.Episode && after.Album.ID == t.Album.ID {
+							p.playing = false
+							p.sync()
+							return
+						}
+					}
+				} else {
+					p.err = "这首歌暂时无法播放"
+				}
 				p.skip(at, skipped)
 				return
 			}

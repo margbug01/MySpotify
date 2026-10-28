@@ -201,10 +201,20 @@ func (w *Web) Open(m *spotify.Media) Output {
 	w.mu.Lock()
 	w.gen++
 	o.gen = w.gen
-	o.manifest, o.sources = localManifest(m.Manifest, "/m/"+strconv.Itoa(o.gen)+"/")
+	if m.File != "" {
+		// A file plays as it is: the page asks for its bytes a range at a
+		// time, passed through from where it is.
+		o.sources, o.file = []string{m.File}, true
+	} else {
+		o.manifest, o.sources = localManifest(m.Manifest, "/m/"+strconv.Itoa(o.gen)+"/")
+	}
 	w.outs[o.gen] = o
 	w.mu.Unlock()
-	w.send(fmt.Sprintf("vinyl.load(%d)", o.gen))
+	if o.file {
+		w.send(fmt.Sprintf("vinyl.load(%d,'file')", o.gen))
+	} else {
+		w.send(fmt.Sprintf("vinyl.load(%d)", o.gen))
+	}
 	return o
 }
 
@@ -365,17 +375,26 @@ func (w *Web) serveMedia(rw http.ResponseWriter, r *http.Request, rest string) {
 	}
 	rg := r.Header.Get("Range")
 	// A video's segments, megabytes each, are not kept: the cache is for
-	// songs.
+	// songs. Nor is a file's, an episode's tens of megabytes.
 	cache := w.Cache
-	if o.video {
+	if o.video || o.file {
 		cache = nil
 	}
-	if !o.video && w.serveHead(rw, o.sources[i], rg) || cache.serve(rw, o.sources[i], rg) {
+	if !o.video && !o.file && w.serveHead(rw, o.sources[i], rg) || cache.serve(rw, o.sources[i], rg) {
 		return
 	}
 	// The part comes from the CDN the manifest names, or, when that one does
-	// not answer, from another that serves the same file.
-	res, err := fetchPart(r, o.sources[i], rg)
+	// not answer, from another that serves the same file. A file has only
+	// where it is: no other to ask, nor a CDN to pass over for a while, and
+	// asked once, its failure is the page's to try again.
+	fetch, source := fetchPart, o.sources[i]
+	if o.file {
+		fetch, source = getRange, o.went(source)
+	}
+	res, err := fetch(r, source, rg)
+	if o.file {
+		res, err = o.follow(r, i, source, rg, res, err)
+	}
 	if err != nil {
 		http.Error(rw, err.Error(), http.StatusBadGateway)
 		return
@@ -466,6 +485,11 @@ type webOut struct {
 	playlists map[string]string
 	license   string
 	video     bool
+	file      bool // a file that plays as it is (spotify.Media's File)
+	// wentTo is where the file's address led, through its redirects: a
+	// podcast's goes through a few, seconds each, to a counter of plays
+	// and back, and the page asks for a range many times as it starts.
+	wentTo string
 
 	mu      sync.Mutex
 	pos     time.Duration // where it was at at
@@ -477,6 +501,39 @@ type webOut struct {
 	err     string
 	licence int           // how the licence service last answered
 	wait    time.Duration // how long it asked to wait, with a 429
+}
+
+// went returns where to ask for the file at source: where it led last.
+func (o *webOut) went(source string) string {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if o.wentTo != "" {
+		return o.wentTo
+	}
+	return source
+}
+
+// follow takes the answer for the file asked for at source, sources[i]
+// itself or where it led: where it led, for the next range; or, as where it
+// led does not answer, as a signed address that ran out, sources[i] asked
+// again, through its redirects.
+func (o *webOut) follow(r *http.Request, i int, source, rg string, res *http.Response, err error) (*http.Response, error) {
+	if (err != nil || !answers(res)) && source != o.sources[i] {
+		if err == nil {
+			res.Body.Close()
+		}
+		o.mu.Lock()
+		o.wentTo = ""
+		o.mu.Unlock()
+		source = o.sources[i]
+		res, err = getRange(r, source, rg)
+	}
+	if err == nil && answers(res) && res.Request != nil && res.Request.URL.String() != source {
+		o.mu.Lock()
+		o.wentTo = res.Request.URL.String()
+		o.mu.Unlock()
+	}
+	return res, err
 }
 
 func (o *webOut) Play() {
@@ -521,7 +578,11 @@ func (o *webOut) position(now time.Time) time.Duration {
 	return min(max(p, 0), o.dur)
 }
 
-func (o *webOut) Duration() time.Duration { return o.dur }
+func (o *webOut) Duration() time.Duration {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return o.dur
+}
 
 func (o *webOut) OnEnd(fn func()) (off func()) {
 	o.mu.Lock()
@@ -576,6 +637,14 @@ func (o *webOut) event(kind string, t time.Duration, msg string, seq int) {
 		log.Printf("player: track %d ended seq=%d at=%v duration=%v (%s)", o.gen, seq, t, o.dur, msg)
 		o.running, o.playing = false, false
 		t, end = o.dur, o.onEnd
+	case "duration":
+		// A file says how long it is once it loads: an episode's, where its
+		// podcast keeps it, may have more in it than Spotify's, as ads.
+		if o.file && t > 0 {
+			o.dur = t
+		}
+		o.mu.Unlock()
+		return
 	case "retry":
 		// The page tries again, as after a network error.
 		log.Printf("player: track %d: retrying after %s", o.gen, msg)

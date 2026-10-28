@@ -30,7 +30,7 @@ let certificate = null;
 // asset's ID and the certificate. It answers what load uses of hls.js.
 function nativeFairPlay(gen, a) {
   const handlers = [];
-  let src = '', session = null;
+  let session = null;
   const fail = (details, code) => handlers.forEach((h) => h(Hls.Events.ERROR, { fatal: true, type: Hls.ErrorTypes.KEY_SYSTEM_ERROR, details, response: code ? { code } : undefined }));
   a.addEventListener('webkitneedkey', async (e) => {
     try {
@@ -70,11 +70,19 @@ function nativeFairPlay(gen, a) {
       fail('keySystemNoSession ' + err.message);
     }
   });
+  return native(a, handlers, () => { if (session) session.close(); });
+}
+
+// native plays in the media element itself: HLS, as WebKit does, or a
+// file as it is, as every engine does. It answers what load uses of hls.js;
+// handlers hear its key system's errors, and close closes what it opened.
+function native(a, handlers, close) {
+  let src = '';
   return {
     on(name, fn) { if (name === Hls.Events.ERROR) handlers.push(fn); },
     loadSource(s) { src = s; if (a.src) a.src = s; },
     attachMedia() { a.src = src; },
-    // WebKit loads on its own, and stops while paused.
+    // The element loads on its own, and stops while paused.
     startLoad() {},
     stopLoad() {},
     recoverMediaError() {
@@ -83,7 +91,7 @@ function nativeFairPlay(gen, a) {
       a.src = src;
     },
     destroy() {
-      if (session) session.close();
+      close();
       a.removeAttribute('src');
       a.load();
     },
@@ -91,13 +99,16 @@ function nativeFairPlay(gen, a) {
 }
 
 window.vinyl = {
-  load(gen) {
+  // kind is 'file' for a file that plays as it is, an episode's where its
+  // podcast keeps it: no manifest, no key system.
+  load(gen, kind) {
+    const file = kind === 'file';
     vinyl.unload(cur && cur.gen);
     const a = document.createElement(videoPage ? 'video' : 'audio');
     a.volume = volume;
     a.playsInline = true;
     document.body.append(a);
-    const hls = keySystem === 'com.apple.fps.1_0' ? nativeFairPlay(gen, a) : new Hls({
+    const hls = file ? native(a, [], () => {}) : keySystem === 'com.apple.fps.1_0' ? nativeFairPlay(gen, a) : new Hls({
       emeEnabled: true,
       maxBufferLength: 30,
       maxMaxBufferLength: 60,
@@ -172,8 +183,9 @@ window.vinyl = {
     a.addEventListener('error', () => fail({ type: Hls.ErrorTypes.MEDIA_ERROR, details: '', msg: 'media ' + (a.error ? a.error.code + ' ' + a.error.message : '') }));
     a.addEventListener('loadedmetadata', () => {
       if (t.seek != null) { a.currentTime = t.seek; t.seek = null; }
+      if (file && Number.isFinite(a.duration)) send(gen, 'duration', a.duration);
     });
-    const src = '/m/' + gen + '/track.m3u8';
+    const src = '/m/' + gen + (file ? '/0' : '/track.m3u8');
     hls.loadSource(src);
     hls.attachMedia(a);
     cur = t;

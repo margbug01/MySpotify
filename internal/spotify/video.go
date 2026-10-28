@@ -19,7 +19,10 @@ type Video struct {
 	Master    string            // HLS, its playlists named as in Playlists
 	Playlists map[string]string // HLS of each, its segments signed CDN URLs
 	Duration  time.Duration
-	License   string // the path on spclient the key system's licence requests go to
+	// License is the path on spclient the key system's licence requests go
+	// to: "" for a video not encrypted, as a video podcast's.
+	License string
+	Sound   string // the playlist of its sound, of Playlists
 }
 
 // videoManifest is the part of a video's manifest the web player plays
@@ -81,21 +84,29 @@ func ResolveVideo(id string) (*Video, error) {
 
 // videoHLS writes the HLS the web player plays m from: the sound and every
 // size of the picture in the files the key system decrypts
-// (videoFileType), as many seconds a segment as m says.
+// (videoFileType), as many seconds a segment as m says. A video podcast's
+// is not encrypted at all: its MP4s play as they are, on every platform.
 func videoHLS(m videoManifest) (*Video, error) {
 	if len(m.Contents) == 0 || len(m.BaseURLs) == 0 {
 		return nil, errors.New("video: empty manifest")
 	}
 	c := m.Contents[0]
-	key := slices.IndexFunc(c.Encryption, func(e encryptionInfo) bool { return e.KeySystem == videoKeySystem })
-	if key < 0 || c.SegmentLength <= 0 || c.End <= c.Start {
+	clear := len(c.Encryption) == 0
+	key, fileType := -1, "mp4"
+	if !clear {
+		key, fileType = slices.IndexFunc(c.Encryption, func(e encryptionInfo) bool { return e.KeySystem == videoKeySystem }), videoFileType
+	}
+	if !clear && key < 0 || c.SegmentLength <= 0 || c.End <= c.Start {
 		return nil, fmt.Errorf("video: nothing %s plays", videoKeySystem)
 	}
-	enc := c.Encryption[key]
+	var enc encryptionInfo
+	if !clear {
+		enc = c.Encryption[key]
+	}
 	var sound *videoProfile
 	var sizes []videoProfile
 	for _, p := range c.Profiles {
-		if p.FileType != videoFileType || !slices.Contains(p.Encryption, key) {
+		if p.FileType != fileType || clear && len(p.Encryption) > 0 || !clear && !slices.Contains(p.Encryption, key) {
 			continue
 		}
 		switch {
@@ -106,7 +117,7 @@ func videoHLS(m videoManifest) (*Video, error) {
 		}
 	}
 	if sound == nil || len(sizes) == 0 {
-		return nil, fmt.Errorf("video: no %s profiles", videoFileType)
+		return nil, fmt.Errorf("video: no %s profiles", fileType)
 	}
 	slices.SortFunc(sizes, func(a, b videoProfile) int { return a.VideoBitrate - b.VideoBitrate })
 	dur := time.Duration(c.End-c.Start) * time.Millisecond
@@ -117,7 +128,9 @@ func videoHLS(m videoManifest) (*Video, error) {
 	playlist := func(p videoProfile) string {
 		var b strings.Builder
 		fmt.Fprintf(&b, "#EXTM3U\n#EXT-X-VERSION:6\n#EXT-X-TARGETDURATION:%d\n#EXT-X-PLAYLIST-TYPE:VOD\n#EXT-X-MEDIA-SEQUENCE:0\n", c.SegmentLength)
-		b.WriteString(videoKey(enc, p, c.EncodingID) + "\n")
+		if !clear {
+			b.WriteString(videoKey(enc, p, c.EncodingID) + "\n")
+		}
 		if p.FileType != "ts" {
 			fmt.Fprintf(&b, "#EXT-X-MAP:URI=\"%s\"\n", fill(m.InitTemplate, p))
 		}
@@ -128,12 +141,16 @@ func videoHLS(m videoManifest) (*Video, error) {
 		b.WriteString("#EXT-X-ENDLIST\n")
 		return b.String()
 	}
-	v := &Video{Playlists: map[string]string{}, Duration: dur, License: videoLicense(enc)}
+	v := &Video{Playlists: map[string]string{}, Duration: dur}
+	if !clear {
+		v.License = videoLicense(enc)
+	}
 	name := func(p videoProfile) string { return "p" + strconv.Itoa(p.ID) + ".m3u8" }
 	var b strings.Builder
 	b.WriteString("#EXTM3U\n#EXT-X-VERSION:6\n#EXT-X-INDEPENDENT-SEGMENTS\n")
 	fmt.Fprintf(&b, "#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID=\"audio\",NAME=\"audio\",DEFAULT=YES,AUTOSELECT=YES,URI=\"%s\"\n", name(*sound))
 	v.Playlists[name(*sound)] = playlist(*sound)
+	v.Sound = name(*sound)
 	for _, p := range sizes {
 		fmt.Fprintf(&b, "#EXT-X-STREAM-INF:BANDWIDTH=%d,AVERAGE-BANDWIDTH=%d,RESOLUTION=%dx%d,CODECS=\"%s,%s\",AUDIO=\"audio\"\n%s\n",
 			sound.MaxBitrate+p.MaxBitrate, sound.AudioBitrate+p.VideoBitrate, p.Width, p.Height, sound.AudioCodec, p.VideoCodec, name(p))

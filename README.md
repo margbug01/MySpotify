@@ -184,11 +184,12 @@ MV 是 FairPlay 加密的，macOS 不让任何截图、录屏软件拿到加密�
 
 - **登录**：一个平时隐藏的窗口打开 open.spotify.com，`internal/spotify/capture.js` 记下网页播放器自己拿到的 token 和 client-token；没登录就把这个窗口显示成 Spotify 的登录页。登录后把这个窗口的 cookie 加密存一份（`internal/app/account_store.go`），token 快过期时直接拿它和一次性 TOTP 码问 `/api/token`，跟网页播放器自己续期一样，不用再开窗口；cookie 失效了才退回去重新加载那个窗口。不登录时同样问 `/api/token`，拿到的是访客身份。
 - **数据**：Pathfinder GraphQL 的持久化查询（哈希在 `internal/spotify/spotify.go` 的 `ops` 里）加 spclient（歌词、播放清单、歌单改动、电台、最近播放、个人主页）。公开 Web API 对这个身份一律 429，不用。哈希失效时（412「Invalid query hash」）`internal/spotify/ops.go` 重读主脚本和按需加载的分块脚本，换上新哈希重试一次，存到 `%APPDATA%\Vinyl\queries.json`，10 分钟内不重复读。收藏列表在切回窗口时（5 秒内不重复）和每 30 秒检查一次，网络失败时保留上次的。
-- **播放**：另一个隐藏的 WebView 页面（`internal/player/web/player.html`）播加密的 MP4。Windows 用 hls.js + Widevine；macOS 照 Safari 版网页播放器，要 cbcs 格式的文件，用 WebKit 原生 HLS + FairPlay（`skd://` 加文件 ID，`fairplay-license/v1`）。清单、分段和许可证请求都经本机 127.0.0.1 的小服务转发，分段在这里顺手存进缓存，键是 CDN 路径加字节范围（CDN 的签名每天变，不进键）。播客的单集和歌曲走同一条路。这个页面第一次真放歌时才建，闲置 5 分钟就关掉，下次放再从原位置接上；它不用 GPU，主界面照常用 GPU。
+- **播放**：另一个隐藏的 WebView 页面（`internal/player/web/player.html`）播加密的 MP4。Windows 用 hls.js + Widevine；macOS 照 Safari 版网页播放器，要 cbcs 格式的文件，用 WebKit 原生 HLS + FairPlay（`skd://` 加文件 ID，`fairplay-license/v1`）。清单、分段和许可证请求都经本机 127.0.0.1 的小服务转发，分段在这里顺手存进缓存，键是 CDN 路径加字节范围（CDN 的签名每天变，不进键）。播客的单集能走这条路就走这条路，走不了的见下面「播客」。这个页面第一次真放歌时才建，闲置 5 分钟就关掉，下次放再从原位置接上；它不用 GPU，主界面照常用 GPU。
 - **出错**：许可证 401 换身份再要一次；429 按 Retry-After 等（没给就从 30 秒起翻倍），等完从原位置重来；403 停在这首。页面里的网络错误（`startLoad`，清单出错就重新 `loadSource`）和媒体错误（`recoverMediaError`）每首各重试 2 次，不行再跳下一首。结束事件没送到时，音频停在最后 0.25 秒、尾部已缓冲完、连续约 4 秒不动，才算播完。
 - **歌词**：Spotify 的同步歌词 → 网易云（`/api/cloudsearch/pc` 按歌名和主艺人搜，取同名、时长差不超过 2 秒里最接近的一首，它的时长和 Spotify 基本精确到毫秒；文字是简体）→ LRCLIB 精确查询（歌名、主艺人、专辑、时长都要对上）→ LRCLIB 搜索同名同歌手、时长差 2 秒内带时间轴的那条 → 都没有时间轴才用纯文本。Connect 给的歌手名缺失或是外文拼写（Yitai Wang）时，先换成 Spotify 给的中文名（王以太）再查。站点忙或限流（LRCLIB 503、网易云 405/406）时隔 3 秒、10 秒各再试一次，播客不查。
 - **Connect**：协议结构参考 [Flutify](https://github.com/is-hp-is-mad/Flutify)，不用 Premium 才能用的 Web Playback SDK。两条 Dealer 长连接：`connect-state` 用一个隐藏的观察者设备看和遥控，`track-playback` 把本机注册成能放歌的设备并处理状态机。状态机只带当前和下一首，所以待播清单按 connect-state 的 `next_tracks` 显示（隐藏的循环副本不显示，只有 URI 的曲目用 `decorateContextTracks` 补上名字）；点其中一首发 `skip_next` 带那首的 uid。本机插队和电台续队还没接进 Connect。
 - **MV**：`track-playback/v1/media` 多要一种 `manifest_ids_video`，返回里的 `video_version_uri` 就是这首的 MV。视频清单转成 HLS，在主窗口里一个看得见的 WebView 里放（Windows Widevine、macOS FairPlay），改放 MV 自带的音轨。原生控件盖在视频上：一层透明的框接鼠标，控制栏和字幕都画在 WebView 上面。歌单、专辑、艺人页、喜欢的歌的数据里本来就有 `associationsV3.videoAssociations`，列表的「MV」小标靠它，不用多发请求。
+- **播客**：单集也走 `track-playback/v1/media`，多要一种 `file_urls_external`。平台能放的加密音频优先；macOS 上 Spotify 几乎不给单集 cbcs（只有给 Widevine 的 cenc），这时视频播客改放视频清单里的音轨——视频播客的视频不加密（H.264 + AAC 的 fMP4），两个平台都不用许可证，切到视频时时间轴完全一致，截图也不黑；纯音频的改放 `file_urls_external` 给的播客原地址（RSS 里的那个 MP3），经本机小服务按范围转发，跟完一次跳转就记住最后的地址（BBC 的要跳 3 次，每次两三秒）。只剩 Spotify 自己托管、只有 Widevine 加密音频的节目在 macOS 上放不了，会提示并停下，不再一集一集往下试。
 - **头像**：账号的头像依次用 Spotify 上设的、账号邮箱在 Gravatar 上的、名字首字母（底色用 Spotify 给的颜色）。邮箱是带着 WebView 的 cookie 问 `www.spotify.com/api/account-settings/v1/profile` 拿的。
 
 ## 从源码构建
@@ -239,7 +240,7 @@ go run github.com/tc-hib/go-winres@v0.3.3 simply --icon resources/icon.ico --man
 ### 调试
 
 - `NM_SHOTS=<目录>`：走一遍首页、排行榜、歌单、播放页、待播清单、搜索，每步截图（静音）。
-- `NM_SHOTS=<目录> NM_SCENE=once`：静音放排行榜里的一首歌 10 秒（`NM_PLAY=<歌单/专辑/播客 URI>` 换成放那张列表的第一首），只要一次许可证，打印播放状态和缓存大小。验证真播放先用它。
+- `NM_SHOTS=<目录> NM_SCENE=once`：静音放排行榜里的一首歌 10 秒（`NM_PLAY=<歌单/专辑/播客 URI>` 换成放那张列表的第一首），只要一次许可证，打印播放状态和缓存大小。验证真播放先用它。加 `NM_VIDEO=1` 放有视频的那首的视频（MV、视频播客），停在正在播放页。
 - `NM_SHOTS=<目录> NM_SCENE=play`：完整验证播放（起播、拖到结尾接下一首、暂停继续、下一首），要好几次许可证，别连着跑。
 - `NM_SHOTS=<目录> NM_SCENE=readme`：用真数据截 README 里的这些图，账号名显示成 Alex（首页标题里的也换），不播放；再跑 `python tools/readme_shots.py <目录> docs/screenshots` 出圆角投影的 WebP。这个场景退出时会写设置和播放会话，想不碰自己的就把 `APPDATA` 指到别的目录再跑。
 - `NM_SHOTS=<目录> NM_SCENE=connect`：Connect 注册探针，不放音频，结束后注销测试设备。

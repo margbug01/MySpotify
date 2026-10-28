@@ -30,12 +30,12 @@ var black = ui.RGB(0, 0, 0)
 // shown for a song that has one. Once on, the songs after it that have one
 // play theirs too, as in Spotify.
 func (a *app) mvButton(c *ui.Context) {
-	on := a.pl.VideoOn()
-	label := "播放 MV"
+	on, name := a.pl.VideoOn(), mvName(a.pl.Current())
+	label := mvAction("播放", name)
 	if on {
-		label = "关闭 MV"
+		label = mvAction("关闭", name)
 	}
-	if badge(c.Key("mv"), "MV", label, on, white, ink) {
+	if badge(c.Key("mv"), name, label, on, white, ink) {
 		a.pl.SetVideo(!on)
 	}
 }
@@ -446,12 +446,12 @@ func (a *app) nudgeLyrics(d time.Duration) {
 // bar, or the song again: shown for a song that has one.
 func (a *app) barMVButton(c *ui.Context) {
 	pl := a.pl
-	on := pl.VideoOn()
-	label := "播放 MV"
+	on, name := pl.VideoOn(), mvName(pl.Current())
+	label := mvAction("播放", name)
 	if on {
-		label = "关闭 MV"
+		label = mvAction("关闭", name)
 	}
-	if badge(c.Key("mv"), "MV", label, on, a.pal.text, a.pal.bg) {
+	if badge(c.Key("mv"), name, label, on, a.pal.text, a.pal.bg) {
 		pl.SetVideo(!on)
 		if !on {
 			a.nowPlaying = true
@@ -459,16 +459,34 @@ func (a *app) barMVButton(c *ui.Context) {
 	}
 }
 
+// mvName is what a track's video is called: a song's music video, MV; a
+// video podcast's episode, 视频, as Spotify calls it.
+func mvName(tr *spotify.Track) string {
+	if tr != nil && tr.Episode {
+		return "视频"
+	}
+	return "MV"
+}
+
+// mvAction is verb and name together: a space between Chinese and MV.
+func mvAction(verb, name string) string {
+	if name == "MV" {
+		return verb + " MV"
+	}
+	return verb + name
+}
+
 // mvTag marks a track of a list that has a music video, and plays it.
-func (a *app) mvTag(c *ui.Context) ui.Element {
+func (a *app) mvTag(c *ui.Context, tr *spotify.Track) ui.Element {
 	p := a.pal
-	b := ui.ButtonBase(c).Padding(0, 4).Radius(3).FocusRing(false).Label("播放 MV").Tooltip("播放 MV")
+	name := mvName(tr)
+	b := ui.ButtonBase(c).Padding(0, 4).Radius(3).FocusRing(false).Label(mvAction("播放", name)).Tooltip(mvAction("播放", name))
 	color := p.muted
 	if b.Hovered() {
 		color = p.text
 	}
 	b.Border(1, color.Alpha(0.6)).Children(func() {
-		ui.Text(c, "MV").FontSize(9).FontWeight(800).TextColor(color)
+		ui.Text(c, name).FontSize(9).FontWeight(800).TextColor(color)
 	})
 	return b
 }

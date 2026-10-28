@@ -394,7 +394,7 @@ func (a *app) trackRows(c *ui.Context, tracks []spotify.Track, covers bool, head
 				ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
 					if !tr.Playable() {
 						ui.Text(c, "不可播放").FontSize(9).FontWeight(800).TextColor(p.accent).Padding(0, 4).Radius(3).Border(1, p.accent.Alpha(0.6))
-					} else if tr.Video && a.mvTag(c.Key("mv")).Clicked() {
+					} else if tr.Video && a.mvTag(c.Key("mv"), tr).Clicked() {
 						a.playMV(a.routeItem(), tracks, i)
 					}
 					a.artistLinks(c.Key("by"), tr.Artists, 12.5, p.muted, p.text)

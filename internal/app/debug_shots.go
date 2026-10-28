@@ -312,13 +312,19 @@ func init() {
 					tracks := a.playlists[list].Tracks
 					a.volume = 0
 					a.pl.SetVolume(0)
+					// NM_VIDEO=1: the video of one that has one, in Now
+					// Playing.
+					if os.Getenv("NM_VIDEO") != "" {
+						a.pl.VideoNext()
+						a.nowPlaying = true
+					}
 					a.pl.PlayQueue(tracks, firstPlayable(tracks))
 				})
 				for i := range 10 {
 					time.Sleep(time.Second)
 					mygo.RunOnMain(func() {
 						println(i+1, "s", a.pl.Current().Name, "playing", a.pl.Playing(), "loading", a.pl.Loading(),
-							"at", a.pl.Position().Round(100*time.Millisecond).String(), "err", a.pl.Err())
+							"at", a.pl.Position().Round(100*time.Millisecond).String(), "of", a.pl.Duration().Round(time.Second).String(), "video", a.pl.ShowsVideo(), "err", a.pl.Err())
 					})
 				}
 				if c := a.partCache(); c != nil {

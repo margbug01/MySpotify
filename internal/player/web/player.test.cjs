@@ -5,6 +5,7 @@ const timers = new Map();
 const instances = [];
 const intervals = new Map();
 const events = [];
+const elements = [];
 let rejectEnd = false;
 let timerID = 0;
 class Hls {
@@ -30,14 +31,19 @@ const context = vm.createContext({
   clearInterval: (id) => intervals.delete(id),
   setTimeout: (fn) => { timers.set(++timerID, fn); return timerID; },
   clearTimeout: (id) => timers.delete(id),
-  document: { body: { append() {} }, createElement: () => ({
-    currentTime: 0, duration: 250, readyState: 1, paused: false, seeking: false,
-    buffered: { length: 1, start: () => 220, end: () => 250 },
-    handlers: {},
-    addEventListener(name, fn) { this.handlers[name] = fn; },
-    play() { this.paused = false; return Promise.resolve(); },
-    pause() { this.paused = true; }, remove() { this.removed = true; },
-  }) },
+  document: { body: { append() {} }, createElement: () => {
+    const element = {
+      currentTime: 0, duration: 250, readyState: 1, paused: false, seeking: false,
+      buffered: { length: 1, start: () => 220, end: () => 250 },
+      handlers: {},
+      addEventListener(name, fn) { this.handlers[name] = fn; },
+      play() { this.paused = false; return Promise.resolve(); },
+      pause() { this.paused = true; }, remove() { this.removed = true; },
+      removeAttribute(name) { delete this[name]; }, load() { this.loads = (this.loads || 0) + 1; },
+    };
+    elements.push(element);
+    return element;
+  } },
 });
 const source = fs.readFileSync(__dirname + '/player.html', 'utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
 vm.runInContext(source, context);
@@ -129,6 +135,28 @@ async function checkEndings() {
     player.unload(4);
   }
   assert.equal(timers.size, 0);
+  assert.equal(intervals.size, 0);
+
+  // A file, an episode's where its podcast keeps it, plays as it is: the
+  // element loads it, no hls.js, and it says how long it is once loaded.
+  const made = instances.length;
+  player.load(5, 'file');
+  const file = elements.at(-1);
+  assert.equal(instances.length, made);
+  assert.equal(file.src, '/m/5/0');
+  file.duration = 754.5;
+  file.handlers.loadedmetadata();
+  assert.deepEqual(events.filter(event => event.gen === 5 && event.type === 'duration').map(event => event.t), [754.5]);
+  player.play(5);
+  assert.equal(file.paused, false);
+  player.unload(5);
+  assert.equal(file.removed, true);
+  assert.equal(file.src, undefined);
+  // A song's manifest said already.
+  player.load(6);
+  elements.at(-1).handlers.loadedmetadata();
+  assert.equal(events.filter(event => event.gen === 6 && event.type === 'duration').length, 0);
+  player.unload(6);
   assert.equal(intervals.size, 0);
   console.log('player lifecycle and ending JS tests passed');
 }

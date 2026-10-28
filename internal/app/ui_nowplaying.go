@@ -519,7 +519,7 @@ func (a *app) queuePane(c *ui.Context) {
 				ui.Text(c, tr.Name).FontSize(14).FontWeight(600).SingleLine()
 				ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
 					if tr.Video {
-						ui.Text(c, "MV").FontSize(9).FontWeight(800).TextColor(white.Alpha(0.6)).Padding(0, 4).Radius(3).Border(1, white.Alpha(0.35))
+						ui.Text(c, mvName(tr)).FontSize(9).FontWeight(800).TextColor(white.Alpha(0.6)).Padding(0, 4).Radius(3).Border(1, white.Alpha(0.35))
 					}
 					ui.Text(c, tr.ArtistNames()).FontSize(12.5).TextColor(white.Alpha(0.55)).SingleLine().Shrink(1)
 				})
