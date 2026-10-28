@@ -258,22 +258,27 @@ func (a *app) mvStage(c *ui.Context, tr *spotify.Track, art *artwork, accent ui.
 		})
 		ui.Row(c).Justify(ui.End).AlignItems(ui.Center).Gap(10).Padding(0, 28, 0, 28).Children(func() {
 			if lines, _ := pl.Lyrics(); timed(lines) {
-				label := "显示歌词"
+				tr := pl.Current()
+				name := lyricsName(tr)
+				label := "显示" + name
 				if a.settings.MVLyrics {
-					label = "隐藏歌词"
+					label = "隐藏" + name
 				}
+				// An episode's transcript keeps its time, as its video does:
+				// there is nothing to move it by.
+				nudge := a.settings.MVLyrics && (tr == nil || !tr.Episode)
 				// The lyrics, and on either side, earlier and later.
 				ui.Row(c.Key("lyrics")).Gap(2).AlignItems(ui.Center).Margin(0, 6, 0, 0).Children(func() {
-					if a.settings.MVLyrics {
+					if nudge {
 						if iconButton(c.Key("earlier"), iconMinus, 15, white.Alpha(0.75), "歌词提前 0.5 秒 ([)").Clicked() {
 							a.nudgeLyrics(-lyricsNudge)
 						}
 					}
-					if badge(c.Key("on"), "歌词", label, a.settings.MVLyrics, white, ink) {
+					if badge(c.Key("on"), name, label, a.settings.MVLyrics, white, ink) {
 						a.settings.MVLyrics = !a.settings.MVLyrics
 						a.settings.save()
 					}
-					if a.settings.MVLyrics {
+					if nudge {
 						if iconButton(c.Key("later"), iconPlus, 15, white.Alpha(0.75), "歌词延后 0.5 秒 (])").Clicked() {
 							a.nudgeLyrics(lyricsNudge)
 						}
@@ -466,6 +471,15 @@ func mvName(tr *spotify.Track) string {
 		return "视频"
 	}
 	return "MV"
+}
+
+// lyricsName is what a track's lyrics are called: an episode's, its
+// transcript, 字幕.
+func lyricsName(tr *spotify.Track) string {
+	if tr != nil && tr.Episode {
+		return "字幕"
+	}
+	return "歌词"
 }
 
 // mvAction is verb and name together: a space between Chinese and MV.

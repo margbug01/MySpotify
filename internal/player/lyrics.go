@@ -11,6 +11,9 @@ import (
 )
 
 func trackLyrics(track spotify.Track) []lyrics.Line {
+	if track.Episode {
+		return episodeLyrics(track, transcriptOf)
+	}
 	return findLyrics(track, spotify.Lyrics, func(t spotify.Track) (string, string, error) {
 		return lookupByNames(t, spotify.Decorate, func(t spotify.Track) (string, string, error) {
 			return firstTimed(t, spotify.NetEaseLyrics, spotify.LRCLyrics, spotify.LRCSearch)
@@ -39,6 +42,30 @@ func firstTimed(t spotify.Track, sources ...func(spotify.Track) (string, string,
 	}
 	return "", "", err
 }
+
+// episodeLyrics is an episode's lyrics: its transcript, which shows as
+// subtitles over its video, and in Now Playing as a song's lyrics do. It
+// is asked again, as the lyrics sites are, when it could not be had; not
+// when Spotify asked to wait.
+func episodeLyrics(track spotify.Track, transcript func(string) ([]lyrics.Line, error)) []lyrics.Line {
+	lines, err := transcript(track.ID)
+	for _, wait := range lyricsWaits {
+		var thr *spotify.Throttled
+		if err == nil || errors.As(err, &thr) {
+			break
+		}
+		time.Sleep(wait)
+		lines, err = transcript(track.ID)
+	}
+	if err != nil {
+		log.Printf("lyrics: transcript of %s: %v", track.ID, err)
+		return nil
+	}
+	return lines
+}
+
+// transcriptOf is spotify.Transcript; tests swap it.
+var transcriptOf = spotify.Transcript
 
 // lyricsOf is trackLyrics; tests swap it.
 var lyricsOf = trackLyrics

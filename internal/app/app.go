@@ -142,6 +142,7 @@ type app struct {
 	lyricGlide  lyricGlide
 	lyricAt     int
 	lyricTrack  string
+	lyricRows   lyricRows
 	queueList   ui.ListState
 	queueAt     int // the row of the queue pane last scrolled to, -1 while it is hidden
 

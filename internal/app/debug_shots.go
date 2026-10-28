@@ -10,6 +10,7 @@ import (
 
 	"github.com/egoist/mygo"
 
+	"vinyl/internal/lyrics"
 	"vinyl/internal/spotify"
 )
 
@@ -325,6 +326,14 @@ func init() {
 					mygo.RunOnMain(func() {
 						println(i+1, "s", a.pl.Current().Name, "playing", a.pl.Playing(), "loading", a.pl.Loading(),
 							"at", a.pl.Position().Round(100*time.Millisecond).String(), "of", a.pl.Duration().Round(time.Second).String(), "video", a.pl.ShowsVideo(), "err", a.pl.Err())
+						// The lyrics, or an episode's transcript, and the line
+						// said now.
+						lines, _ := a.pl.Lyrics()
+						said := ""
+						if at := lyrics.Index(lines, a.pl.SongPosition()); at >= 0 {
+							said = lines[at].Text
+						}
+						println("  lyrics", len(lines), "said", said)
 					})
 				}
 				if c := a.partCache(); c != nil {

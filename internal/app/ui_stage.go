@@ -95,7 +95,7 @@ func (a *app) stage(c *ui.Context, tr *spotify.Track, accent ui.Color) {
 					stageSkeleton(c, npShimmer(c), f, w)
 					return
 				}
-				ui.Text(c, "暂无歌词").FontSize(28).FontWeight(800).TextColor(white.Alpha(0.4))
+				ui.Text(c, "暂无"+lyricsName(tr)).FontSize(28).FontWeight(800).TextColor(white.Alpha(0.4))
 			})
 		})
 		return

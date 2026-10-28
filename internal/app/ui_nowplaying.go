@@ -3,6 +3,7 @@ package app
 import (
 	"math"
 	"time"
+	"unicode"
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
@@ -237,7 +238,7 @@ const (
 )
 
 func (a *app) paneTabs(c *ui.Context) {
-	a.paneTab(c, paneLyrics, "歌词")
+	a.paneTab(c, paneLyrics, lyricsName(a.pl.Current()))
 	a.paneTab(c, paneStage, "律动")
 	a.paneTab(c, paneQueue, "待播清单")
 }
@@ -304,7 +305,7 @@ func (a *app) lyricsPane(c *ui.Context, tr *spotify.Track, h float32) {
 				lyricsSkeleton(c, npShimmer(c))
 				return
 			}
-			ui.Text(c, "暂无歌词").FontSize(24).FontWeight(700).TextColor(white.Alpha(0.4))
+			ui.Text(c, "暂无"+lyricsName(tr)).FontSize(24).FontWeight(700).TextColor(white.Alpha(0.4))
 		})
 		return
 	}
@@ -336,12 +337,32 @@ func (a *app) lyricsPane(c *ui.Context, tr *spotify.Track, h float32) {
 	lag := a.lyricGlide.step(c, &a.lyricScroll)
 
 	scroll := ui.Scroll(c.Key("lyrics")).Grow(1).TrackScroll(&a.lyricScroll).Padding(0, 8, h*0.5, 0)
+	// Long lyrics, as an episode's transcript, thousands of lines, are built
+	// only about what shows, and the lines above and below make room as
+	// tall as they are (lyricRows).
+	lo, hi := 0, len(lines)
+	var rows *lyricRows
+	box := scroll.Bounds()
+	if len(lines) > lyricsAll {
+		rows = &a.lyricRows
+		rows.fit(tr.ID, lines, box.W)
+		view := box.H
+		if view <= 0 {
+			view = h
+		}
+		shown := a.lyricScroll.Y + lag
+		lo, hi = rows.span(shown-view, shown+2*view)
+	}
 	var active ui.Element
 	// The lines, held back by how far the glide to the line sung has still
 	// to go (lyricGlide).
 	scroll.Children(func() {
-		ui.Column(c).Gap(6).Translate(0, -lag).Children(func() {
-			for i, l := range lines {
+		ui.Column(c).Gap(lyricGap).Translate(0, -lag).Children(func() {
+			if lo > 0 {
+				ui.Box(c.Key("above")).Height(rows.top(lo) - lyricGap)
+			}
+			for i := lo; i < hi; i++ {
+				l := lines[i]
 				line := ui.ButtonBase(c.Key(i)).Column().AlignItems(ui.Start).Padding(10, 12).Radius(12).Gap(6).FocusRing(false).Label(l.Text)
 				on := i == cur
 				alpha := float32(0.28)
@@ -390,14 +411,27 @@ func (a *app) lyricsPane(c *ui.Context, tr *spotify.Track, h float32) {
 				if on {
 					active = line
 				}
+				if rows != nil {
+					rows.measure(i, line)
+				}
+			}
+			if hi < len(lines) {
+				ui.Box(c.Key("below")).Height(rows.top(len(lines)) - rows.top(hi) - lyricGap)
 			}
 		})
 	})
 	// Bring the line sung to a third of the way down, once it changed.
 	if cur != a.lyricAt {
-		box := scroll.Bounds()
 		target := float32(0)
-		if active.Valid() {
+		if rows != nil {
+			// Where the heights known put it: it may not be built yet.
+			if box.H <= 0 {
+				return // not laid out yet: the next frame scrolls
+			}
+			if cur >= 0 {
+				target = rows.top(cur) - box.H*0.3
+			}
+		} else if active.Valid() {
 			// Where the glide is going, without where it still is.
 			if lb := active.LayoutBounds(); lb.H > 0 && box.H > 0 {
 				target = lb.Y - box.Y + a.lyricScroll.Y - box.H*0.3
@@ -407,6 +441,95 @@ func (a *app) lyricsPane(c *ui.Context, tr *spotify.Track, h float32) {
 		}
 		a.lyricAt = cur
 		a.lyricGlide.to(c, &a.lyricScroll, min(max(0, target), a.lyricScroll.MaxY))
+	}
+}
+
+// lyricGap is the room between two lines of the lyrics.
+const lyricGap = 6
+
+// lyricsAll is how many lines of lyrics are built all at once, as a
+// song's: more, as an episode's transcript, and only those about what
+// shows are, a frame of thousands taking a tenth of a second.
+const lyricsAll = 150
+
+// lyricRows is what long lyrics know of how tall their lines are: as laid
+// out, those built so far, the others as their text would wrap. A line
+// built once and left keeps the room it took, so that what shows does not
+// move as lines are built and let go about it.
+type lyricRows struct {
+	track string
+	width float32
+	lines []lyrics.Line
+	h     []float32 // as laid out; 0 for a line never built
+	guess []float32 // as its text would wrap; 0 until asked
+}
+
+// fit makes r track's lines', as wide as width: laid out again at another
+// width, they are measured again.
+func (r *lyricRows) fit(track string, lines []lyrics.Line, width float32) {
+	if r.track != track || len(r.h) != len(lines) || math.Abs(float64(r.width-width)) > 0.5 {
+		*r = lyricRows{track: track, width: width, lines: lines, h: make([]float32, len(lines)), guess: make([]float32, len(lines))}
+	}
+	r.lines = lines
+}
+
+// height is how tall line i is: as laid out, or as its text would wrap at
+// 30 points, Chinese a character to the point size, Latin half that.
+func (r *lyricRows) height(i int) float32 {
+	if r.h[i] > 0 {
+		return r.h[i]
+	}
+	if r.guess[i] > 0 {
+		return r.guess[i]
+	}
+	width := float32(0)
+	for _, ch := range r.lines[i].Text {
+		if unicode.In(ch, unicode.Han, unicode.Hiragana, unicode.Katakana, unicode.Hangul) {
+			width += 30
+		} else {
+			width += 15
+		}
+	}
+	room := max(r.width-8-24, 120)
+	h := float32(math.Ceil(float64(max(width, 1)/room)))*37.5 + 20
+	if r.lines[i].Translation != "" {
+		h += 6 + 22
+	}
+	r.guess[i] = h
+	return h
+}
+
+// top is where line i begins, from the top of the lyrics.
+func (r *lyricRows) top(i int) float32 {
+	y := float32(0)
+	for j := range i {
+		y += r.height(j) + lyricGap
+	}
+	return y
+}
+
+// span returns the lines from lo up to hi that are between from and to.
+func (r *lyricRows) span(from, to float32) (lo, hi int) {
+	y := float32(0)
+	lo, hi = len(r.h), len(r.h)
+	for i := range r.h {
+		bottom := y + r.height(i)
+		if lo == len(r.h) && bottom >= from {
+			lo = i
+		}
+		if y > to {
+			hi = i
+			break
+		}
+		y = bottom + lyricGap
+	}
+	return min(lo, hi), hi
+}
+
+// measure notes how tall line i, built as e, was laid out.
+func (r *lyricRows) measure(i int, e ui.Element) {
+	if b := e.LayoutBounds(); b.H > 0 {
+		r.h[i] = b.H
 	}
 }
 

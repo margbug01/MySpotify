@@ -415,7 +415,7 @@ func (a *app) playerBar(c *ui.Context) {
 			if a.nowPlaying {
 				lyr = p.accent
 			}
-			if iconButton(c.Key("lyrics"), iconLyrics, 16, lyr, "歌词").Clicked() && tr != nil {
+			if iconButton(c.Key("lyrics"), iconLyrics, 16, lyr, lyricsName(tr)).Clicked() && tr != nil {
 				a.nowPlaying, a.npPane = true, a.lyricsPaneChosen()
 			}
 			if iconButton(c.Key("queue"), iconQueue, 16, p.muted, "播放队列").Clicked() && tr != nil {

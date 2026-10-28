@@ -27,6 +27,8 @@ Windows 和 macOS 上的 Spotify 播放器：Go 写的原生界面，免费账�
 
 **能看 MV。** 有 MV 的歌在列表里带个「MV」小标，点它就放 MV，播放栏和播放页也能随时切换。MV 可以放在封面的位置、铺满窗口或者全屏；铺满时控制栏浮在画面上，鼠标停 3 秒就隐藏，旁边是待播清单，下方显示当前这句歌词。MV 往往比原曲多一段开头，歌词会自动往后挪；不准的话按 `[` / `]` 每次调 0.5 秒，按歌记住。
 
+**播客能听、能看、能跟读。** 视频播客点「视频」就看画面，看法和 MV 一样；铺满窗口和全屏时下方是字幕，正在播放页里逐字稿像歌词一样跟着滚、一个词一个词亮起，点一句就跳过去。字幕是 Spotify 自己的逐字稿，原文语言，中文节目也有。macOS 上 Spotify 给大部分单集的加密音频解不了，MySpotify 改放视频播客自带的音轨或节目方的原始音频，只有少数 Spotify 自己托管的节目放不了。
+
 **Spotify 有的大部分都在。** 首页（照 Spotify 的分区和标题，音乐/播客筛选）、每日推荐、排行榜、浏览全部分类、歌单和专辑、艺人页、单曲页（制作人员、播放次数、相似歌曲）、个人主页、播客、搜索（歌曲、艺人、专辑、歌单、播客）、喜欢、关注、收藏、自建歌单的增删改、下一首播放和待播清单、从歌曲或艺人开电台、最近播放。网页或手机上新加的歌单会自己同步过来。
 
 **歌词基本都有，而且会滚。** Spotify 自己没有的，去网易云和 LRCLIB 找，带时间轴的优先，按歌名和时长核对版本，不乱配。当前这首的歌词到手后，顺手把下一首的也取好，切歌一开始就有。
@@ -118,7 +120,8 @@ Windows 和 macOS 上的 Spotify 播放器：Go 写的原生界面，免费账�
 | 逐字歌词 | Spotify 只给网页播放器逐行时间；网易云的逐字歌词还没接 |
 | 离线下载 | 需要 Premium，而且要官方客户端 |
 | Jam、DJ | 需要 Premium 或手机端 |
-| 视频播客 | 只能放音频（MV 能看） |
+| macOS 上部分播客 | Spotify 自己托管、只给 Widevine 加密音频的节目（比如忽左忽右），FairPlay 解不了；视频播客和有原始音频地址的节目都能放 |
+| 播客字幕的中文翻译 | 逐字稿只有原文和 Spotify 给的几种外语翻译，没有中文 |
 | 频谱 | 音频在解密模块里，拿不到；播放中的小音柱是按位置算的动画 |
 | Intel Mac、Linux | 只打了 Apple 芯片 Mac 的包；Linux 没做 |
 | MV 和歌词精确对齐 | Spotify 不给 MV 和原曲之间差多少，只能按时长估，偏了用 `[` / `]` 手动调 |
@@ -189,7 +192,7 @@ MV 是 FairPlay 加密的，macOS 不让任何截图、录屏软件拿到加密�
 - **歌词**：Spotify 的同步歌词 → 网易云（`/api/cloudsearch/pc` 按歌名和主艺人搜，取同名、时长差不超过 2 秒里最接近的一首，它的时长和 Spotify 基本精确到毫秒；文字是简体）→ LRCLIB 精确查询（歌名、主艺人、专辑、时长都要对上）→ LRCLIB 搜索同名同歌手、时长差 2 秒内带时间轴的那条 → 都没有时间轴才用纯文本。Connect 给的歌手名缺失或是外文拼写（Yitai Wang）时，先换成 Spotify 给的中文名（王以太）再查。站点忙或限流（LRCLIB 503、网易云 405/406）时隔 3 秒、10 秒各再试一次，播客不查。
 - **Connect**：协议结构参考 [Flutify](https://github.com/is-hp-is-mad/Flutify)，不用 Premium 才能用的 Web Playback SDK。两条 Dealer 长连接：`connect-state` 用一个隐藏的观察者设备看和遥控，`track-playback` 把本机注册成能放歌的设备并处理状态机。状态机只带当前和下一首，所以待播清单按 connect-state 的 `next_tracks` 显示（隐藏的循环副本不显示，只有 URI 的曲目用 `decorateContextTracks` 补上名字）；点其中一首发 `skip_next` 带那首的 uid。本机插队和电台续队还没接进 Connect。
 - **MV**：`track-playback/v1/media` 多要一种 `manifest_ids_video`，返回里的 `video_version_uri` 就是这首的 MV。视频清单转成 HLS，在主窗口里一个看得见的 WebView 里放（Windows Widevine、macOS FairPlay），改放 MV 自带的音轨。原生控件盖在视频上：一层透明的框接鼠标，控制栏和字幕都画在 WebView 上面。歌单、专辑、艺人页、喜欢的歌的数据里本来就有 `associationsV3.videoAssociations`，列表的「MV」小标靠它，不用多发请求。
-- **播客**：单集也走 `track-playback/v1/media`，多要一种 `file_urls_external`。平台能放的加密音频优先；macOS 上 Spotify 几乎不给单集 cbcs（只有给 Widevine 的 cenc），这时视频播客改放视频清单里的音轨——视频播客的视频不加密（H.264 + AAC 的 fMP4），两个平台都不用许可证，切到视频时时间轴完全一致，截图也不黑；纯音频的改放 `file_urls_external` 给的播客原地址（RSS 里的那个 MP3），经本机小服务按范围转发，跟完一次跳转就记住最后的地址（BBC 的要跳 3 次，每次两三秒）。只剩 Spotify 自己托管、只有 Widevine 加密音频的节目在 macOS 上放不了，会提示并停下，不再一集一集往下试。
+- **播客**：单集也走 `track-playback/v1/media`，多要一种 `file_urls_external`。平台能放的加密音频优先；macOS 上 Spotify 几乎不给单集 cbcs（只有给 Widevine 的 cenc），这时视频播客改放视频清单里的音轨——视频播客的视频不加密（H.264 + AAC 的 fMP4），两个平台都不用许可证，切到视频时时间轴完全一致，截图也不黑；纯音频的改放 `file_urls_external` 给的播客原地址（RSS 里的那个 MP3），经本机小服务按范围转发，跟完一次跳转就记住最后的地址（BBC 的要跳 3 次，每次两三秒）。只剩 Spotify 自己托管、只有 Widevine 加密音频的节目在 macOS 上放不了，会提示并停下，不再一集一集往下试。字幕是 `transcript-read-along/v2/episode/<id>` 给的逐字稿（网页播放器取逐字稿也是这个接口）：每句带开始时间，每个词带开始时间和字数；说话人、章节标题和「Music playing」不算一句；中文稿每两个字之间都有空格，显示时去掉。单集的逐字稿常有几千句，正在播放页只建看得见的几十行，其余用量过的行高（没量过的按文字长度估）占位。
 - **头像**：账号的头像依次用 Spotify 上设的、账号邮箱在 Gravatar 上的、名字首字母（底色用 Spotify 给的颜色）。邮箱是带着 WebView 的 cookie 问 `www.spotify.com/api/account-settings/v1/profile` 拿的。
 
 ## 从源码构建
