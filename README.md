@@ -258,6 +258,11 @@ go run github.com/tc-hib/go-winres@v0.3.3 simply --icon resources/icon.ico --man
 - [Flutify](https://github.com/is-hp-is-mad/Flutify)：Connect 协议结构的参考。
 - 歌词来自 [LRCLIB](https://lrclib.net/) 和网易云音乐。
 
+## 友链
+
+- [LINUX DO](https://linux.do/) - 新的真诚、友善、团结、专业，共建高品质开源与极客社区
+
 ## 许可证
 
 [AGPL-3.0](LICENSE)，随上游。[`licenses/`](licenses) 是编进程序的第三方代码的许可证，随程序发出去（Windows 在 exe 旁边，macOS 在 app 的 Resources 里）。图标是 MySpotify 自己画的（`tools/icons.py`，「转动的唱片」：一张黑胶，三道纹路接住光）。Spotify 是 Spotify AB 的商标，名字里的 Spotify 只是说明它播放的是什么，截图里的封面和照片版权归各自的权利人。
+
