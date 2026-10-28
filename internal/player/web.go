@@ -204,9 +204,6 @@ func (w *Web) Open(m *spotify.Media) Output {
 	o.manifest, o.sources = localManifest(m.Manifest, "/m/"+strconv.Itoa(o.gen)+"/")
 	w.outs[o.gen] = o
 	w.mu.Unlock()
-	// A spectrum belongs to the track it was read from: the new one's
-	// starts empty rather than carrying the last one's bars.
-	forgetLevels()
 	w.send(fmt.Sprintf("vinyl.load(%d)", o.gen))
 	return o
 }
@@ -226,9 +223,6 @@ func (w *Web) OpenVideo(v *spotify.Video) Output {
 	o.sources = l.sources
 	w.outs[o.gen] = o
 	w.mu.Unlock()
-	// A spectrum belongs to the track it was read from: the new one's
-	// starts empty rather than carrying the last one's bars.
-	forgetLevels()
 	w.send(fmt.Sprintf("vinyl.load(%d)", o.gen))
 	return o
 }
@@ -299,15 +293,10 @@ func (w *Web) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	case p == "/":
 		b, _ := webFiles.ReadFile("web/player.html")
 		rw.Header().Set("Content-Type", "text/html; charset=utf-8")
-		// Never from a cache: the page is the app's own, it changes with
-		// every build, and a web view that kept the last one would play
-		// yesterday's code with no sign of it.
-		rw.Header().Set("Cache-Control", "no-store, must-revalidate")
 		rw.Write(b)
 	case p == "/hls.js":
 		b, _ := webFiles.ReadFile("web/hls.min.js")
 		rw.Header().Set("Content-Type", "text/javascript")
-		rw.Header().Set("Cache-Control", "no-store, must-revalidate")
 		rw.Write(b)
 	case strings.HasPrefix(p, "/m/"):
 		w.serveMedia(rw, r, strings.TrimPrefix(p, "/m/"))
@@ -328,9 +317,6 @@ func (w *Web) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	case p == "/cert":
 		w.forward(rw, r, http.MethodGet, licenseHost+"/application-certificate")
 
-	case p == "/levels" && r.Method == http.MethodPost:
-		w.postLevels(rw, r)
-
 	case p == "/event" && r.Method == http.MethodPost:
 		var e struct {
 			Gen  int     `json:"gen"`
@@ -342,9 +328,6 @@ func (w *Web) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		if json.NewDecoder(io.LimitReader(r.Body, 8<<10)).Decode(&e) != nil {
 			http.Error(rw, "bad event", http.StatusBadRequest)
 			return
-		}
-		if e.Type == "js" {
-			log.Printf("player: %s", e.Msg)
 		}
 		if e.Type == "ready" {
 			w.once.Do(func() { close(w.ready) })

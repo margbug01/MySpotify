@@ -130,20 +130,6 @@ async function checkEndings() {
   }
   assert.equal(timers.size, 0);
   assert.equal(intervals.size, 0);
-
-  // A page without Web Audio has no analyser, so it sends no spectrum: the
-  // app draws its bars the way it always did rather than waiting on one.
-  assert.equal(events.filter((e) => e.type === 'levels').length, 0,
-    'a page with no analyser sent a spectrum');
-  player.load(5);
-  player.play(5);
-  const quiet = instances.at(-1).audio;
-  quiet.handlers.playing();
-  await new Promise((ok) => setImmediate(ok));
-  assert.equal(events.filter((e) => e.type === 'levels').length, 0,
-    'a page with no analyser sent a spectrum after playing');
-  player.unload(5);
-
   console.log('player lifecycle and ending JS tests passed');
 }
 checkEndings().catch(error => { console.error(error); process.exitCode = 1; });
