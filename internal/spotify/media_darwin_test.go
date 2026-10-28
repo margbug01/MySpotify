@@ -1,6 +1,8 @@
 package spotify
 
 import (
+	"io"
+	"net/http"
 	"strings"
 	"testing"
 )
@@ -21,5 +23,29 @@ func TestAdaptManifestForFairPlay(t *testing.T) {
 	}
 	if strings.Replace(out, want, "", 1) != strings.Replace(in, strings.Split(in, "\n")[2], "", 1) {
 		t.Fatalf("other lines changed:\n%s", out)
+	}
+}
+
+// FairPlay decrypts cbcs only, and the other renditions are cenc: a track
+// with no cbcs file is one that cannot be played, which the player skips
+// with a word, rather than a cenc file that would play as a still picture.
+func TestFairPlayAsksForNothingItCannotPlay(t *testing.T) {
+	if len(mediaFallbacks) != 0 {
+		t.Fatalf("mediaFallbacks = %q, want none", mediaFallbacks)
+	}
+	old := Client
+	defer func() { Client = old; SetIdentity(Identity{}) }()
+	SetIdentity(Identity{Token: "t", ClientToken: "c"})
+	var query string
+	Client = &http.Client{Transport: lyricsTransport(func(req *http.Request) (*http.Response, error) {
+		query = req.URL.RawQuery
+		body := `{"media": {"spotify:track:song": {"item": {"track_type": "AUDIO", "metadata": {"duration": 1000}, "manifest": {"file_ids_mp4_dual": [{"file_id": "bb22", "bitrate": 128000}]}}}}}`
+		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(body)), Header: http.Header{}}, nil
+	})}
+	if m, err := ResolveMedia("spotify:track:song"); err == nil {
+		t.Fatalf("ResolveMedia = %+v, want no file FairPlay plays", m)
+	}
+	if query != "manifestFileFormat=file_ids_mp4_cbcs&manifestFileFormat=manifest_ids_video" {
+		t.Fatalf("asked with %q", query)
 	}
 }

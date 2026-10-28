@@ -7,6 +7,13 @@ import "strings"
 // decrypts.
 const mediaFormat = "file_ids_mp4_cbcs"
 
+// mediaFallbacks is empty here: the other renditions the web player offers
+// (file_ids_mp4, file_ids_mp4_dual) are cenc, which FairPlay does not
+// decrypt. A track with no cbcs file plays as a still picture from them,
+// where without one it is a track that cannot be played, skipped with a
+// word to say so. It is a var for tests.
+var mediaFallbacks []string
+
 // adaptManifest names FairPlay as the key system, as the web player writes
 // the manifest it plays in Safari: the service writes the key line of cbcs
 // files for Widevine all the same. The asset in the skd:// URI is the

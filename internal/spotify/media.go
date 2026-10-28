@@ -27,12 +27,6 @@ type Media struct {
 // track has a music video and where its manifest is.
 const videoFormat = "manifest_ids_video"
 
-// mediaFallbacks are the manifest formats asked for after mediaFormat, for
-// a track that names none of its files in the first: the web player offers
-// each track in more than one, and another rendition of the same audio
-// plays where the first is missing (a relink, a region, an episode).
-var mediaFallbacks = []string{"file_ids_mp4_dual"}
-
 type mediaEntry struct {
 	Item struct {
 		TrackType string `json:"track_type"` // AUDIO, VIDEO or MIXED
