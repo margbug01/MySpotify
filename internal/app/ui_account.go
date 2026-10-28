@@ -45,7 +45,7 @@ func (a *app) boot() {
 		// Nobody ever signed in: there is nothing to renew, and loading
 		// the web player would only take ten seconds to say so. The
 		// visitor's pages show at once instead.
-		if accountCookies() == "" {
+		if accountCookies() == "" && loadAccountCookies() == "" {
 			a.post(func() {
 				if a.profile == nil {
 					a.signedIn(nil)
@@ -110,6 +110,17 @@ func (a *app) closeSignin() {
 // renewIdentity loads the web player out of sight and waits for its token,
 // anonymous if nobody is signed in. It blocks, so it runs on a goroutine.
 func (a *app) renewIdentity() (spotify.Identity, error) {
+	// The cookies kept when the listener signed in are enough for a token of
+	// their own: one request, where the web view would load a page, ask, and
+	// be read for the answer. A stale or missing file falls through to it.
+	if ck := loadAccountCookies(); ck != "" {
+		if id, err := spotify.AccountIdentity(ck); err == nil {
+			log.Printf("renew: as the listener, without the web view")
+			return id, nil
+		} else {
+			log.Printf("renew as the listener, without the web view: %v", err)
+		}
+	}
 	captureMu.Lock()
 	defer captureMu.Unlock()
 	var w *mygo.Window
@@ -123,6 +134,9 @@ func (a *app) renewIdentity() (spotify.Identity, error) {
 	cookies := ""
 	if err == nil && !id.Anonymous {
 		cookies = accountCookies()
+		// Kept for the next renewal to ask with, so that the web view is
+		// opened for signing in, and not once an hour after.
+		saveAccountCookies(cookies)
 	}
 	mygo.RunOnMain(func() {
 		a.signin.cookies = cookies
@@ -201,6 +215,7 @@ func (a *app) openLogin() {
 			return
 		}
 		cookies := accountCookies()
+		saveAccountCookies(cookies)
 		spotify.SetIdentity(id)
 		prof, err := spotify.Account()
 		a.post(func() {
@@ -350,6 +365,7 @@ func (a *app) profileAvatar(c *ui.Context, prof *spotify.Profile, size float32) 
 
 func (a *app) signOut() {
 	a.signin.gen++
+	forgetAccountCookies()
 	// Forgets the guest too, so that browsing goes on as a new one rather
 	// than as whoever was here before.
 	spotify.SignOut()

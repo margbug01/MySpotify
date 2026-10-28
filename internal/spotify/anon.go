@@ -11,72 +11,22 @@ import (
 	"time"
 )
 
-// anonymousToken gets an identity from Spotify without anyone signing in:
-// the web player asks /api/token for one, proving with a one-time code that
-// it is the web player. It grants what an anonymous visitor sees — search,
-// browsing, lyrics — but neither playback nor anything of a listener's own.
-//
-// The access token lasts about an hour; the client token a fortnight.
+// AnonymousIdentity gets an identity from Spotify without anyone signing
+// in: the web player asks /api/token for one, proving with a one-time code
+// that it is the web player. It grants what an anonymous visitor sees —
+// search, browsing, lyrics — but neither playback nor anything of a
+// listener's own.
 func AnonymousIdentity() (Identity, error) {
-	now := time.Now()
-	sec := totpSecrets[0]
-	key := sec.unmask()
-
-	// The code of now and the code of Spotify's clock must both be right, so
-	// ask Spotify what its clock reads first. If it does not say, now is
-	// close enough: the codes are 30 seconds wide.
-	serverTime := now
-	if t, err := serverTimeOf(); err == nil {
-		serverTime = t
-	}
-
-	url := "https://open.spotify.com/api/token?" + tokenQuery(key, sec.version, now, serverTime)
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	id, err := apiToken("")
 	if err != nil {
-		return Identity{}, err
-	}
-	req.Header.Set("User-Agent", UserAgent)
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Referer", "https://open.spotify.com/")
-	res, err := Client.Do(req)
-	if err != nil {
-		return Identity{}, err
-	}
-	defer res.Body.Close()
-	body, err := io.ReadAll(io.LimitReader(res.Body, 1<<20))
-	if err != nil {
-		return Identity{}, err
-	}
-	if res.StatusCode != http.StatusOK {
-		return Identity{}, fmt.Errorf("spotify: anonymous token: %s", res.Status)
-	}
-	var v struct {
-		ClientID    string `json:"clientId"`
-		AccessToken string `json:"accessToken"`
-		Expires     int64  `json:"accessTokenExpirationTimestampMs"`
-		Anonymous   bool   `json:"isAnonymous"`
-	}
-	if err := json.Unmarshal(body, &v); err != nil {
 		return Identity{}, fmt.Errorf("spotify: anonymous token: %w", err)
-	}
-	if v.AccessToken == "" {
-		return Identity{}, fmt.Errorf("spotify: anonymous token: none in the reply")
-	}
-	id := Identity{Token: v.AccessToken, Expires: time.UnixMilli(v.Expires), Anonymous: v.Anonymous}
-	if id.Expires.IsZero() {
-		id.Expires = now.Add(30 * time.Minute)
-	}
-	// spclient refuses a request without a client token. A failure here is
-	// not fatal: browsing goes through Pathfinder, which does not want one.
-	if ct, err := clientToken(v.ClientID); err == nil {
-		id.ClientToken = ct
 	}
 	return id, nil
 }
 
 // serverTimeOf reads Spotify's clock.
 func serverTimeOf() (time.Time, error) {
-	req, err := http.NewRequest(http.MethodGet, "https://open.spotify.com/api/server-time", nil)
+	req, err := http.NewRequest(http.MethodGet, serverTimeURL, nil)
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -100,6 +50,10 @@ func serverTimeOf() (time.Time, error) {
 	}
 	return time.Unix(v.ServerTime, 0), nil
 }
+
+// clientTokenURL is where this device's client token comes from; tests swap
+// it.
+var clientTokenURL = "https://clienttoken.spotify.com/v1/clienttoken"
 
 // clientVersion is the web player build the requests name themselves as.
 // Spotify accepts older ones, and may not forever.
@@ -126,7 +80,7 @@ func clientToken(clientID string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	req, err := http.NewRequest(http.MethodPost, "https://clienttoken.spotify.com/v1/clienttoken", bytes.NewReader(body))
+	req, err := http.NewRequest(http.MethodPost, clientTokenURL, bytes.NewReader(body))
 	if err != nil {
 		return "", err
 	}
