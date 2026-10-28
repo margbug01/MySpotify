@@ -16,10 +16,17 @@ import (
 // that it is the web player. It grants what an anonymous visitor sees —
 // search, browsing, lyrics — but neither playback nor anything of a
 // listener's own.
+//
+// The client token lasts a fortnight. A failure to get one is not fatal
+// here: browsing goes through Pathfinder, which does not want one.
 func AnonymousIdentity() (Identity, error) {
-	id, err := apiToken("")
+	r, err := apiToken("")
 	if err != nil {
 		return Identity{}, fmt.Errorf("spotify: anonymous token: %w", err)
+	}
+	id := r.id
+	if ct, err := clientToken(r.clientID); err == nil {
+		id.ClientToken = ct
 	}
 	return id, nil
 }
