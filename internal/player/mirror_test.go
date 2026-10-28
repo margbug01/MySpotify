@@ -1,6 +1,7 @@
 package player
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -183,4 +184,45 @@ func partial(body, contentRange string) *http.Response {
 		h.Set("Content-Range", contentRange)
 	}
 	return &http.Response{StatusCode: 206, Body: io.NopCloser(strings.NewReader(body)), Header: h}
+}
+
+// A part the page let go of, as it does when it seeks, leaves the CDN as it
+// was: it did not fail, and no other is asked.
+func TestAPartLetGoOfLeavesTheCDN(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	var others atomic.Int32
+	restore := mirrorTest(t, []string{"https://audio-fa.scdn.co/audio/" + mirrorFileID + "?sig=fa"}, func(req *http.Request) (*http.Response, error) {
+		if strings.HasPrefix(req.URL.Host, "audio-fa") {
+			others.Add(1)
+			return partial("from-fa", ""), nil
+		}
+		cancel()
+		return nil, req.Context().Err()
+	})
+	defer restore()
+	source := "https://audio4-fa.scdn.co/audio/" + mirrorFileID + "?sig=manifest"
+	req := httptest.NewRequest(http.MethodGet, "http://127.0.0.1/m/1/0", nil).WithContext(ctx)
+	if res, err := fetchPart(req, source, "bytes=0-99"); err == nil {
+		res.Body.Close()
+		t.Fatal("a part let go of was fetched")
+	}
+	if mirrors.down("audio4-fa.scdn.co") || others.Load() != 0 {
+		t.Fatalf("the CDN is passed over: %v; others asked %d times", mirrors.down("audio4-fa.scdn.co"), others.Load())
+	}
+
+	// So is the mirror asked while the manifest's CDN is passed over.
+	mirrors.failed("audio4-fa.scdn.co", io.ErrUnexpectedEOF)
+	ctx, cancel = context.WithCancel(context.Background())
+	cdnDo = func(req *http.Request) (*http.Response, error) {
+		cancel()
+		return nil, req.Context().Err()
+	}
+	req = httptest.NewRequest(http.MethodGet, "http://127.0.0.1/m/1/0", nil).WithContext(ctx)
+	if res, err := fetchPart(req, source, "bytes=0-99"); err == nil {
+		res.Body.Close()
+		t.Fatal("a part let go of was fetched from a mirror")
+	}
+	if mirrors.down("audio-fa.scdn.co") {
+		t.Fatal("the mirror is passed over")
+	}
 }

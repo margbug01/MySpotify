@@ -64,6 +64,9 @@ func fetchPart(r *http.Request, source, rg string) (*http.Response, error) {
 		if err == nil {
 			res.Body.Close()
 		}
+		if gone(r) {
+			return nil, r.Context().Err()
+		}
 		// A CDN that turns a request down properly is passed over for a
 		// while too: it answered, and the answer was no.
 		mirrors.failed(host, err)
@@ -78,6 +81,9 @@ func fetchPart(r *http.Request, source, rg string) (*http.Response, error) {
 			if err == nil {
 				res.Body.Close()
 			}
+			if gone(r) {
+				return nil, r.Context().Err()
+			}
 			mirrors.failed(hostOf(u), err)
 			continue
 		}
@@ -88,6 +94,11 @@ func fetchPart(r *http.Request, source, rg string) (*http.Response, error) {
 	// failure or a refusal, rather than nothing.
 	return getRange(r, source, rg)
 }
+
+// gone reports whether the page let go of r, as it does of the parts it
+// was fetching when it seeks or changes tracks: the CDN did nothing wrong,
+// and no other is asked.
+func gone(r *http.Request) bool { return r.Context().Err() != nil }
 
 // otherMirrors returns the URLs of the file source serves, but source
 // itself: none if they cannot be had.
