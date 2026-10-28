@@ -80,13 +80,13 @@ Windows 和 macOS 上的 Spotify 播放器：Go 写的原生界面，免费账�
 2. exe 没有代码签名，第一次打开 Windows 可能弹「Windows 已保护你的电脑」：点「更多信息 › 仍要运行」。不放心可以对一下 Release 里写的 sha256，或者按下面「从源码构建」自己编。
 3. 需要 Windows 10 或 11，以及 [WebView2 运行时](https://developer.microsoft.com/microsoft-edge/webview2/)（Windows 11 自带，Windows 10 大多也已经装了）。
 
-升级：右键托盘图标 › 退出 MySpotify，用新的 `MySpotify.exe` 覆盖旧的再打开。设置和登录都不在 exe 旁边，不会丢。
+升级：0.4.0 起在「设置 › 关于」里点「更新并重启」就行，有新版本时侧边栏左下角会提示。从 0.3.0 及更早的版本升上来要手动一次：右键托盘图标 › 退出 MySpotify，用新的文件覆盖旧的再打开。设置和登录都不在 exe 旁边，不会丢。
 
 **macOS**（Apple 芯片）
 
 1. 下载 `MySpotify-<版本>-macos-arm64.dmg`，打开后把 MySpotify 拖进「应用程序」。
 2. app 没有经过 Apple 公证，第一次打开会被拦下：到「系统设置 › 隐私与安全性」最下面点「仍要打开」。也可以在终端里执行 `xattr -dr com.apple.quarantine /Applications/MySpotify.app` 再打开。
-3. 升级：退出旧版，用新的覆盖「应用程序」里的旧版。设置和登录不在 app 里，不会丢。
+3. 升级：0.4.0 起在「设置 › 关于」里点「更新并重启」（菜单「MySpotify › 检查更新…」也行）；app 要在能写入的地方，比如「应用程序」，还在 dmg 里打开的不能自己更新。从 0.3.0 升上来要手动一次：退出旧版，用新的覆盖「应用程序」里的旧版。设置和登录不在 app 里，不会丢。
 
 两边都是：点「登录 Spotify」，在弹出的 Spotify 官方登录页里登录。登录态会留在本机，下次打开不用再登。
 
@@ -182,7 +182,7 @@ MV 是 FairPlay 加密的，macOS 不让任何截图、录屏软件拿到加密�
 
 ## 怎么做到的
 
-- **登录**：一个平时隐藏的窗口打开 open.spotify.com，`internal/spotify/capture.js` 记下网页播放器自己拿到的 token 和 client-token；没登录就把这个窗口显示成 Spotify 的登录页。token 快过期时在后台重新加载一次。
+- **登录**：一个平时隐藏的窗口打开 open.spotify.com，`internal/spotify/capture.js` 记下网页播放器自己拿到的 token 和 client-token；没登录就把这个窗口显示成 Spotify 的登录页。登录后把这个窗口的 cookie 加密存一份（`internal/app/account_store.go`），token 快过期时直接拿它和一次性 TOTP 码问 `/api/token`，跟网页播放器自己续期一样，不用再开窗口；cookie 失效了才退回去重新加载那个窗口。不登录时同样问 `/api/token`，拿到的是访客身份。
 - **数据**：Pathfinder GraphQL 的持久化查询（哈希在 `internal/spotify/spotify.go` 的 `ops` 里）加 spclient（歌词、播放清单、歌单改动、电台、最近播放、个人主页）。公开 Web API 对这个身份一律 429，不用。哈希失效时（412「Invalid query hash」）`internal/spotify/ops.go` 重读主脚本和按需加载的分块脚本，换上新哈希重试一次，存到 `%APPDATA%\Vinyl\queries.json`，10 分钟内不重复读。收藏列表在切回窗口时（5 秒内不重复）和每 30 秒检查一次，网络失败时保留上次的。
 - **播放**：另一个隐藏的 WebView 页面（`internal/player/web/player.html`）播加密的 MP4。Windows 用 hls.js + Widevine；macOS 照 Safari 版网页播放器，要 cbcs 格式的文件，用 WebKit 原生 HLS + FairPlay（`skd://` 加文件 ID，`fairplay-license/v1`）。清单、分段和许可证请求都经本机 127.0.0.1 的小服务转发，分段在这里顺手存进缓存，键是 CDN 路径加字节范围（CDN 的签名每天变，不进键）。播客的单集和歌曲走同一条路。这个页面第一次真放歌时才建，闲置 5 分钟就关掉，下次放再从原位置接上；它不用 GPU，主界面照常用 GPU。
 - **出错**：许可证 401 换身份再要一次；429 按 Retry-After 等（没给就从 30 秒起翻倍），等完从原位置重来；403 停在这首。页面里的网络错误（`startLoad`，清单出错就重新 `loadSource`）和媒体错误（`recoverMediaError`）每首各重试 2 次，不行再跳下一首。结束事件没送到时，音频停在最后 0.25 秒、尾部已缓冲完、连续约 4 秒不动，才算播完。
@@ -209,8 +209,30 @@ go tool mygo build
 图标都由 `tools/icons.py` 画（Windows，要 Pillow，用 Edge 无头模式渲染 SVG）：`resources/icon.svg`/`icon.png` 是程序图标，`icon-small.svg` 是 16–24 像素用的简化版（两道纹、更粗），`icon.ico` 把两者按尺寸合在一起；`internal/app/tray.png` 是托盘和 Mac 菜单栏的模板图标（只有黑色和透明，Windows 深色任务栏上自动画成白色，macOS 自己染色）；`AppIcon.icon` 是 Mac Dock 用的 Icon Composer 文档（浅色/深色两种底，`mygo.json` 的 `macos.icon`，要在装了 Xcode 26 的 Mac 上 `mygo build` 才会编进去，否则退回 `icon.png` 生成的 `.icns`）。改了图标或版本号，先跑 `python tools/icons.py`，再重新生成图标、版本信息和 manifest 所在的 `rsrc_windows_amd64.syso`（版本号同时改 `mygo.json`）：
 
 ```
-go run github.com/tc-hib/go-winres@v0.3.3 simply --icon resources/icon.ico --manifest gui --product-name MySpotify --file-description MySpotify --product-version 0.3.0 --file-version 0.3.0 --original-filename MySpotify.exe --arch amd64 --out rsrc
+go run github.com/tc-hib/go-winres@v0.3.3 simply --icon resources/icon.ico --manifest gui --product-name MySpotify --file-description MySpotify --product-version 0.4.0 --file-version 0.4.0 --original-filename MySpotify.exe --arch amd64 --out rsrc
 ```
+
+### 发版
+
+两个平台都在 Mac 上一次打出来。应用内更新只认用更新私钥签过名的包，所以发版必须用 `mygo build` 并带上私钥；`go build` 出来的版本不能自己更新。
+
+1. 改了 `go.mod` 的话，跟着改 `licenses/`（第三方许可证，随程序发出去）和里面的 `README.txt`；漏了的话 `go test` 会提醒。
+2. 改版本号：`mygo.json` 的 `version`，上面 go-winres 命令里的两个版本号（重新生成 syso）。「设置 › 关于」显示的版本直接读 `mygo.json`。
+3. 在 [`CHANGELOG.md`](CHANGELOG.md) 写好这个版本的一节，「设置 › 关于」显示的更新说明就是它；缺这一节 `mygo build` 会停下。
+4. 在干净的工作区里打包：
+
+   ```sh
+   MYGO_UPDATER_PRIVATE_KEY="$(cat "$HOME/Library/Application Support/mygo/update-keys/MySpotify/mygo-update.key")" \
+     go tool mygo build -platform darwin/arm64,windows/amd64
+   ```
+
+5. 在 GitHub 上建 `v<版本>` 的 Release，先存成草稿，把附件都传上去，确认后再发布并设为 Latest。应用读的是最新 Release 里的清单，草稿对它不可见，不会出现清单已经能读到、压缩包还没传完的情况。
+   - `build/darwin-arm64/`：dmg（改名为 `MySpotify-<版本>-macos-arm64.dmg`）、`vinyl-<版本>-darwin-arm64.tar.gz`、`*.delta`、`update-darwin-arm64.json`
+   - `build/windows-amd64/`：把这个文件夹里的程序文件和一份 `README.txt` 放进 `MySpotify-<版本>-windows-amd64/` 打成同名 zip；再加上 `vinyl-<版本>-windows-amd64.tar.gz`、`*.delta`、`update-windows-amd64.json`
+
+`*.delta` 是从前几个版本到这一版的增量包，`mygo build` 会读已发布的版本自动做出来，应用更新时优先下载它。
+
+公钥写在 `mygo.json` 的 `updates` 里。私钥只放在发版的那台 Mac 上，权限 600，不进仓库。私钥丢了，已经装上的应用就收不到后续更新；被别人拿到，他就能给所有用户推任意代码。一定要另外在密码管理器里存一份。
 
 日志（含崩溃时的堆栈）写在设置文件夹里的 `vinyl.log`，超过 1MB 挪成 `vinyl.log.1` 重新开始。
 
@@ -238,4 +260,4 @@ go run github.com/tc-hib/go-winres@v0.3.3 simply --icon resources/icon.ico --man
 
 ## 许可证
 
-[AGPL-3.0](LICENSE)，随上游。Release 压缩包里的 `licenses/` 是编进 exe 的第三方代码的许可证。图标是 MySpotify 自己画的（`tools/icons.py`，「转动的唱片」：一张黑胶，三道纹路接住光）。Spotify 是 Spotify AB 的商标，名字里的 Spotify 只是说明它播放的是什么，截图里的封面和照片版权归各自的权利人。
+[AGPL-3.0](LICENSE)，随上游。[`licenses/`](licenses) 是编进程序的第三方代码的许可证，随程序发出去（Windows 在 exe 旁边，macOS 在 app 的 Resources 里）。图标是 MySpotify 自己画的（`tools/icons.py`，「转动的唱片」：一张黑胶，三道纹路接住光）。Spotify 是 Spotify AB 的商标，名字里的 Spotify 只是说明它播放的是什么，截图里的封面和照片版权归各自的权利人。
