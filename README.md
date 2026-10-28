@@ -37,7 +37,7 @@ Windows 和 macOS 上的 Spotify 播放器：Go 写的原生界面，免费账�
 
 **听过的不用再下。** 放过的歌（加密分段，原样存下）留在本机，再放更快、不耗流量；上限可以在设置里选，也能一键清除。
 
-**数据只在本机。** 设置、播放进度、本机播放记录在 `%APPDATA%\Vinyl`（macOS：`~/Library/Application Support/Vinyl`），登录态在 `%LOCALAPPDATA%\Vinyl\WebView2`（macOS：`~/Library/WebKit/dev.margbug.vinyl`）；续期用的 cookies 另存一份在 `%APPDATA%\Vinyl\account-cookies`（macOS 在同目录，只本人可读）。文件夹叫 Vinyl 是这个项目原来的名字，改名时没动，免得大家被登出。除了 Spotify、Gravatar（取账号邮箱的头像），以及查歌词时的网易云和 LRCLIB（只收到歌名、歌手、专辑和时长），MySpotify 不连别的服务器，也没有统计和自动更新。
+**数据只在本机。** 设置、播放进度、本机播放记录在 `%APPDATA%\Vinyl`（macOS：`~/Library/Application Support/Vinyl`），登录态在 `%LOCALAPPDATA%\Vinyl\WebView2`（macOS：`~/Library/WebKit/dev.margbug.vinyl`）；续期用的 cookies 另存一份在 `%LOCALAPPDATA%\Vinyl\account-cookies`（macOS：`~/Library/Application Support/Vinyl/account-cookies`），加密保存：Windows 用 DPAPI 绑定当前登录用户，macOS 的密钥放在登录钥匙串里，单拷走这个文件解不开。退出登录或登录失效时会删掉。文件夹叫 Vinyl 是这个项目原来的名字，改名时没动，免得大家被登出。除了 Spotify、Gravatar（取账号邮箱的头像），以及查歌词时的网易云和 LRCLIB（只收到歌名、歌手、专辑和时长），MySpotify 不连别的服务器，也没有统计和自动更新。
 
 ## 截图
 

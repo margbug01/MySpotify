@@ -110,14 +110,28 @@ func (a *app) closeSignin() {
 // renewIdentity loads the web player out of sight and waits for its token,
 // anonymous if nobody is signed in. It blocks, so it runs on a goroutine.
 func (a *app) renewIdentity() (spotify.Identity, error) {
+	// A sign-out meanwhile makes what this finds no one's.
+	epoch := accountEpoch()
 	// The cookies kept when the listener signed in are enough for a token of
 	// their own: one request, where the web view would load a page, ask, and
-	// be read for the answer. A stale or missing file falls through to it.
-	if ck := loadAccountCookies(); ck != "" {
-		if id, err := spotify.AccountIdentity(ck); err == nil {
+	// be read for the answer. Stale ones are dropped; with none, or Spotify
+	// turning them down, it falls through to the web view.
+	kept := loadAccountCookies()
+	if kept != "" {
+		id, err := spotify.AccountIdentity(kept)
+		switch {
+		case err == nil && accountEpoch() != epoch:
+			return spotify.Identity{}, spotify.ErrSignedOut
+		case err == nil:
 			log.Printf("renew: as the listener, without the web view")
+			// What loadEmail asks with, as it would the web view's.
+			mygo.RunOnMain(func() { a.signin.cookies = kept })
 			return id, nil
-		} else {
+		case errors.Is(err, spotify.ErrStaleCookies):
+			log.Printf("renew: the cookies kept are signed out; dropped")
+			dropAccountCookies(kept)
+			kept = ""
+		default:
 			log.Printf("renew as the listener, without the web view: %v", err)
 		}
 	}
@@ -132,11 +146,18 @@ func (a *app) renewIdentity() (spotify.Identity, error) {
 	defer cancel()
 	id, err := capture(ctx, w.Page(), false)
 	cookies := ""
-	if err == nil && !id.Anonymous {
+	switch {
+	case err == nil && accountEpoch() != epoch:
+		id, err = spotify.Identity{}, spotify.ErrSignedOut
+	case err == nil && !id.Anonymous:
 		cookies = accountCookies()
 		// Kept for the next renewal to ask with, so that the web view is
 		// opened for signing in, and not once an hour after.
-		saveAccountCookies(cookies)
+		saveAccountCookies(epoch, cookies)
+	case err == nil && kept != "":
+		// Signed out on the web player too: what was kept is no one's, and
+		// asking with it again would only cost a request every start.
+		dropAccountCookies(kept)
 	}
 	mygo.RunOnMain(func() {
 		a.signin.cookies = cookies
@@ -183,6 +204,7 @@ func (a *app) openLogin() {
 	s.gen++
 	gen := s.gen
 	s.shown = true
+	epoch := accountEpoch()
 	go func() {
 		captureMu.Lock()
 		defer captureMu.Unlock()
@@ -215,7 +237,7 @@ func (a *app) openLogin() {
 			return
 		}
 		cookies := accountCookies()
-		saveAccountCookies(cookies)
+		saveAccountCookies(epoch, cookies)
 		spotify.SetIdentity(id)
 		prof, err := spotify.Account()
 		a.post(func() {
