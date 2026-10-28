@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -25,6 +26,12 @@ type Media struct {
 // videoFormat is what the web player asks for besides, to know whether a
 // track has a music video and where its manifest is.
 const videoFormat = "manifest_ids_video"
+
+// mediaFallbacks are the manifest formats asked for after mediaFormat, for
+// a track that names none of its files in the first: the web player offers
+// each track in more than one, and another rendition of the same audio
+// plays where the first is missing (a relink, a region, an episode).
+var mediaFallbacks = []string{"file_ids_mp4_dual"}
 
 type mediaEntry struct {
 	Item struct {
@@ -71,7 +78,12 @@ func (n *looseInt) UnmarshalJSON(b []byte) error {
 // track's or a podcast episode's: 128k, which a free account is licensed to
 // play; the licence of the 256k one it is refused (403).
 func ResolveMedia(uri string) (*Media, error) {
-	raw, err := spGet("/track-playback/v1/media/"+uri+"?manifestFileFormat="+mediaFormat+"&manifestFileFormat="+videoFormat, "application/json")
+	formats := append([]string{mediaFormat}, mediaFallbacks...)
+	query := ""
+	for _, f := range append(formats, videoFormat) {
+		query += "&manifestFileFormat=" + f
+	}
+	raw, err := spGet("/track-playback/v1/media/"+uri+"?"+strings.TrimPrefix(query, "&"), "application/json")
 	if err != nil {
 		return nil, err
 	}
@@ -90,10 +102,17 @@ func ResolveMedia(uri string) (*Media, error) {
 			}
 		}
 	}
+	// The first format that names any of the track's audio: the one this
+	// platform plays, or a fallback of it.
 	var files []mediaFile
-	for _, f := range entry.Item.Manifest[mediaFormat] {
-		if f.TrackType == "" || f.TrackType == "AUDIO" {
-			files = append(files, f)
+	for _, format := range formats {
+		for _, f := range entry.Item.Manifest[format] {
+			if (f.TrackType == "" || f.TrackType == "AUDIO") && f.FileID != "" {
+				files = append(files, f)
+			}
+		}
+		if len(files) > 0 {
+			break
 		}
 	}
 	if !ok || len(files) == 0 {
