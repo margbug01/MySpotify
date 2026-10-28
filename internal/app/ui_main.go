@@ -15,9 +15,12 @@ import (
 
 const sidebarWidth = 232
 
-// appFont is the family the windows' text is set in: MiSans where it is
-// installed, the system's elsewhere.
-const appFont = "MiSans, system-ui"
+var appFont = func() string {
+	if runtime.GOOS == "darwin" {
+		return "system-ui"
+	}
+	return "MiSans, system-ui"
+}()
 
 func (a *app) view(c *ui.Context) {
 	t := *c.Theme()
