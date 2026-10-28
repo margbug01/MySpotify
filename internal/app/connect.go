@@ -142,10 +142,14 @@ func (a *app) connectEvent(event spotify.ConnectEvent) {
 		log.Printf("connect: %s: %v", event.Kind, event.Err)
 	}
 	switch event.Kind {
+	// Ready is logged too: without it, a log with no Connect in it could
+	// not tell one that never started from one that never failed.
 	case "observer_ready":
+		log.Printf("connect: observer ready")
 		state.observer = true
 		state.err = ""
 	case "receiver_ready":
+		log.Printf("connect: ready, as %q", state.client.Name)
 		state.receiver = true
 		state.err = ""
 	case "observer_offline":

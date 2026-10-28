@@ -41,6 +41,7 @@ func (a *app) boot() {
 	// Browsing works signed out too: the app gets itself the identity an
 	// anonymous visitor has, instead of waiting for someone to sign in.
 	spotify.RenewGuest = spotify.AnonymousIdentity
+	gen := a.accountGen
 	go func() {
 		// Nobody ever signed in: there is nothing to renew, and loading
 		// the web player would only take ten seconds to say so. The
@@ -53,27 +54,83 @@ func (a *app) boot() {
 			})
 			return
 		}
-		// Through package spotify, so that a page opened meanwhile, from
-		// what restoreHome shows, waits on this renewal rather than
-		// loading the web player a second time.
-		_, err := spotify.RenewedIdentity()
-		var prof *spotify.Profile
-		if err == nil {
-			if prof, err = spotify.Account(); err != nil {
-				log.Printf("account: %v", err)
-			}
-		}
-		a.post(func() {
-			// Signed in still, as far as anyone knows, but offline, say:
-			// what showed last time stays rather than the sign-in page.
-			if prof == nil && a.profile != nil && !errors.Is(err, spotify.ErrSignedOut) {
-				log.Printf("sign in: %v", err)
-				a.homeLoading = false
-				return
-			}
-			a.signedIn(prof)
-		})
+		prof, err := keptAccount()
+		a.post(func() { a.tookSignIn(gen, 0, prof, err) })
 	}()
+}
+
+// keptAccount signs in as the listener whose cookies are kept: renews the
+// identity if need be, through package spotify, so that a page opened
+// meanwhile, from what restoreHome shows, waits on this renewal rather than
+// loading the web player a second time; then asks who they are. It blocks.
+func keptAccount() (*spotify.Profile, error) {
+	if _, err := spotify.CurrentIdentity(); err != nil {
+		return nil, err
+	}
+	prof, err := spotify.Account()
+	if err != nil {
+		log.Printf("account: %v", err)
+	}
+	return prof, err
+}
+
+// askAccount runs keptAccount off the main thread and hands what it found
+// to took, on it.
+var askAccount = func(a *app, took func(*spotify.Profile, error)) {
+	go func() {
+		prof, err := keptAccount()
+		a.post(func() { took(prof, err) })
+	}()
+}
+
+// signInAfter runs fn on the main thread after d.
+var signInAfter = func(a *app, d time.Duration, fn func()) {
+	time.AfterFunc(d, func() { a.post(fn) })
+}
+
+// How long after a sign-in that did not get through, as when the app opens
+// before the network is up, it is asked again: the first wait, doubled
+// each time up to the last.
+const (
+	signInFirst = 10 * time.Second
+	signInLast  = 2 * time.Minute
+)
+
+// tookSignIn takes what keptAccount found on try (from 0), on the main
+// thread. gen is a.accountGen as it was asked: signed in or out since, what
+// it found is no one's. Turned down, nobody is signed in. Not got through,
+// offline say, the listener is signed in still as far as anyone knows: what
+// showed last time stays rather than the sign-in page, and it is asked
+// again, as Connect and all else signedIn starts wait on it. They were left
+// out for as long as the app ran, once it opened before the network did.
+func (a *app) tookSignIn(gen, try int, prof *spotify.Profile, err error) {
+	if gen != a.accountGen || a.quitting {
+		return
+	}
+	if prof != nil || errors.Is(err, spotify.ErrSignedOut) {
+		if try > 0 {
+			log.Printf("sign in: through on try %d", try+1)
+		}
+		a.signedIn(prof)
+		return
+	}
+	wait := min(signInFirst<<min(try, 8), signInLast)
+	log.Printf("sign in: %v; again in %v", err, wait)
+	if try == 0 {
+		if a.profile != nil {
+			a.homeLoading = false
+		} else {
+			// Nothing was kept to show: the visitor's pages, meanwhile.
+			a.signedIn(nil)
+			gen = a.accountGen
+		}
+	}
+	signInAfter(a, wait, func() {
+		if gen != a.accountGen || a.quitting {
+			return
+		}
+		askAccount(a, func(prof *spotify.Profile, err error) { a.tookSignIn(gen, try+1, prof, err) })
+	})
 }
 
 // signinWindow returns the web player's window, at url: the one open, or a
@@ -262,6 +319,7 @@ func (a *app) signedIn(prof *spotify.Profile) {
 		// Until loadEmail asks again, for the picture it finds.
 		prof.Email = a.profile.Email
 	}
+	a.accountGen++
 	a.mineGen++
 	a.mineLoading, a.mineAgain = false, false
 	a.mineChecked = time.Time{}

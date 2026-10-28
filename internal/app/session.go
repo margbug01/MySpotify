@@ -16,7 +16,7 @@ import (
 // directory: on quitting, and every little while as it plays, in case the
 // app does not get to quit.
 
-func sessionPath() (string, error) {
+var sessionPath = func() (string, error) {
 	dir, err := mygo.App.Path(mygo.PathUserData)
 	if err != nil {
 		return "", err
@@ -76,6 +76,11 @@ func (a *app) restoreSession() {
 		return
 	}
 	a.restored = true
+	// Something plays already: the listener chose it while the app could
+	// not sign in, and it stays.
+	if a.pl.Current() != nil {
+		return
+	}
 	path, err := sessionPath()
 	if err != nil {
 		return

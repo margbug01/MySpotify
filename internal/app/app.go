@@ -178,6 +178,7 @@ type app struct {
 	upd         updates // a newer version, looked for and installed
 
 	restored     bool   // playback picked up where it was left
+	accountGen   int    // signed in or out how many times: a sign-in asked before is no one's
 	savedSession string // the session as last kept
 	sessionDue   bool   // a save of the session is due
 	homeFile     string // where what the home page shows is kept, "" to keep none
