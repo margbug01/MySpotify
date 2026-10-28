@@ -19,6 +19,10 @@ func (a *app) setMenu() {
 	name := appName
 	appMenu := []*mygo.MenuItem{
 		{Role: mygo.RoleAbout, Label: "关于" + name},
+		{Label: "检查更新…", Click: run(func() {
+			a.openSettings()
+			a.checkUpdate(true)
+		})},
 		mygo.Separator(),
 		{Label: "设置…", Accelerator: "CmdOrCtrl+,", Click: run(a.openSettings)},
 		mygo.Separator(),

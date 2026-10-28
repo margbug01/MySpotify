@@ -4,5 +4,11 @@
   "slug": "vinyl",
   "version": "0.3.0",
   "out": "build",
-  "macos": { "icon": "AppIcon.icon" }
+  "resources": ["LICENSE", "licenses"],
+  "macos": { "icon": "AppIcon.icon" },
+  "updates": {
+    "publicKey": "PpF+fvU7GVBIY9OAsE64fhYTEJtDccZyBk692dRZWCc=",
+    "github": "margbug01/MySpotify",
+    "changelog": "CHANGELOG.md"
+  }
 }

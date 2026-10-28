@@ -170,5 +170,6 @@ func (a *app) settingsView(c *ui.Context) {
 			})
 		})
 
+		group("关于", func() { a.aboutRows(c, row) })
 	})
 }

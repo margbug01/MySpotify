@@ -51,11 +51,14 @@ type settings struct {
 	// take; 0 keeps none.
 	CacheMB int `json:"cacheMB"`
 
+	// AutoUpdate looks for a new version on opening and twice a day.
+	AutoUpdate bool `json:"autoUpdate"`
+
 	path string // where they were loaded from, and are saved to
 }
 
 func defaultSettings() settings {
-	return settings{NotchActivity: true, Appearance: "system", Volume: 0.8, CacheMB: 1024, MVLyrics: true, MVQueue: true}
+	return settings{NotchActivity: true, Appearance: "system", Volume: 0.8, CacheMB: 1024, MVLyrics: true, MVQueue: true, AutoUpdate: true}
 }
 
 func settingsPath() (string, error) {

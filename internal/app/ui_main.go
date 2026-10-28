@@ -221,6 +221,7 @@ func (a *app) sidebar(c *ui.Context) {
 		if tr := a.pl.Current(); tr != nil {
 			a.sidebarNowPlaying(c, tr)
 		}
+		a.updateBadge(c)
 		a.accountRow(c)
 	})
 }

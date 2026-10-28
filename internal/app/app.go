@@ -3,6 +3,7 @@ package app
 import (
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -173,7 +174,8 @@ type app struct {
 
 	settings    settings
 	settingsWin *mygo.Window
-	cacheUsed   int64 // the bytes the cache of tracks takes, -1 until measured
+	cacheUsed   int64   // the bytes the cache of tracks takes, -1 until measured
+	upd         updates // a newer version, looked for and installed
 
 	restored     bool   // playback picked up where it was left
 	savedSession string // the session as last kept
@@ -249,6 +251,11 @@ func Run() error {
 		spotify.LoadOps()
 	}
 	log.Printf("start, pid %d", os.Getpid())
+	// MyGo's updater asks GitHub with http.DefaultClient: through the
+	// system's proxy, as the requests to Spotify go.
+	if t, ok := http.DefaultTransport.(*http.Transport); ok {
+		t.Proxy = spotify.SystemProxy
+	}
 	os.Setenv("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", strings.TrimSpace(os.Getenv("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS")+" --autoplay-policy=no-user-gesture-required --in-process-gpu --disable-gpu"))
 	// What decoding a page of covers takes goes back to the system after,
 	// rather than staying in the heap (20 MB).
@@ -329,8 +336,12 @@ func Run() error {
 		}
 		a.win.OnFocus(func() { a.refreshMine(time.Now()) })
 		a.scheduleMine()
+		a.upd = myGoUpdates(a.postSettings)
 		a.setMenu()
 		a.boot()
+		if shotHook == nil {
+			a.watchUpdates()
+		}
 		// The notch player is macOS's, over its menu bar: elsewhere it would
 		// hang at the top of the screen as a black box, and the app sits in
 		// the notification area instead.
