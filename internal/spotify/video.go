@@ -1,7 +1,6 @@
 package spotify
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -63,10 +62,13 @@ type encryptionInfo struct {
 // ResolveVideo returns the HLS of the music video whose manifest is id, as
 // Media.Video names it.
 func ResolveVideo(id string) (*Video, error) {
-	if _, err := hex.DecodeString(id); err != nil || id == "" {
+	// The manifests name the video's source as a GID, and the track's answer
+	// may write it as a URI's ID instead: take whichever came, in hex.
+	gid, err := GID(id)
+	if err != nil {
 		return nil, fmt.Errorf("video: bad manifest ID %q", id)
 	}
-	raw, err := spGet("/manifests/v9/json/sources/"+id+"/options/supports_drm", "application/json")
+	raw, err := spGet("/manifests/v9/json/sources/"+gid+"/options/supports_drm", "application/json")
 	if err != nil {
 		return nil, err
 	}
