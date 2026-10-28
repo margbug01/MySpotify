@@ -154,6 +154,14 @@ func (w *Web) Prefetch(m *spotify.Media) {
 	if total == "" {
 		total = strconv.FormatInt(n, 10)
 	}
+	// What the file says it is encrypted with against what the key system
+	// here plays: a track in the other scheme plays as a still picture with
+	// nothing said, so it is said here, once, before it is played.
+	if playsScheme != "" {
+		if enc, err := encryptionOf(data); err == nil && enc.Scheme != playsScheme {
+			log.Printf("player: %s is %s, and the key system here plays %s", source, enc.Scheme, playsScheme)
+		}
+	}
 	w.mu.Lock()
 	w.heads = append(w.heads, &head{source: source, data: data, total: total, ctype: meta.ctype})
 	if len(w.heads) > maxHeads {

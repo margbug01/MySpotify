@@ -12,3 +12,8 @@ var licenseHost = "https://spclient.wg.spotify.com/fairplay-license/v1"
 // licenseQuery says the asset in FairPlay's requests is named in hex, as
 // the web player tells the service.
 const licenseQuery = "?assetId=hex"
+
+// playsScheme is what the key system here plays: FairPlay is SAMPLE-AES
+// (cbcs) only, and a track in cenc would be a still picture with no error
+// anywhere to say why.
+const playsScheme = "cbcs"
