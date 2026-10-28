@@ -119,6 +119,12 @@ var (
 	// Renew, set by the app, gets a fresh identity from the web player,
 	// blocking until it has one.
 	Renew func() (Identity, error)
+	// held is a token a renewal handed back with no more than renewAhead
+	// of it left. /api/token answers with the token it gave until that one
+	// runs out, so asking again sooner gets the same one again: it is used
+	// until just before it ends instead, where every request would renew it
+	// (thirty renewals, ninety requests, in the last two minutes of one).
+	held string
 
 	// guest is the identity of nobody: what browsing goes as while nobody
 	// is signed in. It is kept apart from current, so that signing in
@@ -182,7 +188,7 @@ func guestIdentity() (Identity, error) {
 // SignOut forgets who was signed in and what browsing went as.
 func SignOut() {
 	idMu.Lock()
-	current = Identity{}
+	current, held = Identity{}, ""
 	idMu.Unlock()
 	guestMu.Lock()
 	guest = Identity{}
@@ -204,12 +210,20 @@ func CurrentIdentity() (Identity, error) { return identity(false) }
 // current one down, and returns it.
 func RenewedIdentity() (Identity, error) { return identity(true) }
 
+// renewAhead is how long before its end an identity is renewed; heldUntil
+// how long before it a token renewal handed back again is (see held).
+const (
+	renewAhead = 2 * time.Minute
+	heldUntil  = 5 * time.Second
+)
+
 // identity returns a usable identity: the current one, unless it runs out
-// within two minutes or stale says the service turned it down.
+// within renewAhead or stale says the service turned it down.
 func identity(stale bool) (Identity, error) {
 	idMu.Lock()
 	id := current
-	fresh := id.Token != "" && !id.Anonymous && time.Until(id.Expires) > 2*time.Minute
+	left := time.Until(id.Expires)
+	fresh := id.Token != "" && !id.Anonymous && (left > renewAhead || id.Token == held && left > heldUntil)
 	if fresh && !stale {
 		idMu.Unlock()
 		return id, nil
@@ -231,6 +245,9 @@ func identity(stale bool) (Identity, error) {
 			idMu.Lock()
 			if err == nil {
 				current = next
+				if time.Until(next.Expires) <= renewAhead {
+					held = next.Token
+				}
 			}
 			renewErr, renewing = err, nil
 			idMu.Unlock()
