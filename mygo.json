@@ -2,7 +2,7 @@
   "name": "MySpotify",
   "identifier": "dev.margbug.vinyl",
   "slug": "vinyl",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "out": "build",
   "resources": ["LICENSE", "licenses"],
   "macos": { "icon": "AppIcon.icon" },
