@@ -29,6 +29,12 @@ type Output interface {
 	Close()
 }
 
+// systemOutput is an Output the system pauses, plays and skips by itself,
+// as the web player's (see webOut.OnSystem).
+type systemOutput interface {
+	OnSystem(func(string)) (off func())
+}
+
 // Bands is how many bands of pitch Levels splits a spectrum into.
 const Bands = 24
 
@@ -160,6 +166,32 @@ func (p *Player) sync() {
 		state = mygo.PlaybackPlaying
 	}
 	mygo.NowPlaying.SetPlayback(state, p.Position())
+}
+
+// system follows what the system did to what plays rather than Vinyl.
+// WebKit pauses and plays the page itself for the media keys, Control
+// Center and apps such as Mami, which pauses what plays while one talks:
+// Vinyl went on showing it playing, kept it from being let go when idle,
+// and told Spotify Connect it played. It passes the page the skips too.
+func (p *Player) system(cmd string) {
+	switch cmd {
+	case "pause", "play":
+		playing := cmd == "play"
+		if p.out == nil || p.playing == playing {
+			return
+		}
+		log.Printf("player: %s from the system", cmd)
+		p.playing = playing
+		if playing {
+			// A pause of Vinyl's faded it out.
+			p.fade.fade(1, fadeIn, nil)
+		}
+		p.sync()
+	case "next":
+		p.Next()
+	case "previous":
+		p.Prev()
+	}
 }
 
 // announce shows the system the track, and its cover once loaded.
@@ -943,6 +975,15 @@ func (p *Player) open(gen int, m *spotify.Media, v *spotify.Video) {
 			}
 		})
 	})
+	if out, ok := p.out.(systemOutput); ok {
+		out.OnSystem(func(cmd string) {
+			p.post(func() {
+				if gen == p.gen {
+					p.system(cmd)
+				}
+			})
+		})
+	}
 	if p.pending > 0 {
 		// Not past the end, as a video shorter than the song would be.
 		p.out.Seek(min(p.pending, max(p.out.Duration()-time.Second, 0)))

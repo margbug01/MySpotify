@@ -16,10 +16,33 @@ let cur = null, volume = 1;
 const ks = typeof location === 'undefined' ? null : /[?&]ks=([^&]*)/.exec(location.search);
 const keySystem = ks ? decodeURIComponent(ks[1]) : 'com.widevine.alpha';
 const videoPage = typeof location !== 'undefined' && /[?&]video=1(&|$)/.test(location.search);
-const send = (gen, type, t, msg) => fetch('/event', {
+const send = (gen, type, t, msg, seq) => fetch('/event', {
   method: 'POST',
-  body: JSON.stringify({ gen, type, t: t || 0, msg: msg || '' }),
+  body: JSON.stringify({ gen, type, t: t || 0, msg: msg || '', seq: seq || 0 }),
 }).catch(() => {});
+
+// rest stops loading what plays once it has been paused half a minute; wake
+// loads again, from where it is, what that stopped.
+function rest(t) {
+  clearTimeout(t.pauseTimer);
+  t.pauseTimer = setTimeout(() => {
+    if (cur === t && !t.want) { t.hls.stopLoad(); t.stopped = true; }
+  }, 30000);
+}
+function wake(t) {
+  clearTimeout(t.pauseTimer);
+  if (t.stopped) { t.hls.startLoad(t.a.currentTime); t.stopped = false; }
+}
+
+// The media keys' and Control Center's skips come to the page, which WebKit
+// shows the system as what plays: Vinyl skips.
+if (typeof navigator !== 'undefined' && navigator.mediaSession) {
+  for (const [action, type] of [['nexttrack', 'system-next'], ['previoustrack', 'system-previous']]) {
+    try {
+      navigator.mediaSession.setActionHandler(action, () => { if (cur) send(cur.gen, type, cur.a.currentTime); });
+    } catch {}
+  }
+}
 
 // certificate is FairPlay's, asked for once: the licence service's key.
 let certificate = null;
@@ -119,8 +142,9 @@ window.vinyl = {
       backBufferLength: 30,
       drmSystems: { [keySystem]: { licenseUrl: '/license?gen=' + gen, serverCertificateUrl: '/cert?gen=' + gen } },
     });
-    // tries counts the recoveries, two at most; want is whether to play.
-    const t = { gen, a, hls, seek: null, tries: 0, want: false, endSeq: 0, ending: false, lastTime: 0, still: 0, heard: false };
+    // tries counts the recoveries, two at most; want is whether to play;
+    // asked is how many times Vinyl had asked to play or pause.
+    const t = { gen, a, hls, seek: null, tries: 0, want: false, asked: 0, endSeq: 0, ending: false, lastTime: 0, still: 0, heard: false };
     const finish = (reason) => {
       if (cur !== t || t.ending) return;
       t.ending = true;
@@ -175,7 +199,25 @@ window.vinyl = {
     });
     for (const n of ['playing', 'pause', 'waiting', 'seeked']) a.addEventListener(n, () => {
       if (n === 'playing') t.heard = true;
+      // WebKit pauses the element itself for the system: the media keys,
+      // Control Center, or an app such as Mami pausing what plays while one
+      // talks. Vinyl hears it as the system's; a pause it asked for, or the
+      // one at the end, is its own.
+      if (n === 'pause' && cur === t && t.want && a.paused && !a.ended) {
+        t.want = false;
+        t.still = 0;
+        rest(t);
+        return send(gen, 'system-pause', a.currentTime, '', t.asked);
+      }
       send(gen, n, a.currentTime);
+    });
+    // And plays it again for them, where a long pause may have stopped
+    // loading it.
+    a.addEventListener('play', () => {
+      if (cur !== t || t.want || a.paused) return;
+      t.want = true;
+      wake(t);
+      send(gen, 'system-play', a.currentTime, '', t.asked);
     });
     a.addEventListener('ended', () => finish('media ended'));
     a.addEventListener('seeking', () => { t.still = 0; t.heard = false; });
@@ -190,25 +232,23 @@ window.vinyl = {
     hls.attachMedia(a);
     cur = t;
   },
-  play(gen) {
+  play(gen, asked) {
     if (!cur || cur.gen !== gen) return;
     const a = cur.a;
     cur.want = true;
-    clearTimeout(cur.pauseTimer);
-    if (cur.stopped) { cur.hls.startLoad(a.currentTime); cur.stopped = false; }
+    if (asked) cur.asked = asked;
+    wake(cur);
     const p = a.play();
     if (p) p.catch((e) => { if (e.name !== 'AbortError') send(gen, 'error', a.currentTime, 'play ' + e.name + ': ' + e.message); });
   },
-  pause(gen) {
+  pause(gen, asked) {
     if (!cur || cur.gen !== gen) return;
     const t = cur;
     t.want = false;
+    if (asked) t.asked = asked;
     t.still = 0;
     t.a.pause();
-    clearTimeout(t.pauseTimer);
-    t.pauseTimer = setTimeout(() => {
-      if (cur === t && !t.want) { t.hls.stopLoad(); t.stopped = true; }
-    }, 30000);
+    rest(t);
   },
   seek(gen, t) {
     if (!cur || cur.gen !== gen) return;

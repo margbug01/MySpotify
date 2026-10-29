@@ -66,6 +66,7 @@ func NewWeb() (*Web, error) {
 		Title: "Vinyl", Width: 320, Height: 240, Hidden: true, SkipTaskbar: true,
 		URL: "http://" + w.addr + "/?ks=" + keySystem,
 	})
+	keepAwake(w.win)
 	go w.run()
 	return w, nil
 }
@@ -86,6 +87,7 @@ func NewVideoWeb(host *mygo.Window) (*Web, error) {
 		w.Close()
 		return nil, err
 	}
+	keepAwake(host)
 	go w.run()
 	return w, nil
 }
@@ -496,11 +498,14 @@ type webOut struct {
 	at      time.Time
 	running bool // the page plays it: its time moves
 	playing bool // it was asked to play, and has not ended
+	asked   int  // how many times Vinyl asked the page to play or pause
 	onEnd   func()
-	endSeq  int
-	err     string
-	licence int           // how the licence service last answered
-	wait    time.Duration // how long it asked to wait, with a 429
+	// onSystem hears what the system did to the page rather than Vinyl.
+	onSystem func(string)
+	endSeq   int
+	err      string
+	licence  int           // how the licence service last answered
+	wait     time.Duration // how long it asked to wait, with a 429
 }
 
 // went returns where to ask for the file at source: where it led last.
@@ -539,16 +544,20 @@ func (o *webOut) follow(r *http.Request, i int, source, rg string, res *http.Res
 func (o *webOut) Play() {
 	o.mu.Lock()
 	o.playing = true
+	o.asked++
+	asked := o.asked
 	o.mu.Unlock()
-	o.w.send(fmt.Sprintf("vinyl.play(%d)", o.gen))
+	o.w.send(fmt.Sprintf("vinyl.play(%d,%d)", o.gen, asked))
 }
 
 func (o *webOut) Pause() {
 	o.mu.Lock()
 	o.pos, o.at = o.position(time.Now()), time.Now()
 	o.playing, o.running = false, false
+	o.asked++
+	asked := o.asked
 	o.mu.Unlock()
-	o.w.send(fmt.Sprintf("vinyl.pause(%d)", o.gen))
+	o.w.send(fmt.Sprintf("vinyl.pause(%d,%d)", o.gen, asked))
 }
 
 func (o *webOut) Playing() bool {
@@ -595,6 +604,21 @@ func (o *webOut) OnEnd(fn func()) (off func()) {
 	}
 }
 
+// OnSystem has fn hear what the system did to the page rather than Vinyl:
+// "pause" or "play", which WebKit carries out on the page itself for the
+// media keys, Control Center and apps such as Mami, which pauses what plays
+// while one talks; or "next" or "previous", the skips it passes the page.
+func (o *webOut) OnSystem(fn func(string)) (off func()) {
+	o.mu.Lock()
+	o.onSystem = fn
+	o.mu.Unlock()
+	return func() {
+		o.mu.Lock()
+		o.onSystem = nil
+		o.mu.Unlock()
+	}
+}
+
 func (o *webOut) SetVolume(v float64) { o.w.setVolume(v) }
 func (o *webOut) Close()              { o.w.close(o.gen) }
 
@@ -622,12 +646,30 @@ func (o *webOut) answered(status int, wait time.Duration) {
 func (o *webOut) event(kind string, t time.Duration, msg string, seq int) {
 	o.mu.Lock()
 	var end func()
+	var system string
 	switch kind {
 	case "time", "seeked":
 	case "playing":
 		o.running = true
 	case "pause", "waiting":
 		o.running = false
+	case "system-pause", "system-play":
+		// Unless Vinyl has asked the page to play or pause since: that
+		// stands.
+		if seq != o.asked {
+			o.mu.Unlock()
+			return
+		}
+		system = strings.TrimPrefix(kind, "system-")
+		o.playing = system == "play"
+		o.running = o.running && o.playing
+	case "system-next", "system-previous":
+		fn := o.onSystem
+		o.mu.Unlock()
+		if fn != nil {
+			fn(strings.TrimPrefix(kind, "system-"))
+		}
+		return
 	case "ended":
 		if seq <= o.endSeq {
 			o.mu.Unlock()
@@ -668,8 +710,12 @@ func (o *webOut) event(kind string, t time.Duration, msg string, seq int) {
 	if kind != "error" {
 		o.pos, o.at = t, time.Now()
 	}
+	fn := o.onSystem
 	o.mu.Unlock()
 	if end != nil {
 		end()
+	}
+	if system != "" && fn != nil {
+		fn(system)
 	}
 }

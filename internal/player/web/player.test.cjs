@@ -19,8 +19,9 @@ class Hls {
   startLoad(position) { this.starts.push(position); this.stopped = false; }
   destroy() { this.destroyed = true; }
 }
+const session = { handlers: {}, setActionHandler(action, fn) { this.handlers[action] = fn; } };
 const context = vm.createContext({
-  Hls, window: {},
+  Hls, window: {}, navigator: { mediaSession: session },
   AbortSignal,
   fetch: (url, options) => {
     const event = JSON.parse(options.body);
@@ -78,6 +79,49 @@ assert.equal(instances[1].stopped, undefined);
 player.pause(2);
 player.unload(2);
 assert.equal(timers.size, 0);
+// WebKit pauses and plays the element itself for the system (the media
+// keys, Control Center, apps such as Mami): the page tells Vinyl, with how
+// many times Vinyl had asked, and loads again what a long pause stopped.
+// Vinyl's own pause, and the one at the end, are Vinyl's.
+player.load(7);
+const sys = elements.at(-1);
+const sysHls = instances.at(-1);
+const reported = () => events.filter(event => event.gen === 7 && event.type.startsWith('system-')).map(event => event.type + '@' + event.seq);
+player.play(7, 1);
+sys.paused = true;
+sys.handlers.pause();
+assert.deepEqual(reported(), ['system-pause@1']);
+assert.equal(timers.size, 1);
+const resting = [...timers.values()][0];
+timers.clear();
+resting();
+assert.equal(sysHls.stopped, true);
+sys.currentTime = 40;
+sys.paused = false;
+sys.handlers.play();
+assert.deepEqual(reported(), ['system-pause@1', 'system-play@1']);
+assert.deepEqual(sysHls.starts, [40]);
+player.pause(7, 2);
+sys.handlers.pause();
+player.play(7, 3);
+sys.handlers.play();
+sys.ended = true;
+sys.paused = true;
+sys.handlers.pause();
+assert.deepEqual(reported(), ['system-pause@1', 'system-play@1']);
+// The skips it passes the page skip.
+session.handlers.nexttrack();
+session.handlers.previoustrack();
+assert.deepEqual(reported(), ['system-pause@1', 'system-play@1', 'system-next@0', 'system-previous@0']);
+player.unload(7);
+// WebKit pauses an element taken out of the page: that is not the system's.
+sys.ended = false;
+sys.handlers.pause();
+assert.equal(reported().length, 4);
+assert.equal(timers.size, 0);
+session.handlers.nexttrack();
+assert.equal(events.filter(event => event.type === 'system-next').length, 1);
+
 async function checkEndings() {
   // A fully buffered tail that stops advancing used to wait forever for ended.
   player.load(3);

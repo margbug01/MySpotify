@@ -33,7 +33,7 @@ func TestMain(m *testing.M) {
 		}
 		return f(t)
 	}
-	os.Exit(m.Run())
+	os.Exit(runTests(m))
 }
 
 // useLyrics has the tracks' lyrics be what f gives, until the test ends.
