@@ -46,6 +46,9 @@ type settings struct {
 	MVLeads map[string]int64 `json:"mvLeads,omitempty"`
 	// MVQueue shows the queue beside music videos filling Now Playing.
 	MVQueue bool `json:"mvQueue"`
+	// QuitOnClose quits the app as its window closes, rather than hiding
+	// it as music plays on.
+	QuitOnClose bool `json:"quitOnClose"`
 
 	// CacheMB is how many megabytes the parts of tracks kept on disk may
 	// take; 0 keeps none.

@@ -377,7 +377,7 @@ func Run() error {
 				return
 			}
 			e.PreventDefault()
-			if runtime.GOOS == "darwin" || a.tray != nil {
+			if !a.settings.QuitOnClose && (runtime.GOOS == "darwin" || a.tray != nil) {
 				a.win.Hide()
 			} else {
 				mygo.App.Quit()
