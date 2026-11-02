@@ -79,8 +79,10 @@ func (a *app) toggleLike(tr *spotify.Track) {
 		a.liking = map[string]*liking{}
 	}
 	a.liking[id] = l
+	// Read before the goroutine, as tests put theirs back.
+	send := likeSong
 	go func() {
-		err := likeSong(id, like)
+		err := send(id, like)
 		a.post(func() {
 			if a.liking[id] != l {
 				return // liked or unliked again since, or signed out
