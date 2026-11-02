@@ -92,6 +92,7 @@ func (t ConnectTrack) track() Track {
 	}
 	duration, _ := strconv.ParseInt(meta["duration"], 10, 64)
 	track := Track{ID: connectTrackID(t.URI), UID: t.UID, Episode: strings.HasPrefix(t.URI, "spotify:episode:"), Name: meta["title"], Duration: duration, Album: Album{ID: meta["album_uri"], Name: meta["album_title"], PicURL: cover}}
+	track.LinkedFrom = linkedFrom(track.ID, meta["requested_uri"])
 	// The artists after the first are artist_name:1, artist_name:2...
 	for i := 0; ; i++ {
 		key := ""
@@ -104,6 +105,15 @@ func (t ConnectTrack) track() Track {
 		track.Artists = append(track.Artists, Artist{Name: meta["artist_name"+key], ID: meta["artist_uri"+key]})
 	}
 	return track
+}
+
+// linkedFrom is the ID of asked, the URI of what was asked for, when it is
+// not id, which Spotify plays in its place.
+func linkedFrom(id, asked string) string {
+	if a := connectTrackID(asked); a != id {
+		return a
+	}
+	return ""
 }
 
 func connectTrackID(uri string) string {
@@ -133,12 +143,13 @@ type ConnectMachine struct {
 	ID     string `json:"state_machine_id"`
 	Tracks []struct {
 		Metadata struct {
-			URI      string   `json:"uri"`
-			Name     string   `json:"name"`
-			Album    string   `json:"group_name"`
-			AlbumURI string   `json:"group_uri"`
-			Duration looseInt `json:"duration"`
-			Authors  []struct {
+			URI        string   `json:"uri"`
+			LinkedFrom string   `json:"linked_from_uri"`
+			Name       string   `json:"name"`
+			Album      string   `json:"group_name"`
+			AlbumURI   string   `json:"group_uri"`
+			Duration   looseInt `json:"duration"`
+			Authors    []struct {
 				Name string `json:"name"`
 				URI  string `json:"uri"`
 			} `json:"authors"`
@@ -199,6 +210,7 @@ func (m ConnectMachine) Track(index int) (Track, error) {
 		return Track{}, errors.New("Connect: 此内容类型暂不支持，已暂停本机")
 	}
 	track := Track{ID: id, Episode: strings.HasPrefix(meta.URI, "spotify:episode:"), Name: meta.Name, Duration: int64(meta.Duration), Album: Album{ID: meta.AlbumURI, Name: meta.Album}}
+	track.LinkedFrom = linkedFrom(id, meta.LinkedFrom)
 	if len(meta.Images) > 0 {
 		track.Album.PicURL = meta.Images[0].URL
 	}

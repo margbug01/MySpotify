@@ -45,7 +45,8 @@ func (a *app) toggleLike(tr *spotify.Track) {
 	if a.liked == nil {
 		a.liked = map[string]bool{}
 	}
-	id, like := tr.ID, !a.liked[tr.ID]
+	id := libraryID(tr)
+	like := !a.liked[id]
 	a.setLiked(id, like)
 	go func() {
 		err := likeSong(id, like)
@@ -75,11 +76,20 @@ func (a *app) likeCurrent() {
 	if a.profile == nil {
 		return // asked to sign in
 	}
-	if a.liked[tr.ID] {
+	if a.liked[libraryID(tr)] {
 		a.toast = "已添加到我喜欢的音乐"
 	} else {
 		a.toast = "已取消喜欢"
 	}
+}
+
+// libraryID is the ID of tr in the listener's library: the one asked for,
+// when Spotify plays another of the same song in their country.
+func libraryID(tr *spotify.Track) string {
+	if tr.LinkedFrom != "" {
+		return tr.LinkedFrom
+	}
+	return tr.ID
 }
 
 func (a *app) setLiked(id string, like bool) {
@@ -98,7 +108,7 @@ func (a *app) likeButton(c *ui.Context, tr *spotify.Track, size float32, color u
 		// Not liked as songs are: its room stays, empty.
 		return ui.Box(c).Size(size, size)
 	}
-	liked := a.liked[tr.ID]
+	liked := a.liked[libraryID(tr)]
 	icon, label := iconHeart, "喜欢"
 	if liked {
 		icon, color, label = iconHeartFill, a.pal.accent, "取消喜欢"

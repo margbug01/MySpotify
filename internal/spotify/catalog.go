@@ -40,6 +40,10 @@ type Track struct {
 	Episode bool `json:"episode,omitempty"`
 	// Video says Spotify has a music video of it.
 	Video bool `json:"video,omitempty"`
+	// LinkedFrom is the ID asked for when Spotify plays another of the
+	// same song in the listener's country (relinked): the one in their
+	// library, which hearts go by.
+	LinkedFrom string `json:"linkedFrom,omitempty"`
 }
 
 // ArtistNames joins the track's artists as the credits read.
