@@ -122,10 +122,13 @@ func (a *app) nowPlayingBody(c *ui.Context, tr *spotify.Track, art *artwork, acc
 				}
 			})
 		})
+		// The panes' tabs stay in the corner whichever pane shows, rather
+		// than jump as one is chosen; they come and go with the pointer.
+		tabs := ui.Row(c.Key("tabs")).Absolute().Top(topBar(c)).Right(48).Gap(6)
+		reveal(tabs, pointerIn).Children(func() { a.paneTabs(c) })
 		if a.npPane == paneStage {
 			// The stage takes the whole view: the lyrics are the show, the
 			// controls a slim bar at the foot.
-			reveal(ui.Row(c.Key("tabs")).Absolute().Top(topBar(c)).Right(48).Gap(6), pointerIn).Children(func() { a.paneTabs(c) })
 			a.stage(c, tr, accent)
 			a.stageBar(c, tr, art, accent)
 			return
@@ -179,20 +182,17 @@ func (a *app) nowPlayingBody(c *ui.Context, tr *spotify.Track, art *artwork, acc
 
 			pane := ui.Column(c.Key("pane")).Grow(1).Basis(0).MinWidth(0)
 			pane.Children(func() {
-				// The pane starts level with the cover beside it. Its tabs come
-				// and go with the pointer, so they sit above it, out of the flow,
-				// never over it.
-				tabs := ui.Row(c.Key("tabs")).Absolute().Left(0).Gap(6)
+				// The pane starts level with the cover beside it, and below the
+				// tabs, which are out of the flow, never over it.
 				b, tb := pane.LayoutBounds(), tabs.LayoutBounds()
 				if b.H > 0 && tb.H > 0 && coverTop > 0 {
-					if top := max(coverTop-b.Y, tb.H+8); top != a.npPaneTop {
+					if top := max(coverTop, tb.Y+tb.H+8) - b.Y; top != a.npPaneTop {
 						a.npPaneTop = top
 						c.AnimationFrame()
 					}
 				} else {
 					c.AnimationFrame() // not laid out yet: the next frame places it
 				}
-				reveal(tabs.Top(a.npPaneTop-8-tb.H), pointerIn).Children(func() { a.paneTabs(c) })
 				ui.Box(c).Height(a.npPaneTop)
 				switch a.npPane {
 				case paneLyrics:
@@ -273,6 +273,7 @@ func (a *app) paneTab(c *ui.Context, i int, label string) {
 		bg = white.Alpha(0.06)
 	}
 	b.Background(b.AnimateColor("bg", bg, ui.Animation{Duration: 120 * time.Millisecond}))
+	fg = b.AnimateColor("fg", fg, ui.Animation{Duration: 120 * time.Millisecond})
 	b.Children(func() {
 		ui.Text(c, label).FontSize(13).FontWeight(600).TextColor(fg)
 	})

@@ -1,0 +1,73 @@
+package app
+
+import (
+	"image/png"
+	"os"
+	"path/filepath"
+	"strconv"
+	"testing"
+	"time"
+
+	"github.com/egoist/mygo/ui"
+
+	"vinyl/internal/spotify"
+)
+
+// npTabsApp opens Now Playing on its lyrics, at w×h, the pointer in it so
+// its tabs show.
+func npTabsApp(t *testing.T, w, h float32) (*app, *ui.Tester) {
+	a := newTestApp()
+	a.pl.Cue([]spotify.Track{{ID: "7", Name: "海屿你", Artists: []spotify.Artist{{Name: "马也_Crabbit"}}, Duration: 200000}})
+	a.nowPlaying, a.npPane = true, paneLyrics
+	tt := ui.NewTester(a.view, int(w), int(h))
+	tt.SetDark(true)
+	tt.Move(w/2, h/2)
+	tt.Advance(time.Second)
+	return a, tt
+}
+
+// Choosing a pane of Now Playing leaves its tabs where they were: the
+// stage's sat in the window's corner, the others' over the lyrics, and the
+// tabs jumped from one place to the other.
+func TestPaneTabsStayPut(t *testing.T) {
+	for _, w := range []float32{760, 1200} {
+		_, tt := npTabsApp(t, w, 800)
+		where := func() ui.Rect {
+			t.Helper()
+			r, ok := tt.Find("律动")
+			if !ok {
+				t.Fatal("no tabs")
+			}
+			return r
+		}
+		first := where()
+		for _, tab := range []string{"律动", "待播清单", "律动", "歌词"} {
+			if err := tt.Click(tab); err != nil {
+				t.Fatal(err)
+			}
+			tt.Advance(time.Second)
+			if r := where(); r != first {
+				t.Fatalf("%v wide, on %s: tabs at %v, were at %v", w, tab, r, first)
+			}
+		}
+	}
+}
+
+// With NM_FRAMES set, saves Now Playing's panes at window widths, to look
+// at where the tabs are.
+func TestPaneTabsFrames(t *testing.T) {
+	dir := os.Getenv("NM_FRAMES")
+	if dir == "" {
+		t.Skip()
+	}
+	for _, size := range [][2]float32{{760, 800}, {910, 800}, {1200, 800}, {760, 560}} {
+		_, tt := npTabsApp(t, size[0], size[1])
+		for _, tab := range []string{"歌词", "律动", "待播清单"} {
+			tt.Click(tab)
+			tt.Advance(time.Second)
+			f, _ := os.Create(filepath.Join(dir, "np-"+strconv.Itoa(int(size[0]))+"x"+strconv.Itoa(int(size[1]))+"-"+tab+".png"))
+			png.Encode(f, tt.Image())
+			f.Close()
+		}
+	}
+}
