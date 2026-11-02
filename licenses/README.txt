@@ -13,5 +13,6 @@ golang.org/x/net                  v0.59.0      golang.org_x_net-LICENSE、-PATEN
 golang.org/x/sys                  v0.49.0      golang.org_x_sys-LICENSE、-PATENTS（只在 Windows 版里）
 golang.org/x/text                 v0.43.0      golang.org_x_text-LICENSE、-PATENTS
 hls.js                            internal/player/web/hls.min.js   hls.js-LICENSE（Apache-2.0）
+OpenCC 繁简字表                   internal/lyrics/TSCharacters.txt OpenCC-LICENSE（Apache-2.0）
 
 go.mod 里的模块有变动时，这里要跟着改。

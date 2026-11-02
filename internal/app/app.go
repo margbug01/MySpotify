@@ -208,6 +208,17 @@ func (a *app) redraw() {
 	}
 }
 
+// readsTraditional reports whether the first Chinese among the listener's
+// languages is written in traditional characters (zh-Hant, zh-TW, zh-HK).
+func readsTraditional(langs []string) bool {
+	for _, l := range langs {
+		if strings.HasPrefix(l, "zh") {
+			return strings.Contains(l, "Hant") || strings.Contains(l, "TW") || strings.Contains(l, "HK") || strings.Contains(l, "MO")
+		}
+	}
+	return false
+}
+
 // shotHook, when set, drives the app to check its design.
 var shotHook func(a *app)
 
@@ -278,6 +289,7 @@ func Run() error {
 			a.art.dir = filepath.Join(dir, "covers")
 			go pruneCovers(a.art.dir, coversMax)
 		}
+		player.SimplifyLyrics = !readsTraditional(mygo.App.PreferredLanguages())
 		a.pl = player.New(a.post)
 		a.pl.Leads = a.mvLead
 		a.pl.Cache = newPartCache(a.settings.CacheMB)

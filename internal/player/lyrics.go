@@ -3,6 +3,7 @@ package player
 import (
 	"errors"
 	"log"
+	"slices"
 	"strings"
 	"time"
 
@@ -14,11 +15,41 @@ func trackLyrics(track spotify.Track) []lyrics.Line {
 	if track.Episode {
 		return episodeLyrics(track, transcriptOf)
 	}
-	return findLyrics(track, spotify.Lyrics, func(t spotify.Track) (string, string, error) {
+	lines := findLyrics(track, spotify.Lyrics, func(t spotify.Track) (string, string, error) {
 		return lookupByNames(t, spotify.Decorate, func(t spotify.Track) (string, string, error) {
 			return firstTimed(t, spotify.NetEaseLyrics, spotify.LRCLyrics, spotify.LRCSearch)
 		})
 	})
+	return localize(track, lines, spotify.NetEaseTranslation)
+}
+
+// SimplifyLyrics has Chinese lyrics show in simplified characters; the app
+// turns it off for listeners who read traditional ones.
+var SimplifyLyrics = true
+
+// localize has Chinese lyrics in simplified characters (SimplifyLyrics),
+// and timed ones in other languages come with NetEase's translation into
+// Chinese, its own lines taken where it has one: they pair with it line
+// for line, as Spotify's need not.
+func localize(track spotify.Track, lines []lyrics.Line, translated func(spotify.Track) (string, string, error)) []lyrics.Line {
+	if lyrics.Chinese(lines) {
+		if SimplifyLyrics {
+			lyrics.Simplify(lines)
+		}
+		return lines
+	}
+	if len(lines) == 0 || lines[0].Unsynced {
+		return lines
+	}
+	synced, translation, err := translated(track)
+	if err != nil {
+		log.Printf("lyrics: translation of %s: %v", track.ID, err)
+		return lines
+	}
+	if tl := lyrics.Build(synced, translation, ""); slices.ContainsFunc(tl, func(l lyrics.Line) bool { return l.Translation != "" }) {
+		return tl
+	}
+	return lines
 }
 
 // firstTimed asks sources in turn for t's lyrics until one has them timed,

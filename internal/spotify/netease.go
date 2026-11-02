@@ -25,6 +25,30 @@ var lrcTimed = regexp.MustCompile(`(?m)^\[\d+:\d+`)
 // millisecond. Only the name, the artist and the length leave; NetEase's
 // text is in simplified characters.
 func NetEaseLyrics(t Track) (synced, plain string, err error) {
+	lyric, _, err := neteaseLyrics(t)
+	switch {
+	case err != nil || lyric == "":
+		return "", "", err
+	case lrcTimed.MatchString(lyric):
+		return lyric, "", nil
+	}
+	return "", lyric, nil
+}
+
+// NetEaseTranslation gives t's timed lyrics on NetEase with their
+// translation into Chinese, timed as they are, when it has one: most songs
+// in other languages have.
+func NetEaseTranslation(t Track) (synced, translation string, err error) {
+	lyric, tr, err := neteaseLyrics(t)
+	if err != nil || !lrcTimed.MatchString(lyric) || !lrcTimed.MatchString(tr) {
+		return "", "", err
+	}
+	return lyric, tr, nil
+}
+
+// neteaseLyrics gives the lyrics of t on NetEase and their translation,
+// "" for music without words.
+func neteaseLyrics(t Track) (lyric, translation string, err error) {
 	if t.Episode || t.Name == "" || t.Length() <= 0 {
 		return "", "", nil
 	}
@@ -59,19 +83,18 @@ func NetEaseLyrics(t Track) (synced, plain string, err error) {
 		Lrc struct {
 			Lyric string `json:"lyric"`
 		} `json:"lrc"`
+		Tlyric struct {
+			Lyric string `json:"lyric"`
+		} `json:"tlyric"`
 		PureMusic bool `json:"pureMusic"`
 	}
-	if err := netease("/api/song/lyric?id="+strconv.FormatInt(id, 10)+"&lv=1", &res); err != nil {
+	if err := netease("/api/song/lyric?id="+strconv.FormatInt(id, 10)+"&lv=1&tv=-1", &res); err != nil {
 		return "", "", err
 	}
-	lyric := strings.TrimSpace(res.Lrc.Lyric)
-	switch {
-	case res.PureMusic || lyric == "":
+	if res.PureMusic {
 		return "", "", nil
-	case lrcTimed.MatchString(lyric):
-		return lyric, "", nil
 	}
-	return "", lyric, nil
+	return strings.TrimSpace(res.Lrc.Lyric), strings.TrimSpace(res.Tlyric.Lyric), nil
 }
 
 // netease gets path from NetEase into out, as its web page does, without

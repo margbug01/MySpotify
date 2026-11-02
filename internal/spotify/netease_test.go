@@ -95,3 +95,33 @@ func TestLyricsErrorTemporary(t *testing.T) {
 		}
 	}
 }
+
+// The translation comes, timed as the lyrics are, only with timed lyrics.
+func TestNetEaseTranslation(t *testing.T) {
+	old := Client
+	defer func() { Client = old }()
+	track := Track{Name: "Shape of You", Artists: []Artist{{Name: "Ed Sheeran"}}, Duration: 233712}
+	for _, c := range []struct {
+		name, lyric string
+		want        bool
+	}{
+		{"translated", `{"code":200,"lrc":{"lyric":"[00:09.40]The club isn't the best place"},"tlyric":{"lyric":"[00:09.40]俱乐部不是最好的地方"}}`, true},
+		{"none", `{"code":200,"lrc":{"lyric":"[00:09.40]The club isn't the best place"},"tlyric":{"lyric":""}}`, false},
+		{"plain", `{"code":200,"lrc":{"lyric":"The club isn't the best place"},"tlyric":{"lyric":"俱乐部不是最好的地方"}}`, false},
+	} {
+		Client = &http.Client{Transport: lyricsTransport(func(req *http.Request) (*http.Response, error) {
+			body := `{"code":200,"result":{"songs":[{"id":1,"name":"Shape of You","dt":233712}]}}`
+			if req.URL.Path == "/api/song/lyric" {
+				if req.URL.Query().Get("tv") != "-1" {
+					t.Fatal("translation not asked for")
+				}
+				body = c.lyric
+			}
+			return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(body))}, nil
+		})}
+		synced, translation, err := NetEaseTranslation(track)
+		if err != nil || (synced != "" && translation != "") != c.want || (synced == "") != (translation == "") {
+			t.Errorf("%s: %q %q %v", c.name, synced, translation, err)
+		}
+	}
+}
