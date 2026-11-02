@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -30,6 +31,16 @@ type connectState struct {
 	timer                        *time.Timer
 	jobs                         chan func() error
 	done                         chan struct{}
+	// The volume asked of a device, sent once the request before it is
+	// done: a drag turns it a percent at a time, which one by one would
+	// walk the device there long after the drag.
+	volMu     sync.Mutex
+	volTarget string
+	volume    float64
+	volQueued bool
+	// volLocal is when the listener last turned the volume here: Spotify
+	// sends what it was told back, a step behind.
+	volLocal time.Time
 }
 
 func (a *app) stopConnect() {
@@ -96,15 +107,53 @@ func (a *app) startConnect() {
 	a.connectTick(state)
 }
 
-func (a *app) connectJob(job func() error) {
+func (a *app) connectJob(job func() error) bool {
 	if a.connect == nil {
-		return
+		return false
 	}
 	select {
 	case a.connect.jobs <- job:
+		return true
 	default:
 		a.toast = "Connect 操作正在排队，请稍后再试"
+		return false
 	}
+}
+
+// connectVolume is (*spotify.Connect).Volume; tests swap it.
+var connectVolume = (*spotify.Connect).Volume
+
+// sendVolume asks target for volume v, or has the request already waiting
+// ask for it instead.
+func (a *app) sendVolume(state *connectState, target string, v float64) {
+	state.volMu.Lock()
+	queued := state.volQueued
+	state.volTarget, state.volume, state.volQueued = target, v, true
+	state.volMu.Unlock()
+	if queued {
+		return
+	}
+	sent := a.connectJob(func() error {
+		state.volMu.Lock()
+		target, v := state.volTarget, state.volume
+		state.volQueued = false
+		state.volMu.Unlock()
+		return connectVolume(state.client, target, v)
+	})
+	if !sent {
+		state.volMu.Lock()
+		state.volQueued = false
+		state.volMu.Unlock()
+	}
+}
+
+// here does to the player what fn does, as playing here, not through
+// Connect.
+func (a *app) here(fn func()) {
+	control := a.pl.Control
+	a.pl.Control = nil
+	defer func() { a.pl.Control = control }()
+	fn()
 }
 
 func (a *app) connectTick(state *connectState) {
@@ -245,7 +294,7 @@ func (a *app) connectEvent(event spotify.ConnectEvent) {
 			state.machine = command.Machine
 			a.applyConnect(command.Ref, command.Seek)
 		case "set_volume":
-			if command.Volume != nil {
+			if command.Volume != nil && time.Since(state.volLocal) > 2*time.Second {
 				state.applying = true
 				a.volume = float64(min(max(*command.Volume, 0), 65535)) / 65535
 				a.pl.SetVolume(a.volume)
@@ -402,6 +451,14 @@ func (a *app) connectControl(action string, value any) bool {
 			a.toast = "当前内容不支持拖动进度"
 			return true
 		}
+		if target == state.client.ID && !a.pl.IsRemote() {
+			// Playing here: it jumps at once and Spotify hears where it
+			// is after, rather than being asked to say so, a trip through
+			// its servers that took seconds behind a proxy.
+			a.here(func() { a.pl.Seek(value.(time.Duration)) })
+			a.reportConnect()
+			return true
+		}
 		action = "seek_to"
 		extra["value"] = max(0, value.(time.Duration).Milliseconds())
 	case "advance":
@@ -426,7 +483,12 @@ func (a *app) connectControl(action string, value any) bool {
 		extra["repeating_track"] = mode == player.RepeatOne
 	case "volume":
 		volume := value.(float64)
-		a.connectJob(func() error { return state.client.Volume(target, volume) })
+		if target == state.client.ID && !a.pl.IsRemote() {
+			// Playing here: heard at once, not when Spotify sends it back.
+			a.here(func() { a.pl.SetVolume(volume) })
+			state.volLocal = time.Now()
+		}
+		a.sendVolume(state, target, volume)
 		return true
 	case "jump":
 		// A track of the queue Spotify gave is skipped to where it is, as
