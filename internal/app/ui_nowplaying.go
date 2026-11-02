@@ -150,15 +150,8 @@ func (a *app) nowPlayingBody(c *ui.Context, tr *spotify.Track, art *artwork, acc
 							a.radioChip(c, r)
 						}
 						ui.Text(c, tr.Name).FontSize(22).FontWeight(700).LetterSpacing(-0.3).SingleLine()
-						ui.Row(c).AlignItems(ui.Center).Children(func() {
-							a.artistLinks(c.Key("by"), tr.Artists, 15, white.Alpha(0.6), white)
-							if tr.Album.Name != "" {
-								ui.Text(c, " — ").FontSize(15).TextColor(white.Alpha(0.6)).Shrink(0)
-								if link(c.Key("album"), tr.Album.Name, 15, white.Alpha(0.6), white).Clicked() && tr.Album.ID != "" {
-									a.goTo(route{page: pagePlaylist, playlist: tr.Album.ID})
-								}
-							}
-						})
+						// The album is in the song's menu: here it took the artists' room.
+						a.artistLinks(c.Key("by"), tr.Artists, 15, white.Alpha(0.6), white)
 					})
 					if pl.HasVideo() {
 						a.mvButton(c)

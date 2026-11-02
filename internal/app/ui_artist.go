@@ -315,21 +315,37 @@ func link(c *ui.Context, text string, size float32, color, hover ui.Color) ui.El
 	return b
 }
 
-// artistLinks names artists, each a link to their page.
+// artistLinks names artists, each a link to their page. Short of room, the
+// last give way first, the first keeping their names whole, rather than
+// each cut to a letter (H…, …, T…, …).
 func (a *app) artistLinks(c *ui.Context, artists []spotify.Artist, size float32, color, hover ui.Color) ui.Element {
-	return ui.Row(c).Shrink(1).MinWidth(0).AlignItems(ui.Center).Children(func() {
-		for i, ar := range artists {
-			if i > 0 {
-				// A trailing space would be trimmed: the gap is a margin.
-				ui.Text(c, ",").FontSize(size).TextColor(color).Shrink(0).Margin(0, size*0.3, 0, 0)
-			}
-			if ar.ID == "" {
-				ui.Text(c, ar.Name).FontSize(size).TextColor(color).SingleLine().Shrink(1).MinWidth(0)
-				continue
-			}
-			if link(c.Key(i), ar.Name, size, color, hover).Clicked() {
-				a.openArtist(ar.ID)
-			}
+	return a.artistsFrom(c, artists, 0, size, color, hover)
+}
+
+// artistsFrom is artists from i on: the name of the i-th, which does not
+// shrink but past the row, and the rest in a row of their own that does.
+// A name sharing the shrinking at all, by a hair, ends in an ellipsis.
+func (a *app) artistsFrom(c *ui.Context, artists []spotify.Artist, i int, size float32, color, hover ui.Color) ui.Element {
+	row := ui.Row(c).Shrink(1).MinWidth(0).AlignItems(ui.Center)
+	if i > 0 {
+		row.Clip()
+	}
+	return row.Children(func() {
+		if i >= len(artists) {
+			return
+		}
+		ar := artists[i]
+		if i > 0 {
+			// A trailing space would be trimmed: the gap is a margin.
+			ui.Text(c, ",").FontSize(size).TextColor(color).Shrink(0).Margin(0, size*0.3, 0, 0)
+		}
+		if ar.ID == "" {
+			ui.Text(c, ar.Name).FontSize(size).TextColor(color).SingleLine().Shrink(0).MaxWidthPercent(100)
+		} else if link(c.Key("name"), ar.Name, size, color, hover).Shrink(0).MaxWidthPercent(100).Clicked() {
+			a.openArtist(ar.ID)
+		}
+		if i+1 < len(artists) {
+			a.artistsFrom(c.Key("rest"), artists, i+1, size, color, hover)
 		}
 	})
 }

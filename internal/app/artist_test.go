@@ -117,3 +117,40 @@ func TestArtistPageOpensAlbum(t *testing.T) {
 		t.Errorf("route %+v, want the album's page", a.route)
 	}
 }
+
+// Short of room, the first artists keep their names whole and the last give
+// way: each was cut alike, to a letter or none (H…, …, T…, …), and the first
+// can still be clicked.
+func TestArtistLinksGiveWayFromTheEnd(t *testing.T) {
+	a := newTestApp()
+	artists := []spotify.Artist{{ID: "spotify:artist:1", Name: "Honkai Impact 3rd"}, {ID: "spotify:artist:2", Name: "茶理理"}, {ID: "spotify:artist:3", Name: "TetraCalyx"}, {Name: "Hanser"}}
+	width := func(w float32) (first, second ui.Rect) {
+		tt := ui.NewTester(func(c *ui.Context) {
+			ui.Column(c).Width(w).Children(func() { a.artistLinks(c, artists, 15, ui.RGB(0, 0, 0), ui.RGB(0, 0, 0)) })
+		}, 600, 100)
+		tt.Frame()
+		first, _ = tt.Find("Honkai Impact 3rd")
+		second, _ = tt.Find("茶理理")
+		return first, second
+	}
+	whole, rest := width(500)
+	narrow, _ := width(200)
+	// Exactly: shrunk by a hair, it ends in an ellipsis.
+	if narrow.W < whole.W {
+		t.Errorf("first artist cut to %v of %v", narrow.W, whole.W)
+	}
+	if rest.W == 0 {
+		t.Errorf("second artist hidden with room for all")
+	}
+	if tiny, _ := width(60); tiny.W > 60 {
+		t.Errorf("first artist ran %v past a row of 60", tiny.W)
+	}
+	tt := ui.NewTester(func(c *ui.Context) {
+		ui.Column(c).Width(200).Children(func() { a.artistLinks(c, artists, 15, ui.RGB(0, 0, 0), ui.RGB(0, 0, 0)) })
+	}, 600, 100)
+	tt.Frame()
+	tt.Click("Honkai Impact 3rd")
+	if a.next == nil || a.next.page != pageArtist || a.next.artist != "spotify:artist:1" {
+		t.Errorf("clicking the first artist went to %+v", a.next)
+	}
+}
