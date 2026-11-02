@@ -14,10 +14,13 @@ import (
 // likeSong likes or unlikes a song with Spotify; tests replace it.
 var likeSong = spotify.Like
 
+// likedIDs is spotify.LikedIDs; tests swap it.
+var likedIDs = spotify.LikedIDs
+
 // loadLiked loads the listener's liked songs.
 func (a *app) loadLiked(uid string) {
 	go func() {
-		ids, err := spotify.LikedIDs()
+		ids, err := likedIDs()
 		a.post(func() {
 			if err != nil || a.profile == nil || a.profile.UserID != uid {
 				return

@@ -626,6 +626,9 @@ func (a *app) refreshMine(now time.Time) {
 	if a.quitting || a.profile == nil || a.mineLoading || now.Sub(a.mineChecked) < 5*time.Second {
 		return
 	}
+	if a.liked == nil {
+		a.loadLiked(a.profile.UserID) // failed at sign in: every heart empty
+	}
 	a.loadMine(a.profile.UserID)
 }
 

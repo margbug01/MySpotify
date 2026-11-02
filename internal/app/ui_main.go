@@ -486,18 +486,29 @@ func (a *app) loadPlaylist(id string, thenPlay bool) {
 	delete(a.plErr, id)
 	go func() {
 		pl, err := spotify.PlaylistDetail(id)
-		a.post(func() {
-			delete(a.loadingPl, id)
-			if err != nil {
-				a.plErr[id] = "歌单加载失败"
-				return
-			}
-			a.playlists[id] = pl
-			if thenPlay {
-				a.playFrom(spotify.HomeItem{List: pl}, pl.Tracks, firstPlayable(pl.Tracks))
-			}
-		})
+		a.post(func() { a.receivePlaylist(id, pl, err, thenPlay) })
 	}()
+}
+
+func (a *app) receivePlaylist(id string, pl *spotify.Playlist, err error, thenPlay bool) {
+	delete(a.loadingPl, id)
+	if err != nil {
+		a.plErr[id] = "歌单加载失败"
+		return
+	}
+	a.playlists[id] = pl
+	if id == spotify.LikedURI && a.profile != nil {
+		// The liked songs as they are now: hearts went by the ones at sign
+		// in, empty for songs liked elsewhere since, and for all if that
+		// failed.
+		a.liked = make(map[string]bool, len(pl.Tracks))
+		for _, t := range pl.Tracks {
+			a.liked[t.ID] = true
+		}
+	}
+	if thenPlay {
+		a.playFrom(spotify.HomeItem{List: pl}, pl.Tracks, firstPlayable(pl.Tracks))
+	}
 }
 
 func firstPlayable(tracks []spotify.Track) int {
