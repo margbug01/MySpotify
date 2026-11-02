@@ -35,15 +35,22 @@ func (p *Player) ConnectOptions(options spotify.ConnectOptions) {
 	if options.Shuffle != nil {
 		p.shuffle = *options.Shuffle
 	}
-	if options.RepeatContext != nil && options.RepeatTrack != nil {
-		p.repeat = RepeatOff
-		if *options.RepeatContext {
-			p.repeat = RepeatAll
-		}
-		if *options.RepeatTrack {
-			p.repeat = RepeatOne
-		}
+	if mode, ok := RepeatOf(options); ok {
+		p.repeat = mode
 	}
+}
+
+// RepeatOf is the repeat options say, if they say.
+func RepeatOf(options spotify.ConnectOptions) (RepeatMode, bool) {
+	switch {
+	case options.RepeatContext == nil || options.RepeatTrack == nil:
+		return RepeatOff, false
+	case *options.RepeatTrack:
+		return RepeatOne, true
+	case *options.RepeatContext:
+		return RepeatAll, true
+	}
+	return RepeatOff, true
 }
 
 func (p *Player) control(action string, value any) bool {

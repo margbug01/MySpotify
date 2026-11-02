@@ -41,7 +41,83 @@ type connectState struct {
 	// volLocal is when the listener last turned the volume here: Spotify
 	// sends what it was told back, a step behind.
 	volLocal time.Time
+	// options are shuffle and repeat as Spotify last said; shuffle and
+	// repeat what the listener set since, which it may not say yet.
+	options spotify.ConnectOptions
+	shuffle held[bool]
+	repeat  held[player.RepeatMode]
 }
+
+// held is a setting changed here, shown as changed while what Spotify says
+// is from before it took the change: until it says the same, or a while
+// after it took it, or it would not take it.
+type held[T comparable] struct {
+	value T
+	on    bool
+	ask   int       // counts the changes
+	until time.Time // zero while Spotify is asked
+}
+
+// heldFor is how long after Spotify took a change it is held at most.
+const heldFor = 10 * time.Second
+
+// set holds v, which Spotify is asked for, and returns which change it is.
+func (h *held[T]) set(v T) int {
+	h.ask++
+	h.value, h.on, h.until = v, true, time.Time{}
+	return h.ask
+}
+
+// answered takes Spotify's answer to change ask, if it is the latest: it
+// took it, or would not, which lets go of it.
+func (h *held[T]) answered(ask int, took bool) {
+	switch {
+	case ask != h.ask:
+	case took:
+		h.until = time.Now().Add(heldFor)
+	default:
+		h.on = false
+	}
+}
+
+// show returns what to show of the setting Spotify says is got, if it says:
+// the value held, until Spotify says the same or the hold is over.
+func (h *held[T]) show(got T, says bool) (T, bool) {
+	if h.on && says && (got == h.value || !h.until.IsZero() && time.Now().After(h.until)) {
+		h.on = false
+	}
+	if h.on {
+		return h.value, true
+	}
+	return got, says
+}
+
+// connectOptions shows shuffle and repeat as Spotify says, o: but those the
+// listener just set as they set them. What Spotify said meanwhile, from
+// before, undid the button pressed, as much as a few seconds. Empty, it
+// shows again what Spotify said last.
+func (a *app) connectOptions(o spotify.ConnectOptions) {
+	state := a.connect
+	if o.Shuffle != nil {
+		state.options.Shuffle = o.Shuffle
+	}
+	if _, ok := player.RepeatOf(o); ok {
+		state.options.RepeatContext, state.options.RepeatTrack = o.RepeatContext, o.RepeatTrack
+	}
+	o = state.options
+	if v, ok := state.shuffle.show(o.Shuffle != nil && *o.Shuffle, o.Shuffle != nil); ok {
+		o.Shuffle = &v
+	}
+	mode, says := player.RepeatOf(o)
+	if mode, ok := state.repeat.show(mode, says); ok {
+		all, one := mode == player.RepeatAll, mode == player.RepeatOne
+		o.RepeatContext, o.RepeatTrack = &all, &one
+	}
+	a.pl.ConnectOptions(o)
+}
+
+// connectCommand is (*spotify.Connect).Command; tests swap it.
+var connectCommand = (*spotify.Connect).Command
 
 func (a *app) stopConnect() {
 	state := a.connect
@@ -218,7 +294,7 @@ func (a *app) connectEvent(event spotify.ConnectEvent) {
 			return
 		}
 		state.cluster = cluster
-		a.pl.ConnectOptions(cluster.Player.Options)
+		a.connectOptions(cluster.Player.Options)
 		if cluster.Active != "" && cluster.Active != state.client.ID {
 			state.ref = nil
 			track := cluster.Track()
@@ -327,7 +403,7 @@ func (a *app) applyConnect(ref *spotify.ConnectRef, seek *int64) {
 		position = time.Duration(max(0, *seek)) * time.Millisecond
 	}
 	state.applying = true
-	a.pl.ConnectOptions(state.machine.Attributes.Options)
+	a.connectOptions(state.machine.Attributes.Options)
 	a.pl.ApplyConnect(track, position, ref.Paused)
 	a.connectQueue(ref.Index)
 	state.applying = false
@@ -473,14 +549,38 @@ func (a *app) connectControl(action string, value any) bool {
 		zero := int64(0)
 		a.applyConnect(next, &zero)
 		return true
-	case "shuffle":
-		action = "set_shuffling_context"
-		extra["value"] = value.(bool)
-	case "repeat":
-		mode := value.(player.RepeatMode)
-		action = "set_options"
-		extra["repeating_context"] = mode == player.RepeatAll
-		extra["repeating_track"] = mode == player.RepeatOne
+	case "shuffle", "repeat":
+		// Shown at once, as Spotify is asked.
+		answered := func(took bool) {}
+		if action == "shuffle" {
+			v := value.(bool)
+			ask := state.shuffle.set(v)
+			answered = func(took bool) { state.shuffle.answered(ask, took) }
+			action, extra["value"] = "set_shuffling_context", v
+		} else {
+			mode := value.(player.RepeatMode)
+			ask := state.repeat.set(mode)
+			answered = func(took bool) { state.repeat.answered(ask, took) }
+			action = "set_options"
+			extra["repeating_context"] = mode == player.RepeatAll
+			extra["repeating_track"] = mode == player.RepeatOne
+		}
+		a.connectOptions(spotify.ConnectOptions{})
+		sent := a.connectJob(func() error {
+			err := connectCommand(state.client, target, action, extra)
+			a.post(func() {
+				if a.connect == state {
+					answered(err == nil)
+					a.connectOptions(spotify.ConnectOptions{})
+				}
+			})
+			return err
+		})
+		if !sent {
+			answered(false)
+			a.connectOptions(spotify.ConnectOptions{})
+		}
+		return true
 	case "volume":
 		volume := value.(float64)
 		if target == state.client.ID && !a.pl.IsRemote() {
