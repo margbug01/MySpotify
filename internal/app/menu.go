@@ -1,10 +1,42 @@
 package app
 
 import (
+	"fmt"
 	"runtime"
 
 	"github.com/egoist/mygo"
 )
+
+// syncDockMenu gives the Dock icon the player's controls (macOS), to pause
+// without bringing up the window, saying 播放 or 暂停 as the player is.
+// The Dock asks for no menu as it opens one, so it is set again whenever
+// that changes.
+func (a *app) syncDockMenu() {
+	if runtime.GOOS != "darwin" {
+		return
+	}
+	toggle := "播放"
+	if a.pl.Playing() {
+		toggle = "暂停"
+	}
+	idle := a.pl.Current() == nil
+	sig := toggle + fmt.Sprint(idle)
+	if sig == a.dockSig {
+		return
+	}
+	a.dockSig = sig
+	run := func(fn func()) func(*mygo.MenuItem, *mygo.Window) {
+		return func(*mygo.MenuItem, *mygo.Window) {
+			fn()
+			a.redraw()
+		}
+	}
+	mygo.App.Dock.SetMenu(mygo.NewMenu([]*mygo.MenuItem{
+		{Label: toggle, Disabled: idle, Click: run(func() { a.pl.TogglePlay() })},
+		{Label: "下一首", Disabled: idle, Click: run(func() { a.pl.Next() })},
+		{Label: "上一首", Disabled: idle, Click: run(func() { a.pl.Prev() })},
+	}))
+}
 
 // setMenu gives the app its menu bar, in Chinese and named as the app
 // is, with the settings in the app menu and the player's controls in a

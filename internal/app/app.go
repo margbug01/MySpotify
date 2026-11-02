@@ -162,6 +162,7 @@ type app struct {
 	npArt                 *artwork      // the cover whose colors Now Playing shows
 	npCoverState          coverState    // the cover of Now Playing, as it is tilted and flicked
 	sig                   playerSig
+	dockSig               string // what the Dock's menu was last set for
 	quitting              bool
 
 	// How the music video shows (mvInCover, mvTheater, mvFullScreen), and
@@ -200,6 +201,7 @@ func (a *app) post(fn func()) {
 func (a *app) redraw() {
 	if a.win != nil {
 		a.win.Invalidate()
+		a.syncDockMenu()
 	}
 	if a.notch != nil && a.notch.win != nil {
 		a.notch.win.Invalidate()
