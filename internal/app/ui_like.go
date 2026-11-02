@@ -19,18 +19,44 @@ var likedIDs = spotify.LikedIDs
 
 // loadLiked loads the listener's liked songs.
 func (a *app) loadLiked(uid string) {
+	asked := time.Now()
 	go func() {
 		ids, err := likedIDs()
 		a.post(func() {
 			if err != nil || a.profile == nil || a.profile.UserID != uid {
 				return
 			}
-			a.liked = make(map[string]bool, len(ids))
-			for _, id := range ids {
-				a.liked[id] = true
-			}
+			a.likedFrom(ids, asked)
 		})
 	}()
+}
+
+// liking is a song liked or unliked here, which a list of the liked songs
+// asked for before Spotify took it does not show.
+type liking struct {
+	like bool
+	took time.Time // zero while Spotify is asked
+}
+
+// likedFrom has the hearts show ids, the liked songs as Spotify listed them
+// when asked: but the songs liked or unliked here since, as they were. A
+// list that loaded as one was liked showed its heart empty again.
+func (a *app) likedFrom(ids []string, asked time.Time) {
+	liked := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		liked[id] = true
+	}
+	for id, l := range a.liking {
+		switch {
+		case !l.took.IsZero() && asked.After(l.took):
+			delete(a.liking, id) // the list has it
+		case l.like:
+			liked[id] = true
+		default:
+			delete(liked, id)
+		}
+	}
+	a.liked = liked
 }
 
 // toggleLike likes a song, or unlikes it, at once in the app and then with
@@ -48,14 +74,24 @@ func (a *app) toggleLike(tr *spotify.Track) {
 	id := libraryID(tr)
 	like := !a.liked[id]
 	a.setLiked(id, like)
+	l := &liking{like: like}
+	if a.liking == nil {
+		a.liking = map[string]*liking{}
+	}
+	a.liking[id] = l
 	go func() {
 		err := likeSong(id, like)
 		a.post(func() {
+			if a.liking[id] != l {
+				return // liked or unliked again since, or signed out
+			}
 			if err != nil {
+				delete(a.liking, id)
 				a.setLiked(id, !like)
 				a.toast = "操作失败，请稍后再试"
 				return
 			}
+			l.took = time.Now()
 			// The liked songs' playlist changed: load it anew when shown.
 			delete(a.playlists, spotify.LikedURI)
 			if a.route.page == pagePlaylist && a.route.playlist == spotify.LikedURI {

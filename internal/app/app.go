@@ -73,6 +73,7 @@ type app struct {
 	signin                              signin               // the web player's window, which signs the listener in
 	accountOpen                         bool                 // the dropdown of the account row shows
 	liked                               map[string]bool      // the songs the listener likes
+	liking                              map[string]*liking   // the songs liked or unliked here, by ID
 	toast                               string               // a message to show once
 	naming                              nameDialog           // the name of a playlist asked for
 	deleting                            deleteDialog         // whether to delete a playlist, asked

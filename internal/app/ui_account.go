@@ -327,7 +327,7 @@ func (a *app) signedIn(prof *spotify.Profile) {
 	if a.win != nil {
 		a.startConnect()
 	}
-	a.liked = nil
+	a.liked, a.liking = nil, nil
 	if !same {
 		a.homeShelves = nil
 		a.mine, a.saved, a.followed = nil, nil, nil
