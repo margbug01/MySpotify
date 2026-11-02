@@ -28,10 +28,11 @@ func npTabsApp(t *testing.T, w, h float32) (*app, *ui.Tester) {
 
 // Choosing a pane of Now Playing leaves its tabs where they were: the
 // stage's sat in the window's corner, the others' over the lyrics, and the
-// tabs jumped from one place to the other.
+// tabs jumped from one place to the other. The panes start below them.
 func TestPaneTabsStayPut(t *testing.T) {
-	for _, w := range []float32{760, 1200} {
-		_, tt := npTabsApp(t, w, 800)
+	for _, size := range [][2]float32{{760, 800}, {1200, 800}, {760, 480}} {
+		w := size[0]
+		a, tt := npTabsApp(t, w, size[1])
 		where := func() ui.Rect {
 			t.Helper()
 			r, ok := tt.Find("律动")
@@ -41,13 +42,17 @@ func TestPaneTabsStayPut(t *testing.T) {
 			return r
 		}
 		first := where()
+		// The pane, as the tabs, starts below the top bar.
+		if a.npPaneTop < first.H+8 {
+			t.Fatalf("%v: the pane starts %v down, under tabs %v tall", size, a.npPaneTop, first.H)
+		}
 		for _, tab := range []string{"律动", "待播清单", "律动", "歌词"} {
 			if err := tt.Click(tab); err != nil {
 				t.Fatal(err)
 			}
 			tt.Advance(time.Second)
 			if r := where(); r != first {
-				t.Fatalf("%v wide, on %s: tabs at %v, were at %v", w, tab, r, first)
+				t.Fatalf("%v, on %s: tabs at %v, were at %v", size, tab, r, first)
 			}
 		}
 	}
