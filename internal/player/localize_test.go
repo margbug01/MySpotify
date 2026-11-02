@@ -25,6 +25,9 @@ func TestLyricsLocalized(t *testing.T) {
 		text, trans string
 	}{
 		{"translated", english, true, netease("[00:01.10]The club isn't the best place\n[00:04.10]So the bar is where I go", "[00:01.10]俱乐部不是最好的地方\n[00:04.10]所以我去酒吧", nil), "The club isn't the best place", "俱乐部不是最好的地方"},
+		// NetEase's song of that title and length was another version, in
+		// Russian, which replaced Spotify's English lines.
+		{"other-version", english, true, netease("[00:01.10]Снег легко лица коснулся,\n[00:04.10]И вернулись дни той зимы.", "[00:01.10]雪轻抚着脸颊\n[00:04.10]回映着那个冬季的画面", nil), "The club isn't the best place", ""},
 		{"no-translation", english, true, netease("", "", nil), "The club isn't the best place", ""},
 		{"netease-down", english, true, netease("", "", errors.New("down")), "The club isn't the best place", ""},
 		{"chinese", "[00:01.00]誰都只得那雙手", true, nil, "谁都只得那双手", ""},

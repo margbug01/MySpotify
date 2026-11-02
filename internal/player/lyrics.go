@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode"
 
 	"vinyl/internal/lyrics"
 	"vinyl/internal/spotify"
@@ -46,10 +47,39 @@ func localize(track spotify.Track, lines []lyrics.Line, translated func(spotify.
 		log.Printf("lyrics: translation of %s: %v", track.ID, err)
 		return lines
 	}
-	if tl := lyrics.Build(synced, translation, ""); slices.ContainsFunc(tl, func(l lyrics.Line) bool { return l.Translation != "" }) {
+	if tl := lyrics.Build(synced, translation, ""); slices.ContainsFunc(tl, func(l lyrics.Line) bool { return l.Translation != "" }) && sameWords(lines, tl) {
 		return tl
 	}
 	return lines
+}
+
+// sameWords reports whether at least half of a's lines are b's too, case,
+// spaces and punctuation aside: NetEase can have another version of a song
+// under its title and near its length (Voyaging Star's Farewell, Russian
+// ver.), whose lines would replace Spotify's.
+func sameWords(a, b []lyrics.Line) bool {
+	fold := func(s string) string {
+		return strings.Map(func(r rune) rune {
+			if unicode.IsLetter(r) || unicode.IsNumber(r) {
+				return unicode.ToLower(r)
+			}
+			return -1
+		}, s)
+	}
+	have := map[string]bool{}
+	for _, l := range b {
+		have[fold(l.Text)] = true
+	}
+	n, same := 0, 0
+	for _, l := range a {
+		if k := fold(l.Text); k != "" {
+			n++
+			if have[k] {
+				same++
+			}
+		}
+	}
+	return n > 0 && 2*same >= n
 }
 
 // firstTimed asks sources in turn for t's lyrics until one has them timed,
