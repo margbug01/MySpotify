@@ -49,13 +49,18 @@ type connectState struct {
 }
 
 // held is a setting changed here, shown as changed while what Spotify says
-// is from before it took the change: until it says the same, or a while
-// after it took it, or it would not take it.
+// is from before it took the change: until, having taken it, it says the
+// same, or a while after it took it, or it would not take it. Pressed
+// twice, a button can ask for what Spotify said before: that is not
+// Spotify having taken it, nor is its answer to the first press, which
+// comes after. Nor, as it may take the presses out of order, is its saying
+// the same before it took the latest, if it said otherwise since.
 type held[T comparable] struct {
 	value T
 	on    bool
 	ask   int       // counts the changes
 	until time.Time // zero while Spotify is asked
+	said  bool      // the latest Spotify said, since the change, is value
 }
 
 // heldFor is how long after Spotify took a change it is held at most.
@@ -64,7 +69,7 @@ const heldFor = 10 * time.Second
 // set holds v, which Spotify is asked for, and returns which change it is.
 func (h *held[T]) set(v T) int {
 	h.ask++
-	h.value, h.on, h.until = v, true, time.Time{}
+	h.value, h.on, h.until, h.said = v, true, time.Time{}, false
 	return h.ask
 }
 
@@ -80,16 +85,20 @@ func (h *held[T]) answered(ask int, took bool) {
 	}
 }
 
-// show returns what to show of the setting Spotify says is got, if it says:
-// the value held, until Spotify says the same or the hold is over.
-func (h *held[T]) show(got T, says bool) (T, bool) {
-	if h.on && says && (got == h.value || !h.until.IsZero() && time.Now().After(h.until)) {
+// show returns what to show of the setting, got as Spotify said it last,
+// if known: fresh if Spotify says it now. The value held shows until
+// Spotify, having taken it, last said the same, or the hold is over.
+func (h *held[T]) show(got T, known, fresh bool) (T, bool) {
+	if h.on && fresh {
+		h.said = got == h.value
+	}
+	if h.on && !h.until.IsZero() && (h.said || known && time.Now().After(h.until)) {
 		h.on = false
 	}
 	if h.on {
 		return h.value, true
 	}
-	return got, says
+	return got, known
 }
 
 // connectOptions shows shuffle and repeat as Spotify says, o: but those the
@@ -98,18 +107,20 @@ func (h *held[T]) show(got T, says bool) (T, bool) {
 // shows again what Spotify said last.
 func (a *app) connectOptions(o spotify.ConnectOptions) {
 	state := a.connect
-	if o.Shuffle != nil {
+	shuffleSaid := o.Shuffle != nil
+	if shuffleSaid {
 		state.options.Shuffle = o.Shuffle
 	}
-	if _, ok := player.RepeatOf(o); ok {
+	_, repeatSaid := player.RepeatOf(o)
+	if repeatSaid {
 		state.options.RepeatContext, state.options.RepeatTrack = o.RepeatContext, o.RepeatTrack
 	}
 	o = state.options
-	if v, ok := state.shuffle.show(o.Shuffle != nil && *o.Shuffle, o.Shuffle != nil); ok {
+	if v, ok := state.shuffle.show(o.Shuffle != nil && *o.Shuffle, o.Shuffle != nil, shuffleSaid); ok {
 		o.Shuffle = &v
 	}
-	mode, says := player.RepeatOf(o)
-	if mode, ok := state.repeat.show(mode, says); ok {
+	mode, known := player.RepeatOf(o)
+	if mode, ok := state.repeat.show(mode, known, repeatSaid); ok {
 		all, one := mode == player.RepeatAll, mode == player.RepeatOne
 		o.RepeatContext, o.RepeatTrack = &all, &one
 	}
