@@ -19,7 +19,10 @@ var appFont = func() string {
 	if runtime.GOOS == "darwin" {
 		return "system-ui"
 	}
-	return "MiSans, system-ui"
+	// Han characters in YaHei: left to the system, they fall back by the
+	// language, and outside Chinese ones a word mixes a Japanese font's
+	// with YaHei's, of other weights.
+	return "MiSans, system-ui, Microsoft YaHei UI"
 }()
 
 func (a *app) view(c *ui.Context) {
