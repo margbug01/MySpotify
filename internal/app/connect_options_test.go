@@ -66,8 +66,8 @@ func TestHeldLetsGo(t *testing.T) {
 	}
 	ask = h.set(false)
 	h.answered(ask, true)
-	if v, ok := h.show(true, false); v || !ok {
-		t.Fatal("not shown while Spotify says nothing")
+	if v, ok := h.show(true, false); v || !ok || !h.until.After(time.Now()) {
+		t.Fatalf("taken: shown %v, %v, held till %v", v, ok, h.until)
 	}
 	h.until = time.Now().Add(-time.Second)
 	if v, _ := h.show(true, true); !v {

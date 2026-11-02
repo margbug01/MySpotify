@@ -222,4 +222,14 @@ func TestOfflineLoadWaits(t *testing.T) {
 	if p.Current().ID != "2" || len(*waits) != 2 || p.offline != 2 {
 		t.Fatalf("still offline: track %s, %d waits, %d times", p.Current().ID, len(*waits), p.offline)
 	}
+	// Back, it waits the shortest again the next time.
+	resolve = func(string) (*spotify.Media, error) {
+		return &spotify.Media{Manifest: "#EXTM3U\n", Duration: time.Minute}, nil
+	}
+	(*waits)[1]()
+	next(t, ch)
+	next(t, ch)
+	if p.out == nil || p.offline != 0 {
+		t.Fatalf("back online: loaded %v, %d times offline", p.out != nil, p.offline)
+	}
 }

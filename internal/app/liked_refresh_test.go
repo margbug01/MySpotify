@@ -76,7 +76,7 @@ func TestLikesOutliveListsAskedBefore(t *testing.T) {
 	}
 	took := before.Add(time.Second)
 	a.liking["new"].took, a.liking["gone"].took = took, took
-	a.likedFrom([]string{"gone"}, before)
+	a.receivePlaylist(spotify.LikedURI, &spotify.Playlist{ID: spotify.LikedURI, Tracks: []spotify.Track{{ID: "gone"}}}, nil, false, before)
 	if !a.liked["new"] || a.liked["gone"] {
 		t.Fatalf("a list from before: hearts %v", a.liked)
 	}
