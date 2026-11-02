@@ -1,6 +1,7 @@
 package player
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -129,6 +130,7 @@ func TestRefusedLicenceStops(t *testing.T) {
 		w.WriteHeader(http.StatusForbidden)
 	})
 	fails(t, ch, p, "1")
+	next(t, ch) // the network is up
 	if p.Playing() || p.Current().ID != "1" || p.Err() != "这首歌暂时无法播放" || len(*waits) != 0 {
 		t.Fatalf("refused: playing %v, track %s, err %q, %d waits", p.Playing(), p.Current().ID, p.Err(), len(*waits))
 	}
@@ -140,6 +142,7 @@ func TestFailedTrackSkips(t *testing.T) {
 		w.Write([]byte("licence"))
 	})
 	fails(t, ch, p, "1")
+	next(t, ch) // the network is up
 	if !p.Loading() || p.Current().ID != "2" {
 		t.Fatalf("loading %v, track %s; want track 2 loading", p.Loading(), p.Current().ID)
 	}
@@ -162,5 +165,61 @@ func TestLicenceRenewsIdentity(t *testing.T) {
 	}
 	if code := page(p, http.MethodPost, "/license?gen=1", "challenge"); code != http.StatusOK || renewed != 1 {
 		t.Fatalf("answered %d, renewed %d times", code, renewed)
+	}
+}
+
+// offlineFor has Spotify be unreachable until the test ends, or it calls the
+// function returned.
+func offlineFor(t *testing.T) (back func()) {
+	online = func() bool { return false }
+	back = func() { online = func() bool { return true } }
+	t.Cleanup(back)
+	return back
+}
+
+// A track that stopped as the network went down waits for it, where it was,
+// and plays on from there once it is back: it went on to the next, which
+// could not load either, and so through the queue to its end, stopped.
+func TestOfflineWaitsWhereItWas(t *testing.T) {
+	ch, p, waits := licensed(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("licence"))
+	})
+	back := offlineFor(t)
+	page(p, http.MethodPost, "/event", `{"gen":1,"type":"playing","t":42}`)
+	page(p, http.MethodPost, "/event", `{"gen":1,"type":"error","msg":"networkError fragLoadError http=502"}`)
+	next(t, ch)
+	next(t, ch)
+	if p.Current().ID != "1" || !p.Playing() || p.Err() != "网络已断开，恢复后接着播放" || len(*waits) != 1 {
+		t.Fatalf("offline: track %s, playing %v, err %q, %d waits", p.Current().ID, p.Playing(), p.Err(), len(*waits))
+	}
+	if pos := p.Position(); pos < 42*time.Second || pos > 43*time.Second {
+		t.Fatalf("offline at %v; want where it was, 42s", pos)
+	}
+	back()
+	(*waits)[0]()
+	next(t, ch)
+	if !p.Loading() || p.Current().ID != "1" || p.Err() != "" || p.Position() < 42*time.Second {
+		t.Fatalf("back online: loading %v, track %s, err %q, at %v", p.Loading(), p.Current().ID, p.Err(), p.Position())
+	}
+}
+
+// A track that can't load as the network is down waits for it too, longer
+// each time it is still down, rather than the queue skipping on.
+func TestOfflineLoadWaits(t *testing.T) {
+	ch, p, waits := licensed(t, func(w http.ResponseWriter, r *http.Request) {})
+	offlineFor(t)
+	resolve = func(string) (*spotify.Media, error) { return nil, errors.New("dial tcp: no route to host") }
+	p.Next()
+	next(t, ch)
+	next(t, ch)
+	if p.Current().ID != "2" || p.Err() != "网络已断开，恢复后接着播放" || len(*waits) != 1 {
+		t.Fatalf("track %s, err %q, %d waits", p.Current().ID, p.Err(), len(*waits))
+	}
+	(*waits)[0]()
+	next(t, ch) // loads again
+	next(t, ch) // fails
+	next(t, ch) // still offline
+	if p.Current().ID != "2" || len(*waits) != 2 || p.offline != 2 {
+		t.Fatalf("still offline: track %s, %d waits, %d times", p.Current().ID, len(*waits), p.offline)
 	}
 }

@@ -5,6 +5,7 @@ package spotify
 
 import (
 	"bytes"
+	"context"
 	_ "embed"
 	"encoding/json"
 	"errors"
@@ -31,6 +32,20 @@ const (
 var Client = &http.Client{
 	Timeout:   30 * time.Second,
 	Transport: &http.Transport{Proxy: systemProxy, ForceAttemptHTTP2: true, MaxIdleConnsPerHost: 8, IdleConnTimeout: 90 * time.Second},
+}
+
+// Reachable reports whether Spotify answers at all, whatever it says: not
+// with the network down, or the proxy it goes through.
+func Reachable() bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	req, _ := http.NewRequestWithContext(ctx, http.MethodHead, spclientURL, nil)
+	res, err := Client.Do(req)
+	if err != nil {
+		return false
+	}
+	res.Body.Close()
+	return true
 }
 
 // CaptureJS runs before open.spotify.com's own scripts and notes the

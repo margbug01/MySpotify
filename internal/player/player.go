@@ -102,6 +102,7 @@ type Player struct {
 	// once the wait is over, if it is to play then.
 	waiting   bool
 	throttles int // the times in a row, to wait longer each
+	offline   int // the times in a row the network was down, likewise
 
 	lyrics       []lyrics.Line
 	lyricsLoaded bool
@@ -254,16 +255,53 @@ func (p *Player) failed(licence int, wait time.Duration) {
 		p.throttled(wait)
 	case http.StatusUnauthorized, http.StatusForbidden:
 		// Turned down: the rest of the queue would be too, one after
-		// another.
-		p.err = "这首歌暂时无法播放"
-		p.playing = false
-		p.sync()
+		// another. Or offline, the identity could not be renewed.
+		p.unlessOffline(func() {
+			p.err = "这首歌暂时无法播放"
+			p.playing = false
+			p.sync()
+		})
 	default:
 		// The page tried again, and could not: on to the next.
-		p.err = "这首歌暂时无法播放"
-		p.skip(p.at, p.skipped)
+		at, skipped := p.at, p.skipped
+		p.unlessOffline(func() {
+			p.err = "这首歌暂时无法播放"
+			p.skip(at, skipped)
+		})
 	}
 }
+
+// unlessOffline does then with the track that could not load or play, but
+// not with the network down, which no track would play without: the queue
+// skipped through all of them and stopped. The track waits for the network
+// then, and loads again from where it was.
+func (p *Player) unlessOffline(then func()) {
+	from := p.Position()
+	p.stop()
+	p.pending, p.loading = from, true
+	gen, up := p.gen, online
+	go func() {
+		ok := up()
+		p.post(func() {
+			if gen != p.gen {
+				return
+			}
+			p.loading = false
+			if ok {
+				then()
+				return
+			}
+			wait := min(2*time.Second<<min(p.offline, 4), 30*time.Second)
+			p.offline++
+			log.Printf("player: offline, again in %v", wait)
+			p.again(wait, "网络已断开，恢复后接着播放")
+		})
+	}()
+	p.sync()
+}
+
+// online reports whether Spotify can be reached; tests swap it.
+var online = spotify.Reachable
 
 // throttled waits as Spotify asked, wait, or longer each time if it did not
 // say, then loads the track again from where it was.
@@ -273,11 +311,17 @@ func (p *Player) throttled(wait time.Duration) {
 	}
 	wait = min(wait, 30*time.Minute)
 	p.throttles++
+	log.Printf("player: throttled, again in %v", wait)
+	p.again(wait, "Spotify 暂时限流，稍后重试")
+}
+
+// again loads the track again from where it is once wait is over, if it is
+// to play then; msg says why it waits.
+func (p *Player) again(wait time.Duration, msg string) {
 	from := p.Position()
 	p.stop()
 	p.pending, p.waiting = from, true
-	p.err = "Spotify 暂时限流，稍后重试"
-	log.Printf("player: throttled, again in %v", wait)
+	p.err = msg
 	gen := p.gen
 	afterFunc(wait, func() {
 		p.post(func() {
@@ -908,24 +952,28 @@ func (p *Player) loadSkipping(at, skipped int, play bool, from time.Duration) {
 					p.throttled(thr.Wait)
 					return
 				}
-				if errors.Is(err, spotify.ErrNoAudioHere) {
-					p.err = "这一集在这台电脑上放不了"
-					// Its podcast's other episodes are kept as it is, and
-					// would not play either: they are not asked for one
-					// after another, as the songs after one that fails are.
-					if n := len(p.order); n > 1 {
-						if after := p.queue[p.order[(at+1)%n]]; after.Episode && after.Album.ID == t.Album.ID {
-							p.playing = false
-							p.sync()
-							return
-						}
+				if !errors.Is(err, spotify.ErrNoAudioHere) {
+					p.unlessOffline(func() {
+						p.err = "这首歌暂时无法播放"
+						p.skip(at, skipped)
+					})
+					return
+				}
+				p.err = "这一集在这台电脑上放不了"
+				// Its podcast's other episodes are kept as it is, and
+				// would not play either: they are not asked for one
+				// after another, as the songs after one that fails are.
+				if n := len(p.order); n > 1 {
+					if after := p.queue[p.order[(at+1)%n]]; after.Episode && after.Album.ID == t.Album.ID {
+						p.playing = false
+						p.sync()
+						return
 					}
-				} else {
-					p.err = "这首歌暂时无法播放"
 				}
 				p.skip(at, skipped)
 				return
 			}
+			p.offline = 0
 			p.media = m
 			p.open(gen, m, v)
 			p.mediaAhead()

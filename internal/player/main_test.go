@@ -33,6 +33,9 @@ func TestMain(m *testing.M) {
 		}
 		return f(t)
 	}
+	// Nor do they ask Spotify whether it is reachable: it is, but where a
+	// test says otherwise.
+	online = func() bool { return true }
 	os.Exit(runTests(m))
 }
 
