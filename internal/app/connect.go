@@ -305,7 +305,12 @@ func (a *app) connectEvent(event spotify.ConnectEvent) {
 			return
 		}
 		state.cluster = cluster
-		a.connectOptions(cluster.Player.Options)
+		// Playing here, shuffle and repeat are those of the state Spotify
+		// gave this device: the cluster's are what it reported, a step
+		// behind, and set the buttons back after the state had moved on.
+		if cluster.Active != state.client.ID || state.ref == nil {
+			a.connectOptions(cluster.Player.Options)
+		}
 		if cluster.Active != "" && cluster.Active != state.client.ID {
 			state.ref = nil
 			track := cluster.Track()

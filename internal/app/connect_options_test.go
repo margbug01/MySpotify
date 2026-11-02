@@ -178,3 +178,23 @@ func TestConnectOptionsUnsentGoBack(t *testing.T) {
 		t.Fatal("shuffle shown on, never asked")
 	}
 }
+
+// Playing here, the cluster's shuffle and repeat, what this device reported
+// a step behind, don't set back those of the state Spotify gave it: live,
+// repeat went back for a moment after Spotify had said it was off.
+// Playing elsewhere, the cluster is all there is to go by.
+func TestConnectOptionsHereFromTheState(t *testing.T) {
+	a := connectTestApp()
+	cluster(a, false, false, false)
+	a.connect.ref = &spotify.ConnectRef{}
+	on, off := true, false
+	a.connectOptions(spotify.ConnectOptions{Shuffle: &on, RepeatContext: &off, RepeatTrack: &on}) // as applyConnect does
+	cluster(a, false, false, false)
+	if !a.pl.Shuffle() || a.pl.Repeat() != player.RepeatOne {
+		t.Fatalf("playing here, the cluster set shuffle %v, repeat %v", a.pl.Shuffle(), a.pl.Repeat())
+	}
+	a.connectEvent(spotify.ConnectEvent{Kind: "cluster", Data: json.RawMessage(`{"active_device_id":"phone","player_state":{"options":{"shuffling_context":false,"repeating_context":false,"repeating_track":false}}}`)})
+	if a.pl.Shuffle() || a.pl.Repeat() != player.RepeatOff {
+		t.Fatalf("playing elsewhere, the cluster's were not shown: shuffle %v, repeat %v", a.pl.Shuffle(), a.pl.Repeat())
+	}
+}
