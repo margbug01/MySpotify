@@ -57,6 +57,13 @@ type settings struct {
 	// AutoUpdate looks for a new version on opening and twice a day.
 	AutoUpdate bool `json:"autoUpdate"`
 
+	// Proxy is the proxy the listener set, as spotify.ParseProxy reads
+	// it; empty goes by the system's.
+	Proxy string `json:"proxy,omitempty"`
+	// Hotkeys are the global shortcuts the listener set, accelerators by
+	// what they do (hotkeyActions).
+	Hotkeys map[string]string `json:"hotkeys,omitempty"`
+
 	path string // where they were loaded from, and are saved to
 }
 

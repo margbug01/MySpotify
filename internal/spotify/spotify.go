@@ -31,7 +31,7 @@ const (
 // Client is the HTTP client of every request to Spotify and its CDNs.
 var Client = &http.Client{
 	Timeout:   30 * time.Second,
-	Transport: &http.Transport{Proxy: systemProxy, ForceAttemptHTTP2: true, MaxIdleConnsPerHost: 8, IdleConnTimeout: 90 * time.Second},
+	Transport: &http.Transport{Proxy: Proxy, ForceAttemptHTTP2: true, MaxIdleConnsPerHost: 8, IdleConnTimeout: 90 * time.Second},
 }
 
 // Reachable reports whether Spotify answers at all, whatever it says: not

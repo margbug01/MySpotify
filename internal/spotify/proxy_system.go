@@ -16,9 +16,6 @@ func systemProxy(req *http.Request) (*url.URL, error) {
 	if u, err := http.ProxyFromEnvironment(req); u != nil || err != nil {
 		return u, err
 	}
-	if h := req.URL.Hostname(); h == "localhost" || h == "127.0.0.1" {
-		return nil, nil
-	}
 	proxyMu.Lock()
 	defer proxyMu.Unlock()
 	if time.Since(proxyRead) > 5*time.Second {

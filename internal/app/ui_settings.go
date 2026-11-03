@@ -14,6 +14,7 @@ func (a *app) openSettings() {
 		a.settingsWin.Focus()
 		return
 	}
+	a.proxyText, a.proxyErr = a.settings.Proxy, ""
 	a.settingsWin = mygo.NewWindow(mygo.WindowOptions{
 		Title:           "设置",
 		Width:           560,
@@ -29,7 +30,12 @@ func (a *app) openSettings() {
 		BackgroundColor: "light-dark(#f4f4f6, #1c1c1f)",
 		Content:         ui.View(a.settingsView),
 	})
-	a.settingsWin.OnClosed(func() { a.settingsWin = nil })
+	a.settingsWin.OnClosed(func() {
+		a.settingsWin = nil
+		if a.recording != "" {
+			a.stopRecording()
+		}
+	})
 }
 
 // changed applies the settings everywhere and keeps them.
@@ -49,7 +55,9 @@ func (a *app) settingsView(c *ui.Context) {
 	t.Font = appFont
 	c.SetTheme(&t)
 	c.Root().Background(p.sidebar)
-	c.OnShortcut(ui.Cmd, ui.KeyW, func() { a.settingsWin.Close() })
+	if a.recording == "" { // else ⌘W may be the shortcut wanted
+		c.OnShortcut(ui.Cmd, ui.KeyW, func() { a.settingsWin.Close() })
+	}
 	s := &a.settings
 
 	ui.Scroll(c).Fill().Padding(24, 28, 32, 28).Gap(8).Children(func() {
@@ -111,6 +119,34 @@ func (a *app) settingsView(c *ui.Context) {
 				if ui.Switch(c.Key("quit-on-close"), &s.QuitOnClose).Label("关闭窗口时退出").Changed() {
 					a.changed()
 				}
+			})
+		})
+
+		group("全局快捷键", func() {
+			for _, act := range hotkeyActions {
+				desc := ""
+				if a.hotkeyErr[act.id] {
+					desc = "没设上：可能被别的应用占用了，换一个试试"
+				}
+				row(act.label, desc, func() { a.hotkeyButton(c, act.id, act.label) })
+			}
+		})
+		ui.Text(c, "在其他应用里也能用。点按钮后按下组合键（要带 "+hotkeyLabel("Ctrl")+"、"+hotkeyLabel("Alt")+" 或 "+hotkeyLabel("Super")+"），Esc 取消").
+			FontSize(12).TextColor(p.muted).LineHeight(1.4).Margin(2, 4, 0, 4)
+
+		group("网络", func() {
+			desc := "留空跟随系统代理；可填 http、https 或 socks5 代理，如 127.0.0.1:7890" + webProxyNote
+			if a.proxyErr != "" {
+				desc = a.proxyErr
+			}
+			row("代理", desc, func() {
+				in := ui.TextInput(c.Key("proxy"), &a.proxyText).Placeholder("跟随系统").Label("代理地址").Width(200).Error(a.proxyErr)
+				// Set as Enter is pressed or the field is left, not as each
+				// key is typed, a port half written.
+				if in.Submitted() || a.proxyTyping && !in.Focused() {
+					a.setProxy()
+				}
+				a.proxyTyping = in.Focused()
 			})
 		})
 

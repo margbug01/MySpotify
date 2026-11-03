@@ -182,7 +182,7 @@ func updateError(err error) string {
 	case strings.Contains(err.Error(), "404"):
 		return "GitHub 上的最新版本还没有更新包"
 	}
-	return "连不上 GitHub，看看网络或系统代理"
+	return "连不上 GitHub，看看网络或代理"
 }
 
 // noteLines puts the Markdown release notes in a few lines of plain text:

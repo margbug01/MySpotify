@@ -93,7 +93,7 @@ func TestUpdateInstallFails(t *testing.T) {
 	if a.upd.stage != updateAvailable || *relaunched != 0 {
 		t.Fatalf("stage %v, relaunched %d times", a.upd.stage, *relaunched)
 	}
-	if !tt.HasText("更新没装上：连不上 GitHub，看看网络或系统代理") || !tt.HasText("更新并重启") {
+	if !tt.HasText("更新没装上：连不上 GitHub，看看网络或代理") || !tt.HasText("更新并重启") {
 		t.Fatal("the failure is not told, or the update not offered again")
 	}
 }

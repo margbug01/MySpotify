@@ -177,8 +177,14 @@ type app struct {
 
 	settings    settings
 	settingsWin *mygo.Window
-	cacheUsed   int64   // the bytes the cache of tracks takes, -1 until measured
-	upd         updates // a newer version, looked for and installed
+	proxyText   string          // the proxy as typed in the settings, till it is set
+	proxyErr    string          // why what was typed cannot be set
+	proxyTyping bool            // the proxy's field had the focus last frame
+	recording   string          // the action whose global shortcut the settings wait for
+	recFocused  bool            // and its button has had the focus since
+	hotkeyErr   map[string]bool // the actions whose shortcut the system would not take
+	cacheUsed   int64           // the bytes the cache of tracks takes, -1 until measured
+	upd         updates         // a newer version, looked for and installed
 
 	restored     bool   // playback picked up where it was left
 	accountGen   int    // signed in or out how many times: a sign-in asked before is no one's
@@ -268,9 +274,9 @@ func Run() error {
 	}
 	log.Printf("start, pid %d", os.Getpid())
 	// MyGo's updater asks GitHub with http.DefaultClient: through the
-	// system's proxy, as the requests to Spotify go.
+	// proxy the requests to Spotify go through.
 	if t, ok := http.DefaultTransport.(*http.Transport); ok {
-		t.Proxy = spotify.SystemProxy
+		t.Proxy = spotify.Proxy
 	}
 	os.Setenv("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", strings.TrimSpace(os.Getenv("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS")+" --autoplay-policy=no-user-gesture-required --in-process-gpu --disable-gpu"))
 	// What decoding a page of covers takes goes back to the system after,
@@ -281,6 +287,8 @@ func Run() error {
 	mygo.App.WhenReady(func() {
 		a.settings = loadSettings()
 		a.settings.applyAppearance()
+		// Before anything asks Spotify, or a web page loads.
+		a.applyProxy()
 		a.npPane = a.lyricsPaneChosen()
 		a.mvMode = a.mvModeChosen()
 		// Before the window: on Windows it lays out its content as it is
@@ -306,6 +314,7 @@ func Run() error {
 			a.keepSession()
 			a.reportConnect()
 		}
+		a.applyHotkeys()
 		a.played, a.playedFrom = loadPlayed()
 		a.volume = a.settings.Volume
 		a.pl.SetVolume(a.volume)
