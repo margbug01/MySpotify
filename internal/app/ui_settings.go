@@ -126,7 +126,7 @@ func (a *app) settingsView(c *ui.Context) {
 			for _, act := range hotkeyActions {
 				desc := ""
 				if a.hotkeyErr[act.id] {
-					desc = "没设上：可能被别的应用占用了，换一个试试"
+					desc = "被占用了，换一个"
 				}
 				row(act.label, desc, func() { a.hotkeyButton(c, act.id, act.label) })
 			}
