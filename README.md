@@ -4,6 +4,10 @@
 
 # MySpotify
 
+An unofficial Spotify desktop player for Windows and macOS, with native MyGo UI, synchronized lyrics and music videos. Not affiliated with Spotify; see the risks and limitations below.
+
+[官网 / Website](https://margbug01.github.io/MySpotify/) · [English](https://margbug01.github.io/MySpotify/en.html) · [下载 / Download](https://github.com/margbug01/MySpotify/releases/latest)
+
 Windows 和 macOS 上的 Spotify 播放器：Go 写的原生界面，免费账号也能整首播放，还能看 MV。
 
 ![Windows 10/11](https://img.shields.io/badge/Windows-10%20%7C%2011-3a6ea5?style=flat-square) ![macOS Apple Silicon](https://img.shields.io/badge/macOS-Apple%20Silicon-555555?style=flat-square) ![Go](https://img.shields.io/badge/Go-1.27-00add8?style=flat-square) ![MyGo](https://img.shields.io/badge/UI-MyGo-6a717c?style=flat-square) ![AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-c2410c?style=flat-square)
@@ -270,3 +274,13 @@ go run github.com/tc-hib/go-winres@v0.3.3 simply --icon resources/icon.ico --man
 
 [AGPL-3.0](LICENSE)，随上游。[`licenses/`](licenses) 是编进程序的第三方代码的许可证，随程序发出去（Windows 在 exe 旁边，macOS 在 app 的 Resources 里）。图标是 MySpotify 自己画的（`tools/icons.py`，「转动的唱片」：一张黑胶，三道纹路接住光）。Spotify 是 Spotify AB 的商标，名字里的 Spotify 只是说明它播放的是什么，截图里的封面和照片版权归各自的权利人。
 
+
+## Website / 官网维护
+
+The GitHub Pages site is published from `docs/` on `main`. Keep both language pages and `docs/sitemap.xml` in sync when changing product details. No build step is required.
+
+官网从 `main` 分支的 `docs/` 发布。更新功能说明时同步修改中英文页面和 `docs/sitemap.xml`，不需要构建。
+
+## More MyGo apps / 其他作品
+
+[Mami](https://github.com/margbug01/mami) · [MySpotify](https://github.com/margbug01/MySpotify) · [MyShoes](https://github.com/margbug01/ShoesGUI) · [Candle](https://github.com/margbug01/Candle)
