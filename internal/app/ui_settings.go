@@ -112,6 +112,16 @@ func (a *app) settingsView(c *ui.Context) {
 					a.changed()
 				}
 			})
+			row("侧栏歌单视图", "", func() {
+				i := 0
+				if s.MyPlaylistGrid {
+					i = 1
+				}
+				if segmented(c.Key("my-playlist-grid"), &i, "列表", "网格") {
+					s.MyPlaylistGrid = i == 1
+					a.changed()
+				}
+			})
 		})
 
 		group("窗口", func() {
