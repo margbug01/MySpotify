@@ -25,6 +25,9 @@ type settings struct {
 	NotchGreeted bool `json:"notchGreeted"`
 	// Appearance is light, dark, or system to follow the system.
 	Appearance string `json:"appearance"`
+	// MyPlaylistGrid shows the listener's own and saved playlists in the
+	// sidebar as a two-column grid of covers rather than a list.
+	MyPlaylistGrid bool `json:"myPlaylistGrid"`
 	// Smoke makes the progress bars comets trailing smoke as music plays,
 	// for a few percent of a core: the listener turns it on.
 	Smoke bool `json:"smoke"`

@@ -11,6 +11,8 @@ import (
 	"vinyl/internal/spotify"
 )
 
+// The back button closes Now Playing as one layer, over the page and the
+// sidebar alike all the way out.
 func TestNowPlayingClosesAsOneLayer(t *testing.T) {
 	a := newTestApp()
 	a.settings = defaultSettings()
@@ -27,7 +29,9 @@ func TestNowPlayingClosesAsOneLayer(t *testing.T) {
 		t.Fatal("now playing did not open")
 	}
 	// Mid-way out, it still covers the page and the sidebar alike.
-	a.nowPlaying = false
+	if err := tt.Click("返回"); err != nil {
+		t.Fatal(err)
+	}
 	tt.Frame()
 	tt.Advance(60 * time.Millisecond)
 	tt.Frame()

@@ -657,46 +657,77 @@ func (a *app) myPlaylists(c *ui.Context, title string, lists []spotify.Playlist,
 			a.newPlaylist(nil)
 		}
 	})
+	if a.settings.MyPlaylistGrid {
+		ui.Grid(c.Key(title + "-grid")).Columns(2).Gap(6).Children(func() {
+			for i := range lists {
+				a.myPlaylist(c, &lists[i], mine, true)
+			}
+		})
+		return
+	}
 	for i := range lists {
-		pl := &lists[i]
-		selected := a.route.page == pagePlaylist && a.route.playlist == pl.ID && !a.nowPlaying
-		b := ui.ButtonBase(c.Key(pl.ID)).Height(34).PaddingX(8).Gap(10).Radius(8).AlignItems(ui.Center).Justify(ui.Start).FocusRing(false).Label(pl.Name)
-		switch {
-		case selected:
-			b.Background(p.press)
-		case b.Hovered():
-			b.Background(p.hover)
-		}
-		b.Children(func() {
+		a.myPlaylist(c, &lists[i], mine, false)
+	}
+}
+
+// myPlaylist is one of the listener's lists in the sidebar: a row, or in the
+// grid a cover over its name.
+func (a *app) myPlaylist(c *ui.Context, pl *spotify.Playlist, mine, grid bool) {
+	p := a.pal
+	selected := a.route.page == pagePlaylist && a.route.playlist == pl.ID && !a.nowPlaying
+	b := ui.ButtonBase(c.Key(pl.ID)).Radius(8).FocusRing(false).Label(pl.Name)
+	if grid {
+		b.Column().Padding(6).Gap(6).AlignItems(ui.Stretch)
+	} else {
+		b.Height(34).PaddingX(8).Gap(10).AlignItems(ui.Center).Justify(ui.Start)
+	}
+	switch {
+	case selected:
+		b.Background(p.press)
+	case b.Hovered():
+		b.Background(p.hover)
+	}
+	b.Children(func() {
+		if grid {
+			art := ui.Box(c).AspectRatio(1).Radius(6)
 			if pl.Liked() {
-				ui.Box(c).Size(22, 22).Radius(5).Background(a.pal.accent).Center().Children(func() {
-					ui.Icon(c, iconHeartFill).Size(12, 12).TextColor(a.pal.onAccent)
+				art.Background(p.accent).Center().Children(func() {
+					ui.Icon(c, iconHeartFill).Size(28, 28).TextColor(p.onAccent)
 				})
 			} else {
-				a.cover(c, pl.Cover(), 80, 22, 5)
+				art.Children(func() { a.coverFill(c, pl.Cover(), 200, 6) })
 			}
-			ui.Text(c, pl.Name).FontSize(13).SingleLine().Shrink(1).MinWidth(0)
+			ui.Text(c, pl.Name).FontSize(12.5).SingleLine()
+			return
+		}
+		if pl.Liked() {
+			ui.Box(c).Size(22, 22).Radius(5).Background(p.accent).Center().Children(func() {
+				ui.Icon(c, iconHeartFill).Size(12, 12).TextColor(p.onAccent)
+			})
+		} else {
+			a.cover(c, pl.Cover(), 80, 22, 5)
+		}
+		ui.Text(c, pl.Name).FontSize(13).SingleLine().Shrink(1).MinWidth(0)
+	})
+	switch {
+	case mine && !pl.Liked():
+		b.ContextMenu(func(m *ui.Menu) {
+			if m.Item("重命名…").Chosen() {
+				a.startRename(pl)
+			}
+			m.Separator()
+			if m.Item("删除歌单…").Chosen() {
+				a.confirmDelete(pl)
+			}
 		})
-		switch {
-		case mine && !pl.Liked():
-			b.ContextMenu(func(m *ui.Menu) {
-				if m.Item("重命名…").Chosen() {
-					a.startRename(pl)
-				}
-				m.Separator()
-				if m.Item("删除歌单…").Chosen() {
-					a.confirmDelete(pl)
-				}
-			})
-		case !mine:
-			b.ContextMenu(func(m *ui.Menu) {
-				if m.Item("取消收藏").Chosen() {
-					a.toggleSaved(pl)
-				}
-			})
-		}
-		if b.Clicked() {
-			a.open(route{page: pagePlaylist, playlist: pl.ID})
-		}
+	case !mine:
+		b.ContextMenu(func(m *ui.Menu) {
+			if m.Item("取消收藏").Chosen() {
+				a.toggleSaved(pl)
+			}
+		})
+	}
+	if b.Clicked() {
+		a.open(route{page: pagePlaylist, playlist: pl.ID})
 	}
 }

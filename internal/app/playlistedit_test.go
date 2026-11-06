@@ -198,6 +198,40 @@ func TestRenamePlaylist(t *testing.T) {
 	}
 }
 
+// In the grid the sidebar's lists act as its rows do: a click opens one, the
+// right button offers its menu, and a long name stays in its column.
+func TestSidebarGrid(t *testing.T) {
+	a := editTestApp()
+	a.settings.MyPlaylistGrid = true
+	a.route = route{page: pageHome}
+	a.homeLoading = true
+	long := "一个名字特别特别特别特别特别特别特别特别特别长的歌单"
+	a.mine[1].Name = long
+	tt := ui.NewTester(a.view, 1200, 800)
+	tt.Frame()
+	liked, _ := tt.Find("我喜欢的音乐")
+	card, ok := tt.Find(long)
+	if !ok || card.W != liked.W || card.X <= liked.X || card.X+card.W > sidebarWidth {
+		t.Fatalf("the long name's card at %v, beside the liked songs' at %v", card, liked)
+	}
+	if err := tt.Click(long); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if a.route != (route{page: pagePlaylist, playlist: pl10}) {
+		t.Errorf("the click opened %+v", a.route)
+	}
+	if err := tt.RightClick("睡前"); err != nil {
+		t.Fatal(err)
+	}
+	if err := tt.ChooseMenuItem("重命名…"); err != nil {
+		t.Fatalf("%v; the menu shows %q", err, tt.Menu())
+	}
+	if a.naming.rename != pl11 {
+		t.Errorf("renaming %q", a.naming.rename)
+	}
+}
+
 // The liked songs can't be renamed: they offer no menu.
 func TestNoRenamingLikedSongs(t *testing.T) {
 	a := editTestApp()
