@@ -223,10 +223,6 @@ func (a *app) sidebar(c *ui.Context) {
 			a.followedArtists(c)
 		})
 
-		// What plays, as a card at the foot of the sidebar, over who listens.
-		if tr := a.pl.Current(); tr != nil {
-			a.sidebarNowPlaying(c, tr)
-		}
 		a.updateBadge(c)
 		a.accountRow(c)
 	})
@@ -254,26 +250,6 @@ func (a *app) navItem(c *ui.Context, icon *ui.SVG, label string, r route) {
 	})
 	if b.Clicked() {
 		a.open(r)
-	}
-}
-
-func (a *app) sidebarNowPlaying(c *ui.Context, tr *spotify.Track) {
-	p := a.pal
-	card := ui.ButtonBase(c.Key("np-card")).Gap(10).Padding(8).Radius(12).AlignItems(ui.Center).FocusRing(false).Label("正在播放")
-	bg := p.hover
-	if card.Hovered() {
-		bg = p.press
-	}
-	card.Background(card.AnimateColor("bg", bg, ui.Animation{Duration: 120 * time.Millisecond}))
-	card.Children(func() {
-		a.cover(c, tr.Album.PicURL, 96, 40, 6).Shadow(0, 2, 6, 0, p.cardShade)
-		ui.Column(c).Grow(1).Shrink(1).MinWidth(0).Gap(2).Children(func() {
-			ui.Text(c, tr.Name).FontSize(12.5).FontWeight(600).SingleLine()
-			ui.Text(c, tr.ArtistNames()).FontSize(11.5).TextColor(p.muted).SingleLine()
-		})
-	})
-	if card.Clicked() {
-		a.nowPlaying = true
 	}
 }
 
