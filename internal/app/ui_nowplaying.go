@@ -107,25 +107,29 @@ func (a *app) nowPlayingView(c *ui.Context) {
 	})
 }
 
+/** Renders the Now Playing body with a persistent top-left back button (offset past macOS traffic lights when present), pointer-revealed centered pane tabs in the top bar, and the active stage or split cover/pane view below. */
 func (a *app) nowPlayingBody(c *ui.Context, tr *spotify.Track, art *artwork, accent ui.Color, w, h float32, pointerIn bool) {
 	pl := a.pl
 	if a.npPane != paneQueue {
 		a.queueAt = -1
 	}
 	{
-		// The top strip drags the window; the chevron closes the view,
-		// showing only while the pointer is in the window, as the pane tabs do.
+		// The top strip drags the window; the back button stays in the
+		// top-left corner while the pane tabs appear in the top center
+		// when the pointer is inside the window.
+		left := float32(20)
+		if c.TitleBar().Left > 0 {
+			left = c.TitleBar().Left + 8
+		}
 		ui.Row(c).Height(topBar(c)).Justify(ui.Center).AlignItems(ui.Center).DragWindow().Children(func() {
-			reveal(ui.Box(c.Key("close-reveal")), pointerIn).Children(func() {
-				if iconButton(c.Key("close"), iconDown, 22, white.Alpha(0.7), "关闭").Clicked() {
+			ui.Row(c).Absolute().Top(0).Left(left).Height(topBar(c)).AlignItems(ui.Center).Children(func() {
+				if iconButton(c.Key("close"), iconBack, 18, white.Alpha(0.7), "返回").Clicked() {
 					a.nowPlaying = false
 				}
 			})
+			tabs := ui.Row(c.Key("tabs")).Gap(6)
+			reveal(tabs, pointerIn).Children(func() { a.paneTabs(c) })
 		})
-		// The panes' tabs stay in the corner whichever pane shows, rather
-		// than jump as one is chosen; they come and go with the pointer.
-		tabs := ui.Row(c.Key("tabs")).Absolute().Top(topBar(c)).Right(48).Gap(6)
-		reveal(tabs, pointerIn).Children(func() { a.paneTabs(c) })
 		if a.npPane == paneStage {
 			// The stage takes the whole view: the lyrics are the show, the
 			// controls a slim bar at the foot.
@@ -135,7 +139,7 @@ func (a *app) nowPlayingBody(c *ui.Context, tr *spotify.Track, art *artwork, acc
 		}
 
 		side := float32(math.Min(float64(w)*0.36, 440))
-		// The cover leaves room above it for the pane's tabs.
+		// The cover leaves room below it for the song's details and controls.
 		coverSize := min(side, h-404)
 		ui.Row(c).Grow(1).Padding(0, 72, 44, 72).Gap(72).AlignItems(ui.Stretch).Children(func() {
 			var coverTop float32
@@ -182,11 +186,10 @@ func (a *app) nowPlayingBody(c *ui.Context, tr *spotify.Track, art *artwork, acc
 
 			pane := ui.Column(c.Key("pane")).Grow(1).Basis(0).MinWidth(0)
 			pane.Children(func() {
-				// The pane starts level with the cover beside it, and below the
-				// tabs, which are out of the flow, never over it.
-				b, tb := pane.LayoutBounds(), tabs.LayoutBounds()
-				if b.H > 0 && tb.H > 0 && coverTop > 0 {
-					if top := max(coverTop, tb.Y+tb.H+8) - b.Y; top != a.npPaneTop {
+				// The pane starts level with the cover beside it.
+				b := pane.LayoutBounds()
+				if b.H > 0 && coverTop > 0 {
+					if top := max(0, coverTop-b.Y); top != a.npPaneTop {
 						a.npPaneTop = top
 						c.AnimationFrame()
 					}
@@ -233,7 +236,7 @@ const (
 func (a *app) paneTabs(c *ui.Context) {
 	a.paneTab(c, paneLyrics, lyricsName(a.pl.Current()))
 	a.paneTab(c, paneStage, "律动")
-	a.paneTab(c, paneQueue, "待播清单")
+	a.paneTab(c, paneQueue, "列表")
 }
 
 // stageBar is the slim bar along the foot of the stage: what plays, where

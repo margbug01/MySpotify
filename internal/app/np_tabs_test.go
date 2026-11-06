@@ -26,13 +26,11 @@ func npTabsApp(t *testing.T, w, h float32) (*app, *ui.Tester) {
 	return a, tt
 }
 
-// Choosing a pane of Now Playing leaves its tabs where they were: the
-// stage's sat in the window's corner, the others' over the lyrics, and the
-// tabs jumped from one place to the other. The panes start below them.
+/** Verifies that the Now Playing pane tabs stay centered in the top bar without shifting across pane switches, while the pane content remains below them. */
 func TestPaneTabsStayPut(t *testing.T) {
 	for _, size := range [][2]float32{{760, 800}, {1200, 800}, {760, 480}} {
 		w := size[0]
-		a, tt := npTabsApp(t, w, size[1])
+		_, tt := npTabsApp(t, w, size[1])
 		where := func() ui.Rect {
 			t.Helper()
 			r, ok := tt.Find("律动")
@@ -42,17 +40,21 @@ func TestPaneTabsStayPut(t *testing.T) {
 			return r
 		}
 		first := where()
-		// The pane, as the tabs, starts below the top bar.
-		if a.npPaneTop < first.H+8 {
-			t.Fatalf("%v: the pane starts %v down, under tabs %v tall", size, a.npPaneTop, first.H)
+		if first.X >= w/2 || first.X+first.W <= w/2 || first.Y+first.H > topBarHeight {
+			t.Fatalf("%v: tabs (%v) are not centered in the top bar", size, first)
 		}
-		for _, tab := range []string{"律动", "待播清单", "律动", "歌词"} {
+		for _, tab := range []string{"律动", "列表", "律动", "歌词"} {
 			if err := tt.Click(tab); err != nil {
 				t.Fatal(err)
 			}
 			tt.Advance(time.Second)
 			if r := where(); r != first {
 				t.Fatalf("%v, on %s: tabs at %v, were at %v", size, tab, r, first)
+			}
+			if tab == "列表" {
+				if row, ok := tt.Find("海屿你"); !ok || row.Y < first.Y+first.H {
+					t.Fatalf("%v: queue row (%v) starts above the tabs (%v)", size, row, first)
+				}
 			}
 		}
 	}
@@ -67,7 +69,7 @@ func TestPaneTabsFrames(t *testing.T) {
 	}
 	for _, size := range [][2]float32{{760, 800}, {910, 800}, {1200, 800}, {760, 560}} {
 		_, tt := npTabsApp(t, size[0], size[1])
-		for _, tab := range []string{"歌词", "律动", "待播清单"} {
+		for _, tab := range []string{"歌词", "律动", "列表"} {
 			tt.Click(tab)
 			tt.Advance(time.Second)
 			f, _ := os.Create(filepath.Join(dir, "np-"+strconv.Itoa(int(size[0]))+"x"+strconv.Itoa(int(size[1]))+"-"+tab+".png"))

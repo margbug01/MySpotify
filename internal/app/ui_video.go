@@ -202,7 +202,7 @@ func (a *app) npTheater(c *ui.Context, tr *spotify.Track, art *artwork, accent u
 	})
 }
 
-// mvStage is the music video filling Now Playing, its controls over it.
+/** Renders the theater-mode music video stage and its auto-hiding top/bottom chrome, keeping the back button in the top-left corner and the video controls clear of the window caption buttons. */
 func (a *app) mvStage(c *ui.Context, tr *spotify.Track, art *artwork, accent ui.Color, now time.Time) {
 	pl := a.pl
 	ui.Column(c).Absolute().Top(0).Left(0).Right(0).Bottom(0).Children(func() {
@@ -249,10 +249,15 @@ func (a *app) mvStage(c *ui.Context, tr *spotify.Track, art *artwork, accent ui.
 		a.mvLyrics(c, shown)
 	}
 	reveal(head, shown).Children(func() {
-		// The top strip drags the window; the ways to show the video sit
-		// below it, clear of the window's buttons (Windows).
-		ui.Row(c).Height(topBar(c)).Justify(ui.Center).AlignItems(ui.Center).DragWindow().Children(func() {
-			if iconButton(c.Key("close"), iconDown, 22, white.Alpha(0.8), "关闭").Clicked() {
+		// The top strip drags the window and holds the back button in the
+		// top-left corner; the ways to show the video sit below it, clear
+		// of the window's buttons (Windows).
+		left := float32(20)
+		if c.TitleBar().Left > 0 {
+			left = c.TitleBar().Left + 8
+		}
+		ui.Row(c).Height(topBar(c)).Padding(0, 0, 0, left).AlignItems(ui.Center).DragWindow().Children(func() {
+			if iconButton(c.Key("close"), iconBack, 18, white.Alpha(0.8), "返回").Clicked() {
 				a.nowPlaying = false
 			}
 		})
