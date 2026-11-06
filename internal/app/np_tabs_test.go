@@ -43,10 +43,12 @@ func TestPaneTabsStayPut(t *testing.T) {
 			return r
 		}
 		first := where()
-		if first.X >= w/2 || first.X+first.W <= w/2 || first.Y+first.H > topBarHeight {
+		// The middle tab, not only the row: a last tab named 待播清单, wider than
+		// the others, left 律动 13 to the left of the window's center.
+		if c := first.X + first.W/2; c < w/2-1 || c > w/2+1 || first.Y+first.H > topBarHeight {
 			t.Fatalf("%v: tabs (%v) are not centered in the top bar", size, first)
 		}
-		for _, tab := range []string{"律动", "待播清单", "律动", "歌词"} {
+		for _, tab := range []string{"律动", "列表", "律动", "歌词"} {
 			if err := tt.Click(tab); err != nil {
 				t.Fatal(err)
 			}
@@ -54,7 +56,7 @@ func TestPaneTabsStayPut(t *testing.T) {
 			if r := where(); r != first {
 				t.Fatalf("%v, on %s: tabs at %v, were at %v", size, tab, r, first)
 			}
-			if tab == "待播清单" {
+			if tab == "列表" {
 				if row, ok := tt.Find("海屿你"); !ok || row.Y < first.Y+first.H {
 					t.Fatalf("%v: queue row (%v) starts above the tabs (%v)", size, row, first)
 				}
@@ -72,7 +74,7 @@ func TestPaneTabsFrames(t *testing.T) {
 	}
 	for _, size := range [][2]float32{{760, 800}, {910, 800}, {1200, 800}, {760, 560}} {
 		_, tt := npTabsApp(t, size[0], size[1])
-		for _, tab := range []string{"歌词", "律动", "待播清单"} {
+		for _, tab := range []string{"歌词", "律动", "列表"} {
 			tt.Click(tab)
 			tt.Advance(time.Second)
 			f, _ := os.Create(filepath.Join(dir, "np-"+strconv.Itoa(int(size[0]))+"x"+strconv.Itoa(int(size[1]))+"-"+tab+".png"))

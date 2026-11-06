@@ -236,7 +236,7 @@ const (
 func (a *app) paneTabs(c *ui.Context) {
 	a.paneTab(c, paneLyrics, lyricsName(a.pl.Current()))
 	a.paneTab(c, paneStage, "律动")
-	a.paneTab(c, paneQueue, "待播清单")
+	a.paneTab(c, paneQueue, "列表")
 }
 
 // stageBar is the slim bar along the foot of the stage: what plays, where

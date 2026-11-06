@@ -25,7 +25,7 @@ func TestNowPlayingClosesAsOneLayer(t *testing.T) {
 	tt.Frame()
 	tt.Advance(time.Second)
 	tt.Frame()
-	if !tt.HasText("待播清单") {
+	if !tt.HasText("列表") {
 		t.Fatal("now playing did not open")
 	}
 	// Mid-way out, it still covers the page and the sidebar alike.
@@ -46,7 +46,7 @@ func TestNowPlayingClosesAsOneLayer(t *testing.T) {
 	}
 	tt.Advance(2 * time.Second)
 	tt.Frame()
-	if tt.HasText("待播清单") {
+	if tt.HasText("列表") {
 		t.Error("now playing still shows after closing")
 	}
 }
