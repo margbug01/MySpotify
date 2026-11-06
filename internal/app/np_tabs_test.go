@@ -26,7 +26,10 @@ func npTabsApp(t *testing.T, w, h float32) (*app, *ui.Tester) {
 	return a, tt
 }
 
-/** Verifies that the Now Playing pane tabs stay centered in the top bar without shifting across pane switches, while the pane content remains below them. */
+// Choosing a pane of Now Playing leaves its tabs where they were: the
+// stage's sat in the window's corner, the others' over the lyrics, and the
+// tabs jumped from one place to the other. They sit at the center of the top
+// bar now, the panes below them.
 func TestPaneTabsStayPut(t *testing.T) {
 	for _, size := range [][2]float32{{760, 800}, {1200, 800}, {760, 480}} {
 		w := size[0]
@@ -43,7 +46,7 @@ func TestPaneTabsStayPut(t *testing.T) {
 		if first.X >= w/2 || first.X+first.W <= w/2 || first.Y+first.H > topBarHeight {
 			t.Fatalf("%v: tabs (%v) are not centered in the top bar", size, first)
 		}
-		for _, tab := range []string{"律动", "列表", "律动", "歌词"} {
+		for _, tab := range []string{"律动", "待播清单", "律动", "歌词"} {
 			if err := tt.Click(tab); err != nil {
 				t.Fatal(err)
 			}
@@ -51,7 +54,7 @@ func TestPaneTabsStayPut(t *testing.T) {
 			if r := where(); r != first {
 				t.Fatalf("%v, on %s: tabs at %v, were at %v", size, tab, r, first)
 			}
-			if tab == "列表" {
+			if tab == "待播清单" {
 				if row, ok := tt.Find("海屿你"); !ok || row.Y < first.Y+first.H {
 					t.Fatalf("%v: queue row (%v) starts above the tabs (%v)", size, row, first)
 				}
@@ -69,7 +72,7 @@ func TestPaneTabsFrames(t *testing.T) {
 	}
 	for _, size := range [][2]float32{{760, 800}, {910, 800}, {1200, 800}, {760, 560}} {
 		_, tt := npTabsApp(t, size[0], size[1])
-		for _, tab := range []string{"歌词", "律动", "列表"} {
+		for _, tab := range []string{"歌词", "律动", "待播清单"} {
 			tt.Click(tab)
 			tt.Advance(time.Second)
 			f, _ := os.Create(filepath.Join(dir, "np-"+strconv.Itoa(int(size[0]))+"x"+strconv.Itoa(int(size[1]))+"-"+tab+".png"))

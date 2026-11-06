@@ -670,10 +670,8 @@ func (a *app) myPlaylists(c *ui.Context, title string, lists []spotify.Playlist,
 	}
 }
 
-/**
- * Renders a single playlist entry in the sidebar as a compact row or a
- * square-cover grid card, wiring up selection state and context menus.
- */
+// myPlaylist is one of the listener's lists in the sidebar: a row, or in the
+// grid a cover over its name.
 func (a *app) myPlaylist(c *ui.Context, pl *spotify.Playlist, mine, grid bool) {
 	p := a.pal
 	selected := a.route.page == pagePlaylist && a.route.playlist == pl.ID && !a.nowPlaying

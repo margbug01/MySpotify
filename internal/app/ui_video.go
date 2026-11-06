@@ -202,7 +202,7 @@ func (a *app) npTheater(c *ui.Context, tr *spotify.Track, art *artwork, accent u
 	})
 }
 
-/** Renders the theater-mode music video stage and its auto-hiding top/bottom chrome, keeping the back button in the top-left corner and the video controls clear of the window caption buttons. */
+// mvStage is the music video filling Now Playing, its controls over it.
 func (a *app) mvStage(c *ui.Context, tr *spotify.Track, art *artwork, accent ui.Color, now time.Time) {
 	pl := a.pl
 	ui.Column(c).Absolute().Top(0).Left(0).Right(0).Bottom(0).Children(func() {

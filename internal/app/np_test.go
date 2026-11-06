@@ -11,7 +11,8 @@ import (
 	"vinyl/internal/spotify"
 )
 
-/** Verifies that clicking the Now Playing back button closes the view as a single opaque layer covering both the main page and the sidebar during the exit animation. */
+// The back button closes Now Playing as one layer, over the page and the
+// sidebar alike all the way out.
 func TestNowPlayingClosesAsOneLayer(t *testing.T) {
 	a := newTestApp()
 	a.settings = defaultSettings()
@@ -24,7 +25,7 @@ func TestNowPlayingClosesAsOneLayer(t *testing.T) {
 	tt.Frame()
 	tt.Advance(time.Second)
 	tt.Frame()
-	if !tt.HasText("列表") {
+	if !tt.HasText("待播清单") {
 		t.Fatal("now playing did not open")
 	}
 	// Mid-way out, it still covers the page and the sidebar alike.
@@ -45,7 +46,7 @@ func TestNowPlayingClosesAsOneLayer(t *testing.T) {
 	}
 	tt.Advance(2 * time.Second)
 	tt.Frame()
-	if tt.HasText("列表") {
+	if tt.HasText("待播清单") {
 		t.Error("now playing still shows after closing")
 	}
 }

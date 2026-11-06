@@ -107,22 +107,22 @@ func (a *app) nowPlayingView(c *ui.Context) {
 	})
 }
 
-/** Renders the Now Playing body with a persistent top-left back button (offset past macOS traffic lights when present), pointer-revealed centered pane tabs in the top bar, and the active stage or split cover/pane view below. */
 func (a *app) nowPlayingBody(c *ui.Context, tr *spotify.Track, art *artwork, accent ui.Color, w, h float32, pointerIn bool) {
 	pl := a.pl
 	if a.npPane != paneQueue {
 		a.queueAt = -1
 	}
 	{
-		// The top strip drags the window; the back button stays in the
-		// top-left corner while the pane tabs appear in the top center
-		// when the pointer is inside the window.
+		// The top strip drags the window; the back button in its corner and
+		// the pane tabs at its center show only while the pointer is in the
+		// window.
 		left := float32(20)
 		if c.TitleBar().Left > 0 {
 			left = c.TitleBar().Left + 8
 		}
 		ui.Row(c).Height(topBar(c)).Justify(ui.Center).AlignItems(ui.Center).DragWindow().Children(func() {
-			ui.Row(c).Absolute().Top(0).Left(left).Height(topBar(c)).AlignItems(ui.Center).Children(func() {
+			back := ui.Row(c.Key("close-reveal")).Absolute().Top(0).Left(left).Height(topBar(c)).AlignItems(ui.Center)
+			reveal(back, pointerIn).Children(func() {
 				if iconButton(c.Key("close"), iconBack, 18, white.Alpha(0.7), "返回").Clicked() {
 					a.nowPlaying = false
 				}
@@ -236,7 +236,7 @@ const (
 func (a *app) paneTabs(c *ui.Context) {
 	a.paneTab(c, paneLyrics, lyricsName(a.pl.Current()))
 	a.paneTab(c, paneStage, "律动")
-	a.paneTab(c, paneQueue, "列表")
+	a.paneTab(c, paneQueue, "待播清单")
 }
 
 // stageBar is the slim bar along the foot of the stage: what plays, where
