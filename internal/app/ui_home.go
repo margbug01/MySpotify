@@ -478,10 +478,13 @@ func (a *app) itemNote(it *spotify.HomeItem, now time.Time) string {
 		return "艺人"
 	case it.Episode != nil:
 		var parts []string
-		if day, err := time.ParseInLocation(time.DateOnly, it.Released, time.Local); err == nil {
-			if day.Year() == now.Year() {
+		if day, err := time.ParseInLocation(time.DateOnly, cmp.Or(it.Released, it.Episode.Released), time.Local); err == nil {
+			switch {
+			case inCurrentWeek(day, now):
+				parts = append(parts, weekday(day))
+			case day.Year() == now.Year():
 				parts = append(parts, fmt.Sprintf("%d月%d日", day.Month(), day.Day()))
-			} else {
+			default:
 				parts = append(parts, fmt.Sprintf("%d年%d月%d日", day.Year(), day.Month(), day.Day()))
 			}
 		}

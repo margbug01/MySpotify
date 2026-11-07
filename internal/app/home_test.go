@@ -93,13 +93,15 @@ func TestGridShowsLatelyPlayedThenTopsUp(t *testing.T) {
 // An episode's card says when it came out, and how long it is.
 func TestEpisodeNote(t *testing.T) {
 	a := newTestApp()
-	now := time.Date(2026, 10, 26, 17, 0, 0, 0, time.Local)
+	// 2026-10-28 is a Wednesday; the week's Monday is 2026-10-26.
+	now := time.Date(2026, 10, 28, 17, 0, 0, 0, time.Local)
 	for _, tc := range []struct {
 		released string
 		ms       int64
 		want     string
 	}{
-		{"2026-10-26", 1285596, "10月26日 · 21 分钟"},
+		{"2026-10-26", 1285596, "星期一 · 21 分钟"},
+		{"2026-10-25", 1285596, "10月25日 · 21 分钟"},
 		{"2025-03-01", 3900000, "2025年3月1日 · 1 小时 5 分钟"},
 		{"", 20000, ""},
 	} {

@@ -1,5 +1,7 @@
 package spotify
 
+import "strings"
+
 // A podcast shows as a list: its episodes are its tracks, which play as
 // songs do. It is known by its URI, spotify:show:<ID>.
 
@@ -44,9 +46,12 @@ func show(uri string) (*Playlist, error) {
 						Entity struct {
 							URI  string `json:"_uri"`
 							Data struct {
-								Name     string   `json:"name"`
-								Duration millis   `json:"duration"`
-								CoverArt gqlImage `json:"coverArt"`
+								Name        string   `json:"name"`
+								Duration    millis   `json:"duration"`
+								CoverArt    gqlImage `json:"coverArt"`
+								ReleaseDate struct {
+									IsoString string `json:"isoString"`
+								} `json:"releaseDate"`
 								// Absent where the episode does not play
 								// to this listener.
 								Playability *struct {
@@ -70,11 +75,13 @@ func show(uri string) (*Playlist, error) {
 			if cover == "" {
 				cover = pl.CoverURL
 			}
+			day, _, _ := strings.Cut(e.Data.ReleaseDate.IsoString, "T")
 			pl.Tracks = append(pl.Tracks, Track{
 				ID: idOf(e.URI), Episode: true, Name: e.Data.Name, Duration: e.Data.Duration.TotalMilliseconds,
 				Artists:    by,
 				Album:      Album{ID: uri, Name: m.Name, PicURL: cover},
 				Unplayable: e.Data.Playability == nil || !e.Data.Playability.Playable,
+				Released:   day,
 			})
 		}
 		offset += len(eps.Items)

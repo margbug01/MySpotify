@@ -38,6 +38,30 @@ func weekday(t time.Time) string {
 	return [...]string{"星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"}[t.Weekday()]
 }
 
+// inCurrentWeek reports whether day falls between the Monday of now's calendar
+// week and today.
+func inCurrentWeek(day, now time.Time) bool {
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
+	monday := today.AddDate(0, 0, -(int(today.Weekday())+6)%7)
+	return !day.Before(monday) && !day.After(today)
+}
+
+// episodeDate is a release date, as 2006-01-02, as an episode's row shows it:
+// its weekday within this week, mm-dd within this year, yyyy-mm-dd before.
+func episodeDate(released string, now time.Time) string {
+	day, err := time.ParseInLocation(time.DateOnly, released, time.Local)
+	if err != nil {
+		return ""
+	}
+	if inCurrentWeek(day, now) {
+		return weekday(day)
+	}
+	if day.Year() == now.Year() {
+		return day.Format("01-02")
+	}
+	return day.Format(time.DateOnly)
+}
+
 func (a *app) chartsPage(c *ui.Context) {
 	loading := len(a.charts) == 0
 	if loading && !a.homeLoading {
@@ -332,6 +356,11 @@ func (a *app) trackRows(c *ui.Context, tracks []spotify.Track, covers bool, head
 	if a.route.page == pagePlaylist {
 		pid = a.route.playlist
 	}
+	isShow := strings.HasPrefix(pid, "spotify:show:")
+	timeWidth := float32(44)
+	if isShow {
+		timeWidth = 148
+	}
 	n := len(tracks) + 1
 	if footer != nil {
 		n++
@@ -415,7 +444,15 @@ func (a *app) trackRows(c *ui.Context, tracks []spotify.Track, covers bool, head
 					a.likeButton(c.Key("like"), tr, 15, p.muted)
 				}
 			})
-			ui.Text(c, clock(tr.Length())).FontSize(12.5).FontFeatures("tnum").TextColor(p.faint).Width(44).TextAlign(ui.End)
+			ui.Row(c).Width(timeWidth).Gap(6).AlignItems(ui.Center).Justify(ui.End).Shrink(0).Children(func() {
+				if isShow && tr.Episode {
+					if date := episodeDate(tr.Released, c.Now()); date != "" {
+						ui.Text(c, date).FontSize(12.5).FontFeatures("tnum").TextColor(p.faint)
+						ui.Text(c, "·").FontSize(12.5).TextColor(p.accent)
+					}
+				}
+				ui.Text(c, clock(tr.Length())).FontSize(12.5).FontFeatures("tnum").TextColor(p.faint)
+			})
 		})
 		if row.Clicked() && tr.Playable() {
 			a.playFrom(a.routeItem(), tracks, i)

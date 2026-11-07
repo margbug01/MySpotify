@@ -44,6 +44,8 @@ type Track struct {
 	// same song in the listener's country (relinked): the one in their
 	// library, which hearts go by.
 	LinkedFrom string `json:"linkedFrom,omitempty"`
+	// Released is an episode's release date, formatted as 2006-01-02.
+	Released string `json:"released,omitempty"`
 }
 
 // ArtistNames joins the track's artists as the credits read.
@@ -388,11 +390,13 @@ func (e *gqlEntity) playlist() (Playlist, bool) {
 // episode returns e as a Track, or false if it is no episode.
 func (e *gqlEntity) episode() (Track, bool) {
 	show := &e.PodcastV2.Data
+	day, _, _ := strings.Cut(e.ReleaseDate.IsoString, "T")
 	ep := Track{
 		ID: idOf(e.URI), Episode: true, Name: e.Name, Duration: e.Duration.TotalMilliseconds,
 		Artists:    []Artist{{Name: show.Publisher.Name}},
 		Album:      Album{ID: show.URI, Name: show.Name, PicURL: cmp.Or(e.CoverArt.best(), show.CoverArt.best())},
 		Unplayable: e.Playability == nil || !e.Playability.Playable,
+		Released:   day,
 	}
 	return ep, e.Typename == "Episode" && strings.HasPrefix(e.URI, "spotify:episode:")
 }
@@ -407,8 +411,7 @@ func (e *gqlEntity) homeItem() (HomeItem, bool) {
 		return HomeItem{List: &pl}, true
 	}
 	if ep, ok := e.episode(); ok {
-		day, _, _ := strings.Cut(e.ReleaseDate.IsoString, "T")
-		return HomeItem{Episode: &ep, Released: day}, true
+		return HomeItem{Episode: &ep, Released: ep.Released}, true
 	}
 	return HomeItem{}, false
 }
