@@ -137,6 +137,7 @@ type app struct {
 	nowPlaying  bool
 	npOpen      bool      // Now Playing as it last showed: open or not
 	npChangedAt time.Time // when it last opened or closed
+	npFrom      float32   // how far into the cover it was then (genieAmount)
 	npPane      int       // paneLyrics, paneQueue or paneStage
 	npPaneTop   float32   // how far the cover beside the pane starts below its top
 	lyricScroll ui.ScrollState

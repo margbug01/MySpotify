@@ -14,6 +14,7 @@ import (
 // The back button closes Now Playing as one layer, over the page and the
 // sidebar alike all the way out.
 func TestNowPlayingClosesAsOneLayer(t *testing.T) {
+	flatGenie(t)
 	a := newTestApp()
 	a.settings = defaultSettings()
 	tr := spotify.Track{ID: "1", Name: "宝船", Artists: []spotify.Artist{{Name: "DOUDOU"}}, Duration: 200000}
