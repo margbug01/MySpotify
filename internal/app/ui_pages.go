@@ -103,7 +103,9 @@ func (a *app) chartsPage(c *ui.Context) {
 // under the pointer, where a play button shows on it.
 func (a *app) playlistCard(c *ui.Context, pl *spotify.Playlist) {
 	p := a.pal
-	card := ui.ButtonBase(c).Column().Gap(10).AlignItems(ui.Stretch).FocusRing(false).Label(pl.Name)
+	// Justify(Start) resets ButtonBase's centering, which in a grid pushes
+	// the cover down beside a taller card.
+	card := ui.ButtonBase(c).Column().Gap(10).AlignItems(ui.Stretch).Justify(ui.Start).FocusRing(false).Label(pl.Name)
 	hovered := card.Hovered()
 	card.Children(func() {
 		art := ui.Box(c).AspectRatio(1).Radius(10)
