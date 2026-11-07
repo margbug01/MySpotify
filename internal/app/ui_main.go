@@ -400,6 +400,9 @@ func (a *app) centered(c *ui.Context, err string, retry func()) {
 
 // Loading what the pages show.
 
+// loadHome refreshes the home feed, the daily mix and the charts in the
+// background. The chips' feeds stay: one loaded before this ends would be gone
+// with nothing to load it again, and its page would stay on the skeleton.
 func (a *app) loadHome() {
 	a.homeLoading, a.homeErr = true, ""
 	go func() {
@@ -430,8 +433,8 @@ func (a *app) loadHome() {
 			// had it.
 			if home != nil {
 				a.homeSections, a.homeShortcuts = home.Sections, home.Shortcuts
-				// The chips' and the sections' pages load again as asked.
-				a.facets, a.sectionAll = nil, nil
+				// The sections' pages load again as asked.
+				a.sectionAll = nil
 			}
 			if err2 == nil {
 				a.charts = charts
