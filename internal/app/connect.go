@@ -693,22 +693,20 @@ func connectPlayBody(request player.QueueRequest) map[string]any {
 	return map[string]any{"context": map[string]any{"uri": "", "url": "", "metadata": map[string]any{}, "pages": []any{map[string]any{"tracks": tracks}}}, "play_origin": map[string]any{}, "options": map[string]any{"license": "on-demand", "skip_to": map[string]any{"track_index": request.Start}}}
 }
 
+// connectButton is the monitor speaker standing for the device the music
+// plays on, which opens the picker of the devices in a panel below it; the
+// popover, not the bar, is where the device playing names itself. The
+// speaker wears the accent while the music plays somewhere other than here.
 func (a *app) connectButton(c *ui.Context) {
 	state := a.connect
 	if state == nil {
 		return
 	}
-	label := "设备"
+	color := a.pal.muted
 	if state.cluster.Active != "" && state.cluster.Active != state.client.ID {
-		if device, ok := state.cluster.Devices[state.cluster.Active]; ok {
-			label = device.Name
-		}
+		color = a.pal.accent
 	}
-	button := ui.ButtonBase(c.Key("connect")).Label("播放设备").MaxWidth(140).Padding(6, 8).Radius(6)
-	if button.Hovered() {
-		button.Background(a.pal.hover)
-	}
-	button.Children(func() { ui.Text(c, label).FontSize(12).SingleLine().TextColor(a.pal.muted) })
+	button := iconButton(c.Key("connect"), iconDevice, 16, color, "播放设备")
 	if button.Clicked() {
 		state.open = !state.open
 	}
