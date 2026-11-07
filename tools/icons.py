@@ -12,7 +12,7 @@ The record is drawn here, and every icon made of it:
                                  is light or dark as macOS is (mygo.json macos.icon)
   docs/icon.png                  the README's, 256 px
 
-Edge renders the SVGs. Then rsrc_windows_amd64.syso again, as the README says.
+Edge renders the SVGs. Then rsrc_windows_amd64.syso again, as DEVELOPMENT.md says.
 """
 import json
 import math
