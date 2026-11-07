@@ -53,6 +53,44 @@ func TestAccountMenu(t *testing.T) {
 	}
 }
 
+// The account menu's separator stays on screen once the menu has settled,
+// at a fractional scale: it was a half-DIP box, which snaps to no device
+// pixel where the line lands between pixels.
+func TestAccountMenuDividerStays(t *testing.T) {
+	for _, scale := range []float32{1.25, 1.5} {
+		a := newTestApp()
+		a.settings = defaultSettings()
+		a.profile = &spotify.Profile{UserID: "1", Nickname: "小明"}
+		tt := ui.NewTester(a.view, 1000, 700)
+		tt.SetScale(scale)
+		tt.SetDark(true)
+		tt.Frame()
+		tt.Click("小明")
+		tt.Advance(time.Second)
+		tt.Frame()
+
+		// The rows a little above the sign-out item, halfway across the
+		// menu: the separator's, a step lighter than the panel's fill.
+		signOut, ok := tt.Find("退出登录")
+		if !ok {
+			t.Fatal("no sign-out item")
+		}
+		img := tt.Image()
+		x := int((signOut.X + signOut.W/2) * scale)
+		top := int(signOut.Y * scale)
+		found := false
+		for y := top - 24; y < top; y++ {
+			if c := img.RGBAAt(x, y); c.R >= 58 {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("no separator shows above the sign-out item at scale %v", scale)
+		}
+	}
+}
+
 // With NM_FRAMES set, saves the foot of the sidebar with the account menu
 // open, light and dark: the first letter of a name with Spotify's color,
 // and of one without.
