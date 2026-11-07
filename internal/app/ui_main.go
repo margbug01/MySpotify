@@ -400,6 +400,10 @@ func (a *app) centered(c *ui.Context, err string, retry func()) {
 
 // Loading what the pages show.
 
+/**
+ * loadHome refreshes the base home feed, daily mix tracks, and top charts in
+ * the background, leaving any facet feeds already loaded in this session intact.
+ */
 func (a *app) loadHome() {
 	a.homeLoading, a.homeErr = true, ""
 	go func() {
@@ -430,8 +434,8 @@ func (a *app) loadHome() {
 			// had it.
 			if home != nil {
 				a.homeSections, a.homeShortcuts = home.Sections, home.Shortcuts
-				// The chips' and the sections' pages load again as asked.
-				a.facets, a.sectionAll = nil, nil
+				// The sections' pages load again as asked.
+				a.sectionAll = nil
 			}
 			if err2 == nil {
 				a.charts = charts
