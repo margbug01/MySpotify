@@ -157,7 +157,7 @@ func (a *app) deleteChosen() {
 		if n := len(a.history); n > 0 {
 			r, a.history = a.history[n-1], a.history[:n-1]
 		}
-		a.show(r)
+		a.showAgain(r)
 	}
 	go func() {
 		err := deletePlaylist(user, id)

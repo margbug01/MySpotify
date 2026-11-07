@@ -58,6 +58,9 @@ type app struct {
 	route   route
 	history []route
 	forward []route // the pages gone back from, the last first to go to
+	// Where each page was left. shortcut: by page, not by visit, so a page
+	// in the history twice comes back where it was last left.
+	spots map[route]pageSpot
 
 	connect     *connectState
 	mineLoading bool

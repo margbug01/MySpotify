@@ -128,10 +128,34 @@ func (a *app) open(r route) {
 	a.show(r)
 }
 
+// pageSpot is where a page is scrolled.
+type pageSpot struct {
+	list   ui.ListState
+	scroll ui.ScrollState
+}
+
+// leave keeps where the page is scrolled, for going back to it, and has the
+// next start at its top.
+func (a *app) leave() {
+	if a.spots == nil {
+		a.spots = map[route]pageSpot{}
+	}
+	a.spots[a.route] = pageSpot{a.trackList, a.pageScroll}
+	a.trackList, a.pageScroll = ui.ListState{}, ui.ScrollState{}
+}
+
+// showAgain shows the page of r, one of the history, where it was left.
+func (a *app) showAgain(r route) {
+	a.show(r)
+	if s, ok := a.spots[r]; ok {
+		a.trackList, a.pageScroll = s.list, ui.ScrollState{Y: s.scroll.Y}
+	}
+}
+
 // show shows the page of r.
 func (a *app) show(r route) {
+	a.leave()
 	a.route = r
-	a.trackList, a.pageScroll = ui.ListState{}, ui.ScrollState{}
 	switch r.page {
 	case pagePlaylist:
 		a.loadPlaylist(r.playlist, false)
@@ -165,7 +189,7 @@ func (a *app) back() {
 	a.forward = append(a.forward, a.route)
 	r := a.history[len(a.history)-1]
 	a.history = a.history[:len(a.history)-1]
-	a.show(r)
+	a.showAgain(r)
 }
 
 // goForward goes to the page back left, as the forward button of a mouse
@@ -178,7 +202,7 @@ func (a *app) goForward() {
 	r := a.forward[len(a.forward)-1]
 	a.forward = a.forward[:len(a.forward)-1]
 	a.nowPlaying = false
-	a.show(r)
+	a.showAgain(r)
 }
 
 func (a *app) sidebar(c *ui.Context) {
@@ -504,8 +528,8 @@ func firstPlayable(tracks []spotify.Track) int {
 
 func (a *app) search(q string) {
 	a.history, a.forward = append(a.history, a.route), nil
+	a.leave()
 	a.route = route{page: pageSearch}
-	a.trackList, a.pageScroll = ui.ListState{}, ui.ScrollState{}
 	a.nowPlaying = false
 	a.runSearch(q)
 }
