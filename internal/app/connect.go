@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"sort"
 	"sync"
@@ -24,13 +25,16 @@ type connectState struct {
 	machine                      spotify.ConnectMachine
 	ref                          *spotify.ConnectRef
 	observer, receiver, applying bool
-	err                          string
-	open                         bool
-	known                        map[string]spotify.Track // what Decorate named, by URI
-	decorating                   bool
-	timer                        *time.Timer
-	jobs                         chan func() error
-	done                         chan struct{}
+	// lost tells that Spotify turned down the state this device reported and
+	// gave no other: it plays on here, on its own, until Spotify gives one.
+	lost       bool
+	err        string
+	open       bool
+	known      map[string]spotify.Track // what Decorate named, by URI
+	decorating bool
+	timer      *time.Timer
+	jobs       chan func() error
+	done       chan struct{}
 	// The volume asked of a device, sent once the request before it is
 	// done: a drag turns it a percent at a time, which one by one would
 	// walk the device there long after the drag.
@@ -129,6 +133,9 @@ func (a *app) connectOptions(o spotify.ConnectOptions) {
 
 // connectCommand is (*spotify.Connect).Command; tests swap it.
 var connectCommand = (*spotify.Connect).Command
+
+// connectReport is (*spotify.Connect).Report; tests swap it.
+var connectReport = (*spotify.Connect).Report
 
 func (a *app) stopConnect() {
 	state := a.connect
@@ -266,9 +273,37 @@ func (a *app) reportConnect() {
 	}
 	paused := !a.pl.Playing()
 	state.ref.Paused = paused
-	ref := map[string]any{"state_machine_id": state.machine.ID, "state_id": state.machine.States[index].ID, "paused": paused}
+	sent := state.machine.States[index].ID
+	ref := map[string]any{"state_machine_id": state.machine.ID, "state_id": sent, "paused": paused}
 	pos, duration := a.pl.Position().Milliseconds(), a.pl.Duration().Milliseconds()
-	a.connectJob(func() error { return state.client.Report(ref, pos, duration, paused) })
+	if duration > 0 {
+		// The page's clock runs a little past the end of the song.
+		pos = min(pos, duration)
+	}
+	a.connectJob(func() error {
+		// Nothing the listener did: what goes wrong goes to the log, not to a
+		// toast that would come back every five seconds.
+		err := connectReport(state.client, ref, pos, duration, paused)
+		if err != nil {
+			log.Printf("connect: %v (state %s, %d of %d ms)", err, sent, pos, duration)
+		}
+		var turned *spotify.ConnectError
+		if errors.As(err, &turned) && turned.Status == http.StatusBadRequest {
+			a.post(func() { a.connectTurnedDown(state, sent) })
+		}
+		return nil
+	})
+}
+
+// connectTurnedDown takes Spotify's refusal of the state sent, which it would
+// refuse each time after: unless a newer state has come since, this device
+// stops reporting, and its controls act here, as Spotify turns those down too.
+func (a *app) connectTurnedDown(state *connectState, sent string) {
+	if a.connect != state || state.ref == nil || state.machine.States[state.ref.Index].ID != sent {
+		return
+	}
+	log.Printf("connect: state %s refused, playing on here", sent)
+	state.ref, state.lost = nil, true
 }
 
 func (a *app) connectEvent(event spotify.ConnectEvent) {
@@ -287,6 +322,7 @@ func (a *app) connectEvent(event spotify.ConnectEvent) {
 	case "receiver_ready":
 		log.Printf("connect: ready, as %q", state.client.Name)
 		state.receiver = true
+		state.lost = false
 		state.err = ""
 	case "observer_offline":
 		state.observer = false
@@ -312,7 +348,7 @@ func (a *app) connectEvent(event spotify.ConnectEvent) {
 			a.connectOptions(cluster.Player.Options)
 		}
 		if cluster.Active != "" && cluster.Active != state.client.ID {
-			state.ref = nil
+			state.ref, state.lost = nil, false
 			track := cluster.Track()
 			if track.ID != "" {
 				position := int64(cluster.Player.Position)
@@ -344,6 +380,13 @@ func (a *app) connectEvent(event spotify.ConnectEvent) {
 		for index, next := range response.Machine.States {
 			if response.Updated != nil && response.Updated.Index == index || response.Updated == nil && next.ID == currentID {
 				track, err := response.Machine.Track(index)
+				if next := next.Transitions.Advance; err == nil && next != nil && a.pl.Current() != nil && track.URI() != a.pl.Current().URI() {
+					// The answer to a report from before the song ended: the
+					// song now is the one after. Dropped, this device went on
+					// reporting states Spotify had replaced, each turned down.
+					index = next.Index
+					track, err = response.Machine.Track(index)
+				}
 				if err == nil && a.pl.Current() != nil && track.URI() == a.pl.Current().URI() {
 					state.machine = response.Machine
 					state.ref.Index = index
@@ -412,7 +455,7 @@ func (a *app) applyConnect(ref *spotify.ConnectRef, seek *int64) {
 		return
 	}
 	copyRef := *ref
-	state.ref = &copyRef
+	state.ref, state.lost = &copyRef, false
 	state.cluster.Active = state.client.ID
 	position := time.Duration(-1)
 	if seek != nil {
@@ -503,7 +546,7 @@ func (a *app) showConnectQueue(queue []spotify.Track) {
 
 func (a *app) connectControl(action string, value any) bool {
 	state := a.connect
-	if state == nil || state.applying {
+	if state == nil || state.applying || state.lost {
 		return false
 	}
 	if !state.observer || !state.receiver {

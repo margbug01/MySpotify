@@ -201,3 +201,71 @@ func TestConnectNamesTheArtist(t *testing.T) {
 		}
 	}
 }
+
+// A report answered once the song has moved on takes the new machine, at the
+// state of the song now: the machine was dropped, and each report after named
+// a state Spotify had replaced, turned down with a 400 every five seconds.
+func TestConnectReportAnsweredAfterTheSongEnded(t *testing.T) {
+	a := testConnectApp(t)
+	json.Unmarshal([]byte(`{"state_machine_id":"old","states":[{"state_id":"old-one","track":0,"transitions":{"advance":{"state_index":1}}},{"state_id":"old-two","track":1}],"tracks":[{"metadata":{"uri":"spotify:track:one"}},{"metadata":{"uri":"spotify:track:two"}}]}`), &a.connect.machine)
+	a.connect.ref = &spotify.ConnectRef{Index: 1}
+	a.pl.Cue([]spotify.Track{{ID: "two", Name: "Two", Duration: 200000}})
+
+	a.connectEvent(spotify.ConnectEvent{Kind: "report", Data: json.RawMessage(`{"updated_state_ref":{"state_index":0},"state_machine":{"state_machine_id":"new","states":[{"state_id":"new-one","track":0,"transitions":{"advance":{"state_index":1}}},{"state_id":"new-two","track":1}],"tracks":[{"metadata":{"uri":"spotify:track:one"}},{"metadata":{"uri":"spotify:track:two"}}]}}`)})
+	if a.connect.machine.ID != "new" || a.connect.ref.Index != 1 {
+		t.Fatalf("on machine %q state %d, want new at 1", a.connect.machine.ID, a.connect.ref.Index)
+	}
+
+	var reported any
+	connectReport = func(_ *spotify.Connect, ref any, _, _ int64, _ bool) error {
+		reported = ref
+		return nil
+	}
+	defer func() { connectReport = (*spotify.Connect).Report }()
+	a.reportConnect()
+	if err := (<-a.connect.jobs)(); err != nil {
+		t.Fatal(err)
+	}
+	if got := reported.(map[string]any)["state_id"]; got != "new-two" {
+		t.Errorf("reported state %v, want new-two", got)
+	}
+}
+
+// A report Spotify turns down says nothing to the listener. Refused for good,
+// the device stops reporting and its controls act here until it registers
+// again, but a refusal of a state since replaced changes nothing.
+func TestConnectReportTurnedDown(t *testing.T) {
+	a := testConnectApp(t)
+	json.Unmarshal([]byte(`{"state_machine_id":"m","states":[{"state_id":"s1","track":0}],"tracks":[{"metadata":{"uri":"spotify:track:one"}}]}`), &a.connect.machine)
+	a.connect.ref = &spotify.ConnectRef{Index: 0}
+
+	connectReport = func(*spotify.Connect, any, int64, int64, bool) error {
+		return &spotify.ConnectError{Status: http.StatusBadRequest}
+	}
+	defer func() { connectReport = (*spotify.Connect).Report }()
+	a.reportConnect()
+	if err := (<-a.connect.jobs)(); err != nil {
+		t.Errorf("the worker would toast: %v", err)
+	}
+
+	a.connectTurnedDown(a.connect, "replaced")
+	if a.connect.ref == nil {
+		t.Fatal("a refusal of a state since replaced gave the device up")
+	}
+
+	a.connectTurnedDown(a.connect, "s1")
+	a.reportConnect()
+	if a.connect.ref != nil || len(a.connect.jobs) != 0 {
+		t.Fatal("went on reporting a state Spotify refuses")
+	}
+	a.pl.TogglePlay()
+	if len(a.connect.jobs) != 0 || !a.pl.Playing() {
+		t.Fatal("the play button asked Spotify, which turns it down, rather than playing here")
+	}
+
+	a.connectEvent(spotify.ConnectEvent{Kind: "receiver_ready"})
+	a.pl.TogglePlay()
+	if len(a.connect.jobs) != 1 {
+		t.Fatal("registered again, the controls should go through Connect")
+	}
+}
