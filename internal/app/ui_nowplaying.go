@@ -26,6 +26,7 @@ func (a *app) npState(c *ui.Context) (open, settled bool) {
 	open = a.nowPlaying && a.pl.Current() != nil
 	now := c.Now()
 	if open != a.npOpen {
+		a.npFrom = a.genieAmount(now)
 		a.npOpen, a.npChangedAt = open, now
 		// A build once it is at rest: to stop painting what it covers, or
 		// itself once gone.
@@ -43,16 +44,19 @@ func (a *app) npState(c *ui.Context) (open, settled bool) {
 	return open, now.Sub(a.npChangedAt) >= npSettle
 }
 
-// nowPlayingLayer holds Now Playing over the whole window, rising into
-// view as it opens and sinking away as it closes. The layer moves itself,
-// staying on top all the way, rather than leaving as an exit transition
-// would, under the rest of the window: that would show it going over the
-// sidebar's material while the page above it hid it at once. Its pose
-// moves it in frames that only paint, building nothing.
+// nowPlayingLayer holds Now Playing over the whole window, pouring out of
+// the player's cover as it opens and back in as it closes (npGenie). A web
+// view does not show through an effect: with a video it rises and sinks
+// instead. The layer moves itself, staying on top all the way, rather than
+// leaving as an exit transition would, under the rest of the window: that
+// would show it going over the sidebar's material while the page above it
+// hid it at once. Its pose moves it in frames that only paint, building
+// nothing.
 func (a *app) nowPlayingLayer(c *ui.Context, open, settled bool) {
 	layer := ui.Box(c.Key("now-playing-layer")).Absolute().Top(0).Left(0).Right(0).Bottom(0)
+	genie := !a.pl.VideoOn()
 	pose := ui.Pose{Y: 60, Fade: 1}
-	if open {
+	if open || genie {
 		pose = ui.Pose{}
 	}
 	layer.AnimatePose(pose, npSpring)
@@ -66,6 +70,9 @@ func (a *app) nowPlayingLayer(c *ui.Context, open, settled bool) {
 	if !open {
 		// On its way out, the window under it takes the clicks.
 		layer.PassThrough()
+	}
+	if genie && !settled {
+		layer.Effect(npGenie{a})
 	}
 	layer.Children(func() { a.nowPlayingView(c) })
 }
