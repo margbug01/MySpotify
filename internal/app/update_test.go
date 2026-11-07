@@ -190,3 +190,17 @@ func TestNoteLines(t *testing.T) {
 		t.Fatalf("got %q, want %q", got, want)
 	}
 }
+
+// ⌘, on the settings, with Now Playing over them, shows them: open went
+// back for a page open already and left Now Playing up, so the shortcut did
+// nothing that could be seen.
+func TestSettingsShowFromUnderNowPlaying(t *testing.T) {
+	a := newTestApp()
+	tt := settingsTester(a)
+	a.nowPlaying = true
+	tt.Frame()
+	a.openSettings()
+	if a.nowPlaying || a.route.page != pageSettings {
+		t.Fatalf("now playing %v, page %v", a.nowPlaying, a.route.page)
+	}
+}
