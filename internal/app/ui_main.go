@@ -137,6 +137,13 @@ type pageSpot struct {
 // leave keeps where the page is scrolled, for going back to it, and has the
 // next start at its top.
 func (a *app) leave() {
+	// A hotkey left waiting for its keys will not see its button lose the
+	// focus again: the page it sat on is not built once left. Leaving a
+	// page gives the recording up, and the global shortcuts, unregistered
+	// while the keys were waited for, come back.
+	if a.recording != "" {
+		a.stopRecording()
+	}
 	if a.spots == nil {
 		a.spots = map[route]pageSpot{}
 	}
@@ -157,6 +164,12 @@ func (a *app) show(r route) {
 	a.leave()
 	a.route = r
 	switch r.page {
+	case pageSettings:
+		// What opening did while the settings were a window of their own:
+		// the proxy as saved, its error dropped, and the cache's size for
+		// the page to show.
+		a.proxyText, a.proxyErr, a.proxyTyping = a.settings.Proxy, "", false
+		a.measureCache()
 	case pagePlaylist:
 		a.loadPlaylist(r.playlist, false)
 	case pageArtist:
@@ -407,6 +420,8 @@ func (a *app) content(c *ui.Context) {
 		a.userPage(c)
 	case pageSection:
 		a.sectionPage(c)
+	case pageSettings:
+		a.settingsPage(c)
 	}
 }
 

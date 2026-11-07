@@ -33,6 +33,7 @@ const (
 	pageCategory
 	pageUser
 	pageSection
+	pageSettings
 )
 
 type route struct {
@@ -180,7 +181,6 @@ type app struct {
 	lyricsToast    string    // how far the lyrics over a video were moved, to show
 
 	settings    settings
-	settingsWin *mygo.Window
 	proxyText   string          // the proxy as typed in the settings, till it is set
 	proxyErr    string          // why what was typed cannot be set
 	proxyTyping bool            // the proxy's field had the focus last frame
@@ -366,7 +366,7 @@ func Run() error {
 		}
 		a.win.OnFocus(func() { a.refreshMine(time.Now()) })
 		a.scheduleMine()
-		a.upd = myGoUpdates(a.postSettings)
+		a.upd = myGoUpdates(a.post)
 		a.setMenu()
 		a.boot()
 		if shotHook == nil {

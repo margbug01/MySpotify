@@ -30,7 +30,8 @@ func updateApp(found *release, fail error) (*app, *int) {
 }
 
 func settingsTester(a *app) *ui.Tester {
-	tt := ui.NewTester(a.settingsView, 560, 1600)
+	a.open(route{page: pageSettings})
+	tt := ui.NewTester(a.view, 1200, 1600)
 	tt.Frame()
 	return tt
 }
@@ -163,7 +164,9 @@ func TestAutoUpdateSetting(t *testing.T) {
 	if !ok1 || !ok2 {
 		t.Fatal("no row for 自动检查更新")
 	}
-	tt.ClickAt(560-28-16-18, (label.Y+desc.Y+desc.H)/2)
+	// The switch, at the end of its row: its label is the row's too, so the
+	// press goes by where the row ends, at the window's right edge.
+	tt.ClickAt(1200-pagePad-16-18, (label.Y+desc.Y+desc.H)/2)
 	tt.Frame()
 	b, err := os.ReadFile(a.settings.path)
 	if err != nil {

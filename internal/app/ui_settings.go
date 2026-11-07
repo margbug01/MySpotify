@@ -2,40 +2,15 @@ package app
 
 import (
 	"cmp"
-	"github.com/egoist/mygo"
+
 	"github.com/egoist/mygo/ui"
 )
 
-// openSettings shows the settings window, opening it the first time.
+// openSettings goes to the settings page. The main window comes up first,
+// for the menu's sake: its accelerators reach the app while it lies hidden.
 func (a *app) openSettings() {
-	a.measureCache()
-	if a.settingsWin != nil {
-		a.settingsWin.Show()
-		a.settingsWin.Focus()
-		return
-	}
-	a.proxyText, a.proxyErr = a.settings.Proxy, ""
-	a.settingsWin = mygo.NewWindow(mygo.WindowOptions{
-		Title:           "设置",
-		Width:           560,
-		Height:          720,
-		MinWidth:        480,
-		MinHeight:       420,
-		StateKey:        "settings",
-		DisableMaximize: true,
-		DisableMinimize: true,
-		// The app's menu has nothing for this window: on Linux and
-		// Windows it stays out of sight until Alt shows it.
-		AutoHideMenuBar: true,
-		BackgroundColor: "light-dark(#f4f4f6, #1c1c1f)",
-		Content:         ui.View(a.settingsView),
-	})
-	a.settingsWin.OnClosed(func() {
-		a.settingsWin = nil
-		if a.recording != "" {
-			a.stopRecording()
-		}
-	})
+	a.showMain()
+	a.open(route{page: pageSettings})
 }
 
 // changed applies the settings everywhere and keeps them.
@@ -48,19 +23,20 @@ func (a *app) changed() {
 	a.redraw()
 }
 
-func (a *app) settingsView(c *ui.Context) {
-	t := *c.Theme()
-	p := paletteFor(&t)
-	t.Accent, t.AccentText = p.accent, p.onAccent
-	t.Font = appFont
-	c.SetTheme(&t)
-	c.Root().Background(p.sidebar)
-	if a.recording == "" { // else ⌘W may be the shortcut wanted
-		c.OnShortcut(ui.Cmd, ui.KeyW, func() { a.settingsWin.Close() })
-	}
+// settingsPage is the settings, a page of the main window like the others.
+// The theme and the palette are the window's, which view set.
+func (a *app) settingsPage(c *ui.Context) {
+	p := a.pal
 	s := &a.settings
 
-	ui.Scroll(c).Fill().Padding(24, 28, 32, 28).Gap(8).Children(func() {
+	// Tinted as the window the settings had to themselves, so their cards
+	// stand from the page as they did there.
+	top, bottom := a.insets(c)
+	ui.Scroll(c.Key("settings")).TrackScroll(&a.pageScroll).Grow(1).
+		Padding(top+pageGap, pagePad, bottom+48, pagePad).ScrollbarInsets(top, 0, bottom, 0).
+		Background(p.sidebar).Gap(8).Children(func() {
+		a.startMark(c)
+		defer a.endMark(c)
 		group := func(title string, rows func()) {
 			ui.Text(c, title).FontSize(12).FontWeight(600).TextColor(p.muted).Margin(14, 4, 4, 4)
 			ui.Column(c).Radius(12).Background(p.bg).Border(1, p.hairline).Dividers(1, p.hairline).Children(rows)
@@ -76,6 +52,30 @@ func (a *app) settingsView(c *ui.Context) {
 				control()
 			})
 		}
+
+		group("账号", func() {
+			if a.profile == nil {
+				row("未登录", "登录 Spotify 后才能听歌，免费账号也能完整播放", func() {
+					// In the main window already, which the login
+					// window opens over.
+					if ui.PrimaryButton(c.Key("login"), "登录").Clicked() {
+						a.openLogin()
+					}
+				})
+				return
+			}
+			prof := a.profile
+			ui.Row(c).Padding(12, 16).Gap(12).AlignItems(ui.Center).Children(func() {
+				a.profileAvatar(c, prof, 36)
+				ui.Column(c).Grow(1).Gap(2).Children(func() {
+					ui.Text(c, prof.Nickname).FontSize(13.5).FontWeight(600)
+					ui.Text(c, cmp.Or(prof.Email, "已登录 Spotify")).FontSize(12).TextColor(p.muted)
+				})
+				if ui.Button(c.Key("logout"), "退出登录").Clicked() {
+					a.signOut()
+				}
+			})
+		})
 
 		// Only on macOS, the one with a notch player.
 		if a.notch != nil {
@@ -196,30 +196,6 @@ func (a *app) settingsView(c *ui.Context) {
 			row("清除缓存", "删除保存在本机的全部歌曲", func() {
 				if ui.Button(c.Key("clear-cache"), "清除").Disabled(a.cacheUsed <= 0).Clicked() {
 					a.clearCache()
-				}
-			})
-		})
-
-		group("账号", func() {
-			if a.profile == nil {
-				row("未登录", "登录 Spotify 后才能听歌，免费账号也能完整播放", func() {
-					if ui.PrimaryButton(c.Key("login"), "登录").Clicked() {
-						a.showMain()
-						a.openLogin()
-						a.win.Invalidate()
-					}
-				})
-				return
-			}
-			prof := a.profile
-			ui.Row(c).Padding(12, 16).Gap(12).AlignItems(ui.Center).Children(func() {
-				a.profileAvatar(c, prof, 36)
-				ui.Column(c).Grow(1).Gap(2).Children(func() {
-					ui.Text(c, prof.Nickname).FontSize(13.5).FontWeight(600)
-					ui.Text(c, cmp.Or(prof.Email, "已登录 Spotify")).FontSize(12).TextColor(p.muted)
-				})
-				if ui.Button(c.Key("logout"), "退出登录").Clicked() {
-					a.signOut()
 				}
 			})
 		})
