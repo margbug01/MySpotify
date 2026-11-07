@@ -2,6 +2,9 @@ package app
 
 import (
 	"fmt"
+	"image"
+	"image/color"
+	"image/draw"
 	"image/png"
 	"math"
 	"os"
@@ -103,7 +106,39 @@ func TestGenieTurnsBackFromWhereItIs(t *testing.T) {
 	}
 }
 
-// With NM_FRAMES set, saves Now Playing on its way out of the cover.
+// fixedGenie draws an element funneled by a set amount.
+type fixedGenie float32
+
+func (g fixedGenie) EffectMargin() ui.Point { return ui.Point{} }
+
+func (g fixedGenie) PaintEffect(p *ui.Painter, box ui.Rect, content *ui.Bitmap, inset ui.Point) {
+	genieDraw(p, box, content, inset, float32(g))
+}
+
+// Nearly closed, the cover shows where the page goes in. It used to show the
+// page squeezed into a dark square, which flashed as it turned into the cover.
+func TestGenieEndsOnTheCover(t *testing.T) {
+	const w, h = 400, 300
+	coverAt := func(amount float32) uint32 {
+		tt := ui.NewTester(func(c *ui.Context) {
+			ui.Box(c).Fill().Background(ui.RGB(255, 255, 255)).Children(func() {
+				ui.Box(c).Absolute().Top(0).Left(0).Right(0).Bottom(0).Background(ui.RGB(0, 0, 0)).Effect(fixedGenie(amount))
+			})
+		}, w, h)
+		tt.Frame()
+		r, _, _, _ := tt.Image().At(genieCoverLeft+genieCoverSize/2, h-genieCoverRise+genieCoverSize/2).RGBA()
+		return r >> 8
+	}
+	if v := coverAt(0); v > 16 {
+		t.Errorf("open, the page does not cover the cover: %d", v)
+	}
+	if v := coverAt(0.96); v < 240 {
+		t.Errorf("nearly closed, the page still covers the cover: %d", v)
+	}
+}
+
+// With NM_FRAMES set, saves Now Playing on its way out of a colored cover and
+// back into it.
 func TestGenieFrames(t *testing.T) {
 	dir := os.Getenv("NM_FRAMES")
 	if dir == "" {
@@ -112,17 +147,37 @@ func TestGenieFrames(t *testing.T) {
 	genieOnCPU = true
 	defer func() { genieOnCPU = false }()
 	a, tt := genieApp(t, 1180, 780)
+	pix := image.NewRGBA(image.Rect(0, 0, 8, 8))
+	draw.Draw(pix, pix.Bounds(), image.NewUniform(color.RGBA{230, 60, 90, 255}), image.Point{}, draw.Src)
+	for _, key := range []string{spotify.Sized("c", 120), spotify.Sized("c", 600), spotify.Sized("c", 600) + "#backdrop"} {
+		a.art.art[key] = &artwork{bmp: ui.NewBitmap(pix), tint: ui.RGB(230, 60, 90)}
+	}
+	a.pl.Queue()[0].Album.PicURL = "c"
+	save := func(name string) {
+		f, err := os.Create(filepath.Join(dir, name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer f.Close()
+		png.Encode(f, tt.Image())
+	}
 	tt.Frame()
 	a.nowPlaying = true
 	tt.Frame()
 	for i := range 6 {
-		f, err := os.Create(filepath.Join(dir, fmt.Sprintf("genie-%d.png", i)))
-		if err != nil {
-			t.Fatal(err)
-		}
-		png.Encode(f, tt.Image())
-		f.Close()
+		save(fmt.Sprintf("genie-%d.png", i))
 		tt.Advance(genieTime / 5)
+		tt.Frame()
+	}
+	tt.Advance(npSettle)
+	tt.Frame()
+	a.nowPlaying = false
+	tt.Frame()
+	for i := range 11 {
+		if i >= 4 {
+			save(fmt.Sprintf("close-%02d.png", i))
+		}
+		tt.Advance(genieTime / 10)
 		tt.Frame()
 	}
 }

@@ -25,7 +25,10 @@ var genieOnCPU = false
 
 // genieShader funnels its content into Target (x, y, width, height), as
 // macOS's Genie does: first the bottom narrows to Target along an S-curve,
-// then the content slides down through the curve.
+// then the content slides down through the curve. Nearing Target it fades, and
+// is gone before it would fit in it, so that what is under Target, the real
+// cover, shows all along: squeezed into Target, the page would show as a small
+// dark square, and then turn into the cover at once.
 var genieShader = shader.MustCompile(`package main
 
 var Progress float
@@ -44,7 +47,9 @@ func LayerEffect(pos vec2) vec4 {
 	v := (pos.y - top) / (bottom - top)
 	edge := clamp(pos.x-left+0.5, 0.0, 1.0) * clamp(right-pos.x+0.5, 0.0, 1.0) *
 		clamp(pos.y-top+0.5, 0.0, 1.0) * clamp(bottom-pos.y+0.5, 0.0, 1.0)
-	return layerSample(vec2(u*size.x, v*size.y)) * edge
+	near := smoothstep(Target.y-48.0, Target.y+8.0, pos.y) * smoothstep(0.3, 0.75, Progress)
+	fade := (1.0 - near) * (1.0 - smoothstep(0.75, 0.95, Progress))
+	return layerSample(vec2(u*size.x, v*size.y)) * edge * fade
 }
 `)
 
