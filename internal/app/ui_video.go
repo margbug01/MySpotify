@@ -24,6 +24,10 @@ const (
 // before the controls, and the pointer, go.
 const mvIdle = 3 * time.Second
 
+// buttonGap is the air between the ways to show a video and the window's
+// buttons, kept once the queue beside it is closed.
+const buttonGap = 12
+
 var black = ui.RGB(0, 0, 0)
 
 // mvButton plays the song's music video instead of it, or the song again:
@@ -197,13 +201,15 @@ func (a *app) npTheater(c *ui.Context, tr *spotify.Track, art *artwork, accent u
 		}
 		// The video, its controls over it, beside the queue.
 		ui.Box(c.Key("mv-stage")).Absolute().Top(0).Left(0).Bottom(0).Right(side).Children(func() {
-			a.mvStage(c, tr, art, accent, now)
+			a.mvStage(c, tr, art, accent, now, side)
 		})
 	})
 }
 
 // mvStage is the music video filling Now Playing, its controls over it.
-func (a *app) mvStage(c *ui.Context, tr *spotify.Track, art *artwork, accent ui.Color, now time.Time) {
+// side is the width of the queue beside the video, which the stage stops
+// short of.
+func (a *app) mvStage(c *ui.Context, tr *spotify.Track, art *artwork, accent ui.Color, now time.Time, side float32) {
 	pl := a.pl
 	ui.Column(c).Absolute().Top(0).Left(0).Right(0).Bottom(0).Children(func() {
 		ui.WebView(c, a.mvPage()).Grow(1).Label("MV")
@@ -250,18 +256,23 @@ func (a *app) mvStage(c *ui.Context, tr *spotify.Track, art *artwork, accent ui.
 	}
 	reveal(head, shown).Children(func() {
 		// The top strip drags the window and holds the back button in the
-		// top-left corner; the ways to show the video sit below it, clear
-		// of the window's buttons (Windows).
+		// top-left corner, the ways to show the video on its right. The
+		// queue beside the video covers the window's buttons (Windows);
+		// with it closed, the ways leave them their room plus buttonGap.
+		bar := c.TitleBar()
 		left := float32(20)
-		if c.TitleBar().Left > 0 {
-			left = c.TitleBar().Left + 8
+		if bar.Left > 0 {
+			left = bar.Left + 8
 		}
-		ui.Row(c).Height(topBar(c)).Padding(0, 0, 0, left).AlignItems(ui.Center).DragWindow().Children(func() {
+		right := float32(28)
+		if room := bar.Right - side + buttonGap; room > right {
+			right = room
+		}
+		ui.Row(c).Height(topBar(c)).Padding(0, right, 0, left).AlignItems(ui.Center).Gap(10).DragWindow().Children(func() {
 			if iconButton(c.Key("close"), iconBack, 18, white.Alpha(0.8), "返回").Clicked() {
 				a.nowPlaying = false
 			}
-		})
-		ui.Row(c).Justify(ui.End).AlignItems(ui.Center).Gap(10).Padding(0, 28, 0, 28).Children(func() {
+			ui.Spacer(c)
 			if lines, _ := pl.Lyrics(); timed(lines) {
 				tr := pl.Current()
 				name := lyricsName(tr)
