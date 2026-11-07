@@ -74,3 +74,23 @@ func TestHotkeyRecordGivesUp(t *testing.T) {
 		t.Fatalf("Delete: shortcuts %v, registered %d, waiting for %q", a.settings.Hotkeys, len(regs), a.recording)
 	}
 }
+
+// Leaving the settings gives up a recording, though the page it sat on will
+// not be built again to see the button lose the focus: the shortcuts come
+// back as the page is left.
+func TestHotkeyRecordGivesUpOnLeaving(t *testing.T) {
+	regs := swapHotkeys(t)
+	a := newTestApp()
+	a.settings.Hotkeys = map[string]string{"play": "Ctrl+Alt+Space"}
+	a.applyHotkeys()
+	tt := settingsTester(a)
+	click(t, tt, "播放/暂停的快捷键")
+	if len(regs) != 0 {
+		t.Fatal("waiting for keys, the shortcuts still take theirs")
+	}
+	a.open(route{page: pageHome})
+	tt.Frame()
+	if a.recording != "" || regs["Ctrl+Alt+Space"] == nil {
+		t.Fatalf("left the settings: waiting for %q, registered %d", a.recording, len(regs))
+	}
+}
