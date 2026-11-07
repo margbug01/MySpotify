@@ -58,12 +58,7 @@ func (a *app) measureCache() {
 	}
 	go func() {
 		n := cache.Size()
-		a.post(func() {
-			a.cacheUsed = n
-			if a.settingsWin != nil {
-				a.settingsWin.Invalidate()
-			}
-		})
+		a.post(func() { a.cacheUsed = n })
 	}()
 }
 

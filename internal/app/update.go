@@ -72,18 +72,6 @@ func myGoUpdates(post func(func())) updates {
 	}
 }
 
-// postSettings is post, with the settings window drawn again too: what
-// updating is at shows there, and post only draws the main window and the
-// notch.
-func (a *app) postSettings(fn func()) {
-	a.post(func() {
-		fn()
-		if a.settingsWin != nil {
-			a.settingsWin.Invalidate()
-		}
-	})
-}
-
 // checkUpdate asks whether there is a newer version. manual is the listener
 // asking, who is told why it failed; a check of the app's own fails quietly.
 func (a *app) checkUpdate(manual bool) {
