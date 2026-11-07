@@ -542,7 +542,9 @@ func (a *app) accountMenu(c *ui.Context, row ui.Element) {
 			a.accountOpen = false
 			a.openSettings()
 		}
-		ui.Box(c).Height(0.5).Margin(4, 8).Background(pop.edge)
+		// A box shorter than a device pixel snaps to none of them at a
+		// fractional scale; a Divider keeps one at every scale.
+		ui.Divider(c).Background(pop.edge).Margin(4, 8)
 		if a.menuItem(c, iconSignOut, "退出登录", "").Clicked() {
 			a.accountOpen = false
 			a.signOut()
