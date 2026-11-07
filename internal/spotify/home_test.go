@@ -133,3 +133,35 @@ func TestDecorateNamesWhatIsOnlyAURI(t *testing.T) {
 		t.Fatalf("decorated %+v", got)
 	}
 }
+
+// A podcast's page decodes each episode's release date alongside its duration and playability.
+func TestShowEpisodesIncludeReleaseDate(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var q struct {
+			OperationName string `json:"operationName"`
+		}
+		json.NewDecoder(r.Body).Decode(&q)
+		switch q.OperationName {
+		case "queryShowMetadataV2":
+			fmt.Fprint(w, `{"data":{"podcastUnionV2":{"__typename":"Podcast","uri":"spotify:show:s1","name":"相声精选","publisher":{"name":"德云社"}}}}`)
+		case "queryPodcastEpisodes":
+			fmt.Fprint(w, `{"data":{"podcastUnionV2":{"episodesV2":{"totalCount":1,"items":[{"entity":{"_uri":"spotify:episode:e1","data":{"name":"第一集","duration":{"totalMilliseconds":665000},"releaseDate":{"isoString":"2026-03-15T08:00:00Z"},"playability":{"playable":true}}}}]}}}}`)
+		}
+	}))
+	defer srv.Close()
+	pf := pathfinderURL
+	pathfinderURL = srv.URL
+	SetIdentity(Identity{Token: "t", Expires: time.Now().Add(time.Hour)})
+	defer func() {
+		pathfinderURL = pf
+		SetIdentity(Identity{})
+	}()
+
+	pl, err := PlaylistDetail("spotify:show:s1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pl.Tracks) != 1 || pl.Tracks[0].Released != "2026-03-15" || pl.Tracks[0].Duration != 665000 {
+		t.Fatalf("tracks = %+v", pl.Tracks)
+	}
+}
