@@ -38,18 +38,14 @@ func TestPodcastEpisodes(t *testing.T) {
 		t.Errorf("the count shows %q", tt.Texts())
 	}
 	for _, item := range []string{"开启电台", "查看歌曲", "添加到歌单", "查看播客：相声精选"} {
-		if err := tt.RightClick("第一集"); err != nil {
-			t.Fatal(err)
-		}
+		tt.RightClickAt(r.X+40, r.Y+r.H/2)
 		if err := tt.ChooseMenuItem(item); err == nil {
 			t.Errorf("an episode's menu offers %s", item)
 		}
 		tt.Key(0, ui.KeyEscape)
 		tt.Frame()
 	}
-	if err := tt.RightClick("第一集"); err != nil {
-		t.Fatal(err)
-	}
+	tt.RightClickAt(r.X+40, r.Y+r.H/2)
 	if err := tt.ChooseMenuItem("下一首播放"); err != nil {
 		t.Fatalf("%v; the menu shows %q", err, tt.Menu())
 	}

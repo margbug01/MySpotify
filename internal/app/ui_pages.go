@@ -38,22 +38,16 @@ func weekday(t time.Time) string {
 	return [...]string{"星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"}[t.Weekday()]
 }
 
-/**
- * Reports whether day falls within the Monday-through-today span of now's
- * calendar week.
- */
+// inCurrentWeek reports whether day falls between the Monday of now's calendar
+// week and today.
 func inCurrentWeek(day, now time.Time) bool {
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
 	monday := today.AddDate(0, 0, -(int(today.Weekday())+6)%7)
 	return !day.Before(monday) && !day.After(today)
 }
 
-/**
- * Formats an ISO 2006-01-02 release date for podcast episode rows: dates in the
- * Monday-through-today span of now's calendar week render as their Chinese
- * weekday name, other dates in the same year as mm-dd, and earlier years as
- * yyyy-mm-dd.
- */
+// episodeDate is a release date, as 2006-01-02, as an episode's row shows it:
+// its weekday within this week, mm-dd within this year, yyyy-mm-dd before.
 func episodeDate(released string, now time.Time) string {
 	day, err := time.ParseInLocation(time.DateOnly, released, time.Local)
 	if err != nil {
