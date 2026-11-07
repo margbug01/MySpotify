@@ -53,6 +53,30 @@ func (a *app) settingsPage(c *ui.Context) {
 			})
 		}
 
+		group("账号", func() {
+			if a.profile == nil {
+				row("未登录", "登录 Spotify 后才能听歌，免费账号也能完整播放", func() {
+					// In the main window already, which the login
+					// window opens over.
+					if ui.PrimaryButton(c.Key("login"), "登录").Clicked() {
+						a.openLogin()
+					}
+				})
+				return
+			}
+			prof := a.profile
+			ui.Row(c).Padding(12, 16).Gap(12).AlignItems(ui.Center).Children(func() {
+				a.profileAvatar(c, prof, 36)
+				ui.Column(c).Grow(1).Gap(2).Children(func() {
+					ui.Text(c, prof.Nickname).FontSize(13.5).FontWeight(600)
+					ui.Text(c, cmp.Or(prof.Email, "已登录 Spotify")).FontSize(12).TextColor(p.muted)
+				})
+				if ui.Button(c.Key("logout"), "退出登录").Clicked() {
+					a.signOut()
+				}
+			})
+		})
+
 		// Only on macOS, the one with a notch player.
 		if a.notch != nil {
 			group("刘海播放器", func() {
@@ -172,30 +196,6 @@ func (a *app) settingsPage(c *ui.Context) {
 			row("清除缓存", "删除保存在本机的全部歌曲", func() {
 				if ui.Button(c.Key("clear-cache"), "清除").Disabled(a.cacheUsed <= 0).Clicked() {
 					a.clearCache()
-				}
-			})
-		})
-
-		group("账号", func() {
-			if a.profile == nil {
-				row("未登录", "登录 Spotify 后才能听歌，免费账号也能完整播放", func() {
-					// In the main window already, which the login
-					// window opens over.
-					if ui.PrimaryButton(c.Key("login"), "登录").Clicked() {
-						a.openLogin()
-					}
-				})
-				return
-			}
-			prof := a.profile
-			ui.Row(c).Padding(12, 16).Gap(12).AlignItems(ui.Center).Children(func() {
-				a.profileAvatar(c, prof, 36)
-				ui.Column(c).Grow(1).Gap(2).Children(func() {
-					ui.Text(c, prof.Nickname).FontSize(13.5).FontWeight(600)
-					ui.Text(c, cmp.Or(prof.Email, "已登录 Spotify")).FontSize(12).TextColor(p.muted)
-				})
-				if ui.Button(c.Key("logout"), "退出登录").Clicked() {
-					a.signOut()
 				}
 			})
 		})
