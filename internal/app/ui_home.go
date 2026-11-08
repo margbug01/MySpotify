@@ -373,7 +373,9 @@ func (a *app) sectionPage(c *ui.Context) {
 func (a *app) homeCard(c *ui.Context, it *spotify.HomeItem) {
 	p := a.pal
 	name := itemName(it)
-	card := ui.ButtonBase(c).Column().Gap(4).Padding(12).Radius(8).AlignItems(ui.Stretch).FocusRing(false).Label(name)
+	// Justify(Start) resets ButtonBase's centering, which in a grid pushes
+	// the cover down beside a taller card.
+	card := ui.ButtonBase(c).Column().Gap(4).Padding(12).Radius(8).AlignItems(ui.Stretch).Justify(ui.Start).FocusRing(false).Label(name)
 	hovered := card.Hovered()
 	bg := p.text.Alpha(0)
 	if hovered {
