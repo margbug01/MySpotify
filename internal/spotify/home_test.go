@@ -165,3 +165,19 @@ func TestShowEpisodesIncludeReleaseDate(t *testing.T) {
 		t.Fatalf("tracks = %+v", pl.Tracks)
 	}
 }
+
+// The liked songs Spotify names and pictures in the listener's language,
+// as in what was played lately, take Vinyl's name and no picture: they
+// showed as 已点赞的歌曲 beside 我喜欢的音乐 in the sidebar (#14).
+func TestLikedSongsKeepTheirNameFromSpotify(t *testing.T) {
+	var e gqlEntity
+	err := json.Unmarshal([]byte(`{"__typename":"Playlist","uri":"spotify:collection:tracks","name":"已点赞的歌曲",
+		"images":{"items":[{"sources":[{"url":"https://misc.scdn.co/liked-songs/liked-songs-640.png","width":640}]}]},"content":{"totalCount":12}}`), &e)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pl, ok := e.playlist()
+	if !ok || !pl.Liked() || pl.Name != likedName || pl.Cover() != "" || pl.TrackCount != 12 {
+		t.Errorf("liked songs = %+v, %v", pl, ok)
+	}
+}

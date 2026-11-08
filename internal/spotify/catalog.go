@@ -107,6 +107,10 @@ func (p *Playlist) Cover() string { return p.CoverURL }
 // LikedURI stands for the listener's liked songs.
 const LikedURI = "spotify:collection:tracks"
 
+// likedName is what the liked songs are called everywhere, whatever name
+// Spotify gives them in the listener's language.
+const likedName = "我喜欢的音乐"
+
 // Liked reports whether p is the listener's liked songs.
 func (p *Playlist) Liked() bool { return p.ID == LikedURI }
 
@@ -368,6 +372,11 @@ func (e *gqlEntity) artist() (ArtistCard, bool) {
 
 // playlist returns e as a Playlist, or false if it is no list of songs.
 func (e *gqlEntity) playlist() (Playlist, bool) {
+	if e.URI == LikedURI {
+		// Not Spotify's name and picture, so the liked songs from its apps
+		// look as they do where Vinyl makes them (#14).
+		return Playlist{ID: LikedURI, Name: likedName, TrackCount: e.Content.TotalCount}, true
+	}
 	pl := Playlist{ID: e.URI, Name: e.Name, Description: stripTags(e.Description), TrackCount: e.Content.TotalCount}
 	switch e.Typename {
 	case "Playlist":
@@ -954,7 +963,7 @@ type Library struct {
 
 // UserLibrary returns the library of user, the listener signed in.
 func UserLibrary(user string) (*Library, error) {
-	lib := &Library{Made: []Playlist{{ID: LikedURI, Name: "我喜欢的音乐"}}}
+	lib := &Library{Made: []Playlist{{ID: LikedURI, Name: likedName}}}
 	for offset := 0; ; {
 		var res struct {
 			Me struct {
@@ -1027,7 +1036,7 @@ func libraryPage(offset, limit int) ([]libraryTrack, error) {
 
 // likedSongs returns the listener's liked songs, the latest first.
 func likedSongs() (*Playlist, error) {
-	pl := &Playlist{ID: LikedURI, Name: "我喜欢的音乐"}
+	pl := &Playlist{ID: LikedURI, Name: likedName}
 	for offset := 0; ; {
 		items, err := libraryPage(offset, 50)
 		if err != nil {
@@ -1044,9 +1053,6 @@ func likedSongs() (*Playlist, error) {
 		offset += len(items)
 		if len(items) < 50 {
 			pl.TrackCount = len(pl.Tracks)
-			if len(pl.Tracks) > 0 {
-				pl.CoverURL = pl.Tracks[0].Album.PicURL
-			}
 			return pl, nil
 		}
 	}

@@ -118,7 +118,7 @@ func (a *app) playlistCard(c *ui.Context, pl *spotify.Playlist) {
 		}
 		art.AnimatePose(lift, ui.Snappy)
 		art.Children(func() {
-			a.coverFill(c, pl.Cover(), 400, 10)
+			a.listArt(c, pl, 400, 10)
 			a.coverPlayButton(c, pl.ID, hovered)
 		})
 		ui.Text(c, pl.Name).FontSize(13).FontWeight(500).MaxLines(2).LineHeight(1.35)
@@ -142,6 +142,16 @@ func (a *app) coverFill(c *ui.Context, url string, px int, radius float32) {
 		box.Background(a.pal.hover)
 	}
 	box.Children(func() { artImage(c, bmp, radius, in) })
+}
+
+// listArt fills its parent with pl's cover, the liked songs' drawn as
+// everywhere else.
+func (a *app) listArt(c *ui.Context, pl *spotify.Playlist, px int, radius float32) {
+	if pl.Liked() {
+		likedArt(c, radius, float32(px)/6)
+		return
+	}
+	a.coverFill(c, pl.Cover(), px, radius)
 }
 
 // coverPlayButton plays a playlist from its card, without opening it.
@@ -214,7 +224,7 @@ func (a *app) playlistHeader(c *ui.Context, pl *spotify.Playlist) {
 	p := a.pal
 	ui.Row(c).Gap(28).AlignItems(ui.End).Padding(0, 0, 26, 0).Children(func() {
 		ui.Box(c).Size(212, 212).Radius(14).Shadow(0, 18, 40, -10, p.cardShade).Children(func() {
-			a.coverFill(c, pl.Cover(), 600, 14)
+			a.listArt(c, pl, 600, 14)
 		})
 		ui.Column(c).Grow(1).Shrink(1).MinWidth(0).Gap(8).Children(func() {
 			kind, unit := "歌单", "首"

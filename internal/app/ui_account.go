@@ -691,21 +691,12 @@ func (a *app) myPlaylist(c *ui.Context, pl *spotify.Playlist, mine, grid bool) {
 	}
 	b.Children(func() {
 		if grid {
-			art := ui.Box(c).AspectRatio(1).Radius(6)
-			if pl.Liked() {
-				art.Background(p.accent).Center().Children(func() {
-					ui.Icon(c, iconHeartFill).Size(28, 28).TextColor(p.onAccent)
-				})
-			} else {
-				art.Children(func() { a.coverFill(c, pl.Cover(), 200, 6) })
-			}
+			ui.Box(c).AspectRatio(1).Radius(6).Children(func() { a.listArt(c, pl, 200, 6) })
 			ui.Text(c, pl.Name).FontSize(12.5).SingleLine()
 			return
 		}
 		if pl.Liked() {
-			ui.Box(c).Size(22, 22).Radius(5).Background(p.accent).Center().Children(func() {
-				ui.Icon(c, iconHeartFill).Size(12, 12).TextColor(p.onAccent)
-			})
+			ui.Box(c).Size(22, 22).Children(func() { likedArt(c, 5, 12) })
 		} else {
 			a.cover(c, pl.Cover(), 80, 22, 5)
 		}
