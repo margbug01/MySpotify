@@ -7,6 +7,7 @@ import (
 	"math/rand/v2"
 	"net/http"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/egoist/mygo"
@@ -218,6 +219,21 @@ func (p *Player) ended() {
 		Fault() (string, int, time.Duration)
 	}); ok {
 		if msg, licence, wait := f.Fault(); msg != "" {
+			if strings.HasPrefix(msg, "backendError ") {
+				p.pending = p.Position()
+				p.stop()
+				p.Web.Close()
+				p.Web = nil
+				p.err, p.playing = "音频播放进程已退出，点击播放重试", false
+				p.sync()
+				return
+			}
+			if strings.HasPrefix(msg, "keySystemError keySystemNoAccess") || strings.HasPrefix(msg, "keySystemError keySystemNoEME") {
+				p.err = "当前播放器不支持所需 DRM（Widevine / EME），无法播放加密媒体"
+				p.playing = false
+				p.sync()
+				return
+			}
 			if p.showsVideo {
 				p.videoFailed(msg)
 				return
@@ -343,7 +359,10 @@ var afterFunc = func(d time.Duration, fn func()) { time.AfterFunc(d, fn) }
 // skip goes on from the track at order[at], which cannot play, unless
 // nothing in the queue can: skipped of them so far.
 func (p *Player) skip(at, skipped int) {
-	if skipped+1 >= len(p.order) {
+	if skipped+1 >= len(p.order) || skipped+1 >= 3 {
+		if skipped+1 >= 3 {
+			p.err = "连续三首无法播放，已停止自动切歌"
+		}
 		p.playing = false
 		p.sync()
 		return

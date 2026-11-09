@@ -34,6 +34,24 @@ func AccountIdentity(cookies string) (Identity, error) {
 	if err != nil {
 		return Identity{}, fmt.Errorf("spotify: account token: %w", err)
 	}
+	return accountIdentity(r)
+}
+
+// AccountIdentityViaBrowser asks through the browser's own cookie store. This
+// avoids exporting HttpOnly cookies when the WebView cannot enumerate a cold store.
+func AccountIdentityViaBrowser(fetch func(string) ([]byte, error)) (Identity, error) {
+	body, err := fetch(tokenRequestURL())
+	if err != nil {
+		return Identity{}, err
+	}
+	r, err := parseTokenReply(body)
+	if err != nil {
+		return Identity{}, err
+	}
+	return accountIdentity(r)
+}
+
+func accountIdentity(r tokenReply) (Identity, error) {
 	// Before the client token is asked for: a visitor's would be thrown away.
 	if r.id.Anonymous {
 		return Identity{}, ErrStaleCookies
@@ -77,7 +95,7 @@ type tokenReply struct {
 
 // apiToken asks /api/token for an identity, with cookies (none for a
 // visitor). The access token lasts about an hour.
-func apiToken(cookies string) (tokenReply, error) {
+func tokenRequestURL() string {
 	now := time.Now()
 	sec := totpSecrets[0]
 
@@ -89,8 +107,11 @@ func apiToken(cookies string) (tokenReply, error) {
 		serverTime = t
 	}
 
-	url := apiTokenURL + "?" + tokenQuery(sec.unmask(), sec.version, now, serverTime)
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	return apiTokenURL + "?" + tokenQuery(sec.unmask(), sec.version, now, serverTime)
+}
+
+func apiToken(cookies string) (tokenReply, error) {
+	req, err := http.NewRequest(http.MethodGet, tokenRequestURL(), nil)
 	if err != nil {
 		return tokenReply{}, err
 	}
@@ -112,6 +133,10 @@ func apiToken(cookies string) (tokenReply, error) {
 	if res.StatusCode != http.StatusOK {
 		return tokenReply{}, fmt.Errorf("/api/token: %s", res.Status)
 	}
+	return parseTokenReply(body)
+}
+
+func parseTokenReply(body []byte) (tokenReply, error) {
 	var v struct {
 		ClientID    string `json:"clientId"`
 		AccessToken string `json:"accessToken"`
@@ -126,7 +151,7 @@ func apiToken(cookies string) (tokenReply, error) {
 	}
 	id := Identity{Token: v.AccessToken, Expires: time.UnixMilli(v.Expires), Anonymous: v.Anonymous}
 	if v.Expires == 0 {
-		id.Expires = now.Add(30 * time.Minute)
+		id.Expires = time.Now().Add(30 * time.Minute)
 	}
 	return tokenReply{id: id, clientID: v.ClientID}, nil
 }

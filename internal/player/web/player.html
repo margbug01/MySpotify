@@ -273,4 +273,20 @@ window.vinyl = {
   },
 };
 send(0, 'ready');
+const controlKey = typeof location === 'undefined' ? null : /^#control=([a-f0-9]{64})$/.exec(location.hash);
+if (controlKey) {
+  history.replaceState(null, '', location.pathname + location.search);
+  (async () => {
+    for (;;) {
+      try {
+        const response = await fetch('/commands', { headers: { 'X-Vinyl-Key': controlKey[1] } });
+        if (!response.ok) return;
+        const command = await response.json();
+        if (command) Function(command)();
+      } catch {
+        return;
+      }
+    }
+  })();
+}
 </script>

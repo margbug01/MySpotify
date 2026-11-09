@@ -16,6 +16,7 @@ import (
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
+	"vinyl/internal/qtweb"
 	"vinyl/internal/spotify"
 )
 
@@ -24,10 +25,12 @@ import (
 // spotify, again whenever that runs out; shown, it is where the listener
 // signs in. Closed in between, its page gives back the memory it took.
 type signin struct {
-	win     *mygo.Window
-	cookies string
-	shown   bool // the window shows, for the listener to sign in
-	gen     int  // counts the times it showed, to stop the wait of one closed
+	win      *mygo.Window
+	qtID     uint64
+	qtCancel context.CancelFunc
+	cookies  string
+	shown    bool // the window shows, for the listener to sign in
+	gen      int  // counts the times it showed, to stop the wait of one closed
 }
 
 // captureMu lets one capture use the window at a time.
@@ -46,7 +49,7 @@ func (a *app) boot() {
 		// Nobody ever signed in: there is nothing to renew, and loading
 		// the web player would only take ten seconds to say so. The
 		// visitor's pages show at once instead.
-		if accountCookies() == "" && loadAccountCookies() == "" {
+		if !hasAccountCookies() {
 			a.post(func() {
 				if a.profile == nil {
 					a.signedIn(nil)
@@ -158,6 +161,10 @@ func (a *app) signinWindow(url string) *mygo.Window {
 
 // closeSignin closes the web player's window, on the main thread.
 func (a *app) closeSignin() {
+	if cancel := a.signin.qtCancel; cancel != nil {
+		a.signin.qtCancel, a.signin.qtID, a.signin.shown = nil, 0, false
+		cancel()
+	}
 	if w := a.signin.win; w != nil {
 		a.signin.win, a.signin.shown = nil, false
 		w.Close()
@@ -167,6 +174,9 @@ func (a *app) closeSignin() {
 // renewIdentity loads the web player out of sight and waits for its token,
 // anonymous if nobody is signed in. It blocks, so it runs on a goroutine.
 func (a *app) renewIdentity() (spotify.Identity, error) {
+	if qtweb.Enabled() {
+		return a.renewQtIdentity()
+	}
 	// A sign-out meanwhile makes what this finds no one's.
 	epoch := accountEpoch()
 	// The cookies kept when the listener signed in are enough for a token of
@@ -229,6 +239,10 @@ func (a *app) renewIdentity() (spotify.Identity, error) {
 // notes it, and its client token, which comes a moment later. Unless
 // anonymous will do, it waits on for the listener to sign in.
 func capture(ctx context.Context, page *mygo.Page, signedIn bool) (spotify.Identity, error) {
+	return captureIdentity(ctx, page.EvalContext, signedIn)
+}
+
+func captureIdentity(ctx context.Context, eval func(context.Context, string) (any, error), signedIn bool) (spotify.Identity, error) {
 	var since time.Time
 	for {
 		select {
@@ -236,7 +250,10 @@ func capture(ctx context.Context, page *mygo.Page, signedIn bool) (spotify.Ident
 			return spotify.Identity{}, ctx.Err()
 		case <-time.After(400 * time.Millisecond):
 		}
-		v, err := page.EvalContext(ctx, "JSON.stringify(window.__vinyl || null)")
+		v, err := eval(ctx, "JSON.stringify(window.__vinyl || null)")
+		if errors.Is(err, errQtAuthClosed) {
+			return spotify.Identity{}, err
+		}
 		s, _ := v.(string)
 		if err != nil || s == "" || s == "null" {
 			continue
@@ -257,6 +274,10 @@ func capture(ctx context.Context, page *mygo.Page, signedIn bool) (spotify.Ident
 // openLogin shows the web player's sign-in page, and signs the app in once
 // the listener has.
 func (a *app) openLogin() {
+	if qtweb.Enabled() {
+		a.openQtLogin()
+		return
+	}
 	s := &a.signin
 	s.gen++
 	gen := s.gen
@@ -368,6 +389,12 @@ func (a *app) signedIn(prof *spotify.Profile) {
 }
 
 func accountCookies() string {
+	if qtweb.Enabled() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		value, _ := qtAccountCookies(ctx)
+		return value
+	}
 	cookies, err := mygo.Cookies.List(mygo.CookieFilter{URL: spotify.AccountURL})
 	if err != nil {
 		return ""
@@ -445,6 +472,7 @@ func (a *app) profileAvatar(c *ui.Context, prof *spotify.Profile, size float32) 
 
 func (a *app) signOut() {
 	a.signin.gen++
+	a.closeSignin()
 	forgetAccountCookies()
 	// Forgets the guest too, so that browsing goes on as a new one rather
 	// than as whoever was here before.
@@ -454,6 +482,12 @@ func (a *app) signOut() {
 	}
 	a.signedIn(nil)
 	go func() {
+		if qtweb.Enabled() {
+			if err := clearQtAccount(); err != nil {
+				log.Printf("sign out: %v", err)
+			}
+			return
+		}
 		if err := mygo.Cookies.Clear(); err != nil {
 			log.Printf("sign out: %v", err)
 		}

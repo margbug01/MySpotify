@@ -4,8 +4,14 @@
   "slug": "vinyl",
   "version": "0.4.14",
   "out": "build",
-  "resources": ["LICENSE", "licenses"],
+  "resources": ["LICENSE", "licenses", "scripts/install-linux-webview.sh"],
   "macos": { "icon": "AppIcon.icon" },
+  "linux": {
+    "comment": "Spotify desktop client (experimental Linux support)",
+    "categories": ["AudioVideo", "Audio", "Player"],
+    "command": "vinyl",
+    "webview": true
+  },
   "updates": {
     "publicKey": "PpF+fvU7GVBIY9OAsE64fhYTEJtDccZyBk692dRZWCc=",
     "github": "margbug01/MySpotify",

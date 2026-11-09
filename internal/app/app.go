@@ -15,6 +15,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"vinyl/internal/player"
+	"vinyl/internal/qtweb"
 	"vinyl/internal/spotify"
 )
 
@@ -400,6 +401,7 @@ func Run() error {
 	})
 	mygo.App.OnBeforeQuit(func(*mygo.QuitEvent) {
 		a.quitting = true
+		a.closeSignin()
 		a.stopConnect()
 		if a.mineTimer != nil {
 			a.mineTimer.Stop()
@@ -414,6 +416,7 @@ func Run() error {
 	mygo.App.OnWindowAllClosed(func() {})
 	mygo.App.OnActivate(func(bool) { a.showMain() })
 	mygo.App.OnSecondInstance(func([]string, string) { a.showMain() })
+	defer qtweb.Shutdown()
 	return mygo.App.Run()
 }
 

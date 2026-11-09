@@ -18,6 +18,8 @@ A native interface, lyrics that scroll, music videos and video podcasts. Free ac
 
 </div>
 
+Experimental Linux `.deb` / `.tar.gz` builds are available. On amd64, Qt WebEngine is the default backend and shares one engine for sign-in and playback; existing-session migration, renewal after restart, and 75 seconds of actual music playback have passed under WSLg without launching Chrome. A separate Qt runtime and the Widevine component from official Chrome are required. Linux is not yet a stable supported platform. See the [installation steps, memory measurements and limitations](LINUX.md#qt-webengine-后端2026-11-10) (Chinese).
+
 > [!IMPORTANT]
 > MySpotify is a personal project. It has no connection to Spotify and isn't endorsed by it. It uses the internal interfaces of Spotify's web player rather than a public API, and Spotify can change them at any time. Using Spotify this way likely goes against its terms of use and could get your account restricted. Use only your own account, at your own risk. See [Risks and limits](#risks-and-limits).
 

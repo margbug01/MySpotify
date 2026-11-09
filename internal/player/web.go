@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/subtle"
 	"embed"
 	"encoding/json"
 	"fmt"
@@ -32,22 +33,25 @@ var webFiles embed.FS
 // commands through Eval, and reports what plays back to the server on
 // 127.0.0.1 it is served from, which passes the media and licences through.
 type Web struct {
-	addr     string
-	win      *mygo.Window
-	view     *mygo.WebView // the page of NewVideoWeb, in its host's view
-	cmds     chan string
-	vol      chan float64 // the latest volume only
-	ready    chan struct{}
-	once     sync.Once
-	done     chan struct{}
-	stopOnce sync.Once
-	server   *http.Server
-	ctx      context.Context
-	cancel   context.CancelFunc
+	addr        string
+	browserKey  string
+	stopBrowser func()
+	win         *mygo.Window
+	view        *mygo.WebView // the page of NewVideoWeb, in its host's view
+	cmds        chan string
+	vol         chan float64 // the latest volume only
+	ready       chan struct{}
+	once        sync.Once
+	done        chan struct{}
+	stopOnce    sync.Once
+	server      *http.Server
+	ctx         context.Context
+	cancel      context.CancelFunc
 
-	mu   sync.Mutex
-	gen  int
-	outs map[int]*webOut
+	mu         sync.Mutex
+	browserErr string
+	gen        int
+	outs       map[int]*webOut
 	// heads are the starts of files fetched ahead of playing (Prefetch).
 	heads []*head
 
@@ -61,6 +65,13 @@ func NewWeb() (*Web, error) {
 	w, err := listen()
 	if err != nil {
 		return nil, err
+	}
+	if started, err := startLinuxBrowser(w); started || err != nil {
+		if err != nil {
+			w.Close()
+			return nil, err
+		}
+		return w, nil
 	}
 	w.win = mygo.NewWindow(mygo.WindowOptions{
 		Title: "Vinyl", Width: 320, Height: 240, Hidden: true, SkipTaskbar: true,
@@ -126,6 +137,9 @@ func (w *Web) Close() {
 		if w.server != nil {
 			w.server.Close()
 		}
+		if w.stopBrowser != nil {
+			w.stopBrowser()
+		}
 		if w.win != nil {
 			w.win.Close()
 		}
@@ -136,6 +150,24 @@ func (w *Web) Close() {
 		clear(w.outs)
 		w.mu.Unlock()
 	})
+}
+
+// browserFailed also reaches tracks opened after Chrome exits, or before OnEnd is set.
+func (w *Web) browserFailed() {
+	w.backendFailed("backendError Chrome audio backend exited")
+}
+
+func (w *Web) backendFailed(message string) {
+	w.mu.Lock()
+	w.browserErr = message
+	outputs := make([]*webOut, 0, len(w.outs))
+	for _, output := range w.outs {
+		outputs = append(outputs, output)
+	}
+	w.mu.Unlock()
+	for _, output := range outputs {
+		output.event("error", 0, message, 0)
+	}
 }
 
 func (w *Web) run() {
@@ -202,7 +234,7 @@ func (w *Web) Open(m *spotify.Media) Output {
 	o := &webOut{w: w, dur: m.Duration, at: time.Now()}
 	w.mu.Lock()
 	w.gen++
-	o.gen = w.gen
+	o.gen, o.err = w.gen, w.browserErr
 	if m.File != "" {
 		// A file plays as it is: the page asks for its bytes a range at a
 		// time, passed through from where it is.
@@ -306,6 +338,31 @@ func (w *Web) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		b, _ := webFiles.ReadFile("web/player.html")
 		rw.Header().Set("Content-Type", "text/html; charset=utf-8")
 		rw.Write(b)
+	case p == "/commands":
+		w.mu.Lock()
+		key := w.browserKey
+		w.mu.Unlock()
+		if r.Method != http.MethodGet || key == "" || subtle.ConstantTimeCompare([]byte(r.Header.Get("X-Vinyl-Key")), []byte(key)) != 1 {
+			http.Error(rw, "forbidden", http.StatusForbidden)
+			return
+		}
+		rw.Header().Set("Cache-Control", "no-store")
+		rw.Header().Set("Content-Type", "application/json")
+		timer := time.NewTimer(20 * time.Second)
+		defer timer.Stop()
+		var command string
+		select {
+		case command = <-w.cmds:
+		case volume := <-w.vol:
+			command = fmt.Sprintf("vinyl.volume(%.4f)", volume)
+		case <-timer.C:
+		case <-w.done:
+			rw.WriteHeader(http.StatusGone)
+			return
+		case <-r.Context().Done():
+			return
+		}
+		json.NewEncoder(rw).Encode(command)
 	case p == "/hls.js":
 		b, _ := webFiles.ReadFile("web/hls.min.js")
 		rw.Header().Set("Content-Type", "text/javascript")
@@ -543,6 +600,10 @@ func (o *webOut) follow(r *http.Request, i int, source, rg string, res *http.Res
 
 func (o *webOut) Play() {
 	o.mu.Lock()
+	if o.err != "" {
+		o.mu.Unlock()
+		return
+	}
 	o.playing = true
 	o.asked++
 	asked := o.asked
@@ -596,7 +657,11 @@ func (o *webOut) Duration() time.Duration {
 func (o *webOut) OnEnd(fn func()) (off func()) {
 	o.mu.Lock()
 	o.onEnd = fn
+	failed := o.err != ""
 	o.mu.Unlock()
+	if failed && fn != nil {
+		fn()
+	}
 	return func() {
 		o.mu.Lock()
 		o.onEnd = nil

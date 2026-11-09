@@ -18,6 +18,8 @@
 
 </div>
 
+Linux 提供实验性 `.deb` / `.tar.gz` 构建。amd64 默认使用 Qt WebEngine 后端，已在 WSLg 验证已有登录迁移、重启续期和 75 秒真实音乐播放，登录与播放共用引擎，无需启动 Chrome 浏览器。需另装 Qt 运行时及官方 Chrome 的 Widevine 组件，尚不属于稳定支持平台。安装方法、内存实测及限制见 [Linux 发版说明](LINUX.md#qt-webengine-后端2026-11-10)。
+
 > [!IMPORTANT]
 > MySpotify 是个人项目，和 Spotify 没有任何关系，也没有得到它的认可。它用的是 Spotify 网页播放器自己的内部接口，不是公开 API，Spotify 随时可能改掉；这样用 Spotify 很可能不符合它的用户条款，账号有被限制的风险。只用你自己的账号，后果自负。详见[「风险和边界」](#风险和边界)。
 

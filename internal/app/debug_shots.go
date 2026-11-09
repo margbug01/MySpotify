@@ -21,8 +21,13 @@ func init() {
 	if dir == "" {
 		return
 	}
-	// The scenes but mem take screenshots, which draw in software.
-	keepArtPixels = os.Getenv("NM_SCENE") != "mem"
+	// Only screenshot scenes retain pixels; playback and profiling use the normal cache.
+	switch os.Getenv("NM_SCENE") {
+	case "mem", "perf", "once", "play", "identity", "renewal":
+		keepArtPixels = false
+	default:
+		keepArtPixels = true
+	}
 	shotHook = func(a *app) {
 		// The scenes change settings to measure them: keep the
 		// listener's own as they were.
@@ -39,6 +44,22 @@ func init() {
 				mygo.RunOnMain(func() { fn(); a.redraw() })
 			}
 			mygo.RunOnMain(func() { a.win.Show(); a.win.Focus() })
+			if os.Getenv("NM_SCENE") == "renewal" {
+				// Verify renewal/migration without requesting a media licence.
+				for range 80 {
+					var ready, signedIn bool
+					mygo.RunOnMain(func() { ready, signedIn = a.accountGen > 0, a.profile != nil })
+					if ready {
+						println("identity ready", signedIn)
+						mygo.RunOnMain(mygo.App.Quit)
+						return
+					}
+					time.Sleep(500 * time.Millisecond)
+				}
+				println("identity timed out")
+				mygo.RunOnMain(mygo.App.Quit)
+				return
+			}
 			if os.Getenv("NM_SCENE") == "perf" {
 				// Muted, marks on stderr where each part begins, for the
 				// frame log of MYGO_FRAME_STATS.
@@ -321,7 +342,11 @@ func init() {
 					}
 					a.pl.PlayQueue(tracks, firstPlayable(tracks))
 				})
-				for i := range 10 {
+				seconds := 10
+				if duration, err := time.ParseDuration(os.Getenv("NM_PLAY_TIME")); err == nil && duration >= 10*time.Second && duration <= 3*time.Minute {
+					seconds = int(duration / time.Second)
+				}
+				for i := range seconds {
 					time.Sleep(time.Second)
 					mygo.RunOnMain(func() {
 						println(i+1, "s", a.pl.Current().Name, "playing", a.pl.Playing(), "loading", a.pl.Loading(),
