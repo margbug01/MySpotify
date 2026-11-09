@@ -34,12 +34,12 @@ go tool mygo build
 图标都由 `tools/icons.py` 画（Windows，要 Pillow，用 Edge 无头模式渲染 SVG）：`resources/icon.svg`/`icon.png` 是程序图标，`icon-small.svg` 是 16–24 像素用的简化版（两道纹、更粗），`icon.ico` 把两者按尺寸合在一起；`internal/app/tray.png` 是托盘和 Mac 菜单栏的模板图标（只有黑色和透明，Windows 深色任务栏上自动画成白色，macOS 自己染色）；`AppIcon.icon` 是 Mac Dock 用的 Icon Composer 文档（浅色/深色两种底，`mygo.json` 的 `macos.icon`，要在装了 Xcode 26 的 Mac 上 `mygo build` 才会编进去，否则退回 `icon.png` 生成的 `.icns`）。改了图标或版本号，先跑 `python tools/icons.py`，再重新生成图标、版本信息和 manifest 所在的 `rsrc_windows_amd64.syso`（版本号同时改 `mygo.json`）：
 
 ```
-go run github.com/tc-hib/go-winres@v0.3.3 simply --icon resources/icon.ico --manifest gui --product-name MySpotify --file-description MySpotify --product-version 0.4.15 --file-version 0.4.15 --original-filename MySpotify.exe --arch amd64 --out rsrc
+go run github.com/tc-hib/go-winres@v0.3.3 simply --icon resources/icon.ico --manifest gui --product-name MySpotify --file-description MySpotify --product-version 0.4.16 --file-version 0.4.16 --original-filename MySpotify.exe --arch amd64 --out rsrc
 ```
 
 ### 发版
 
-两个平台都在 Mac 上一次打出来。应用内更新只认用更新私钥签过名的包，所以发版必须用 `mygo build` 并带上私钥；`go build` 出来的版本不能自己更新。
+macOS arm64、Windows amd64 和 Linux amd64 在 Mac 上一次打出来。Linux 为实验支持，依赖安装与验收范围见 [LINUX.md](LINUX.md)。应用内更新只认用更新私钥签过名的包，所以发版必须用 `mygo build` 并带上私钥；`go build` 出来的版本不能自己更新。
 
 1. 改了 `go.mod` 的话，跟着改 `licenses/`（第三方许可证，随程序发出去）和里面的 `README.txt`；漏了的话 `go test` 会提醒。
 2. 改版本号：`mygo.json` 的 `version`，上面 go-winres 命令里的两个版本号（重新生成 syso）。「设置 › 关于」显示的版本直接读 `mygo.json`。
@@ -48,12 +48,14 @@ go run github.com/tc-hib/go-winres@v0.3.3 simply --icon resources/icon.ico --man
 
    ```sh
    MYGO_UPDATER_PRIVATE_KEY="$(cat "$HOME/Library/Application Support/mygo/update-keys/MySpotify/mygo-update.key")" \
-     go tool mygo build -platform darwin/arm64,windows/amd64
+     go tool mygo build -platform darwin/arm64,windows/amd64,linux/amd64
    ```
 
 5. 在 GitHub 上建 `v<版本>` 的 Release，先存成草稿，把附件都传上去，确认后再发布并设为 Latest。应用读的是最新 Release 里的清单，草稿对它不可见，不会出现清单已经能读到、压缩包还没传完的情况。
    - `build/darwin-arm64/`：dmg（改名为 `MySpotify-<版本>-macos-arm64.dmg`）、`vinyl-<版本>-darwin-arm64.tar.gz`、`*.delta`、`update-darwin-arm64.json`
    - `build/windows-amd64/`：把这个文件夹里的程序文件和一份 `README.txt` 放进 `MySpotify-<版本>-windows-amd64/` 打成同名 zip；再加上 `vinyl-<版本>-windows-amd64.tar.gz`、`*.delta`、`update-windows-amd64.json`
+
+Linux 附件包括 `.deb`、`.tar.gz`、`update-linux-amd64.json` 及 `install-linux-webview.sh`；安装脚本也随程序资源附带。依赖组件需普通桌面用户单独安装，不在安装 deb 时自动下载。
 
 `*.delta` 是从前几个版本到这一版的增量包，`mygo build` 会读已发布的版本自动做出来，应用更新时优先下载它。
 
@@ -69,6 +71,7 @@ go run github.com/tc-hib/go-winres@v0.3.3 simply --icon resources/icon.ico --man
 - `NM_SHOTS=<目录> NM_SCENE=readme`：用真数据截 README 里的这些图，账号名显示成 Alex（首页标题里的也换），不播放；再跑 `python tools/readme_shots.py <目录> docs/screenshots` 出圆角投影的 WebP。这个场景退出时会写设置和播放会话，想不碰自己的就把 `APPDATA` 指到别的目录再跑。
 - `NM_SHOTS=<目录> NM_SCENE=connect`：Connect 注册探针，不放音频，结束后注销测试设备。
 - `NM_SHOTS=<目录> NM_SCENE=identity`：把当前登录身份导出成 `identity.json`，给下面的 LIVE 测试用。
+- `NM_SHOTS=<目录> NM_SCENE=renewal`：只验证登录迁移和续期，不导出身份、不请求媒体许可证；输出 `identity ready true` 后退出。
 - `LIVE=<identity.json> go test -run TestLive ./internal/spotify`：用真身份把每个接口打一遍，只读。
 - `LIVE=<identity.json> LIVE_EDIT=1 go test -run TestLiveEdit ./internal/spotify`：在这个账号上建歌单、加歌、删歌、改名、删歌单，收藏专辑/歌单/播客、点喜欢、关注艺人，每步读回来核对，最后全部恢复原样。会真改账号。
 - `LIVE=1 go test -run TestLiveScriptHashes ./internal/spotify`：检查现在用的查询哈希是否都还能在线上脚本里找到。

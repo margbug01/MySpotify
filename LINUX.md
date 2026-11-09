@@ -1,6 +1,6 @@
 # Linux 发版（实验性）
 
-当前源码版本为 0.4.14，不代表已发布 Linux 版本。优先 amd64；MyGo 也支持 arm64。以下 2026-11-02 的记录来自 0.4.5，当前版本的复测另行记录。
+当前源码版本为 0.4.16，不代表已发布 Linux 版本。优先 amd64；MyGo 也支持 arm64。以下 2026-11-02 的记录来自 0.4.5，当前版本的复测另行记录。
 现有平台分支已经能编译 Linux。Ubuntu 22.04 / WSLg 已验证原生窗口，以及可选 Qt WebEngine 后端的已有登录迁移、重启续期和真实加密音乐播放。从 0.4.16 起 amd64 默认选择 Qt；原有 WebKitGTK 在该环境中没有所需 EME 接口；Linux 仍为实验支持，完整桌面验收尚未完成。
 
 ## 构建与交付
@@ -19,13 +19,13 @@ go tool mygo build -platform linux/amd64,linux/arm64
 输出在 `build/linux-amd64/`（arm64 对应 `linux-arm64`）：
 
 - `vinyl`、`vinyl.png`、`vinyl.desktop`，以及 LICENSE 和 licenses；
-- `vinyl_0.4.14_amd64.deb`；
-- `vinyl-0.4.14-linux-amd64.tar.gz`；
+- `vinyl_0.4.16_amd64.deb`；
+- `vinyl-0.4.16-linux-amd64.tar.gz`；
 - `install.sh`、Arch Linux 的 `PKGBUILD`，以及输出根目录的 `SHA256SUMS`。
 
 `mygo.json` 的 Linux 配置声明 AudioVideo/Audio/Player 分类、`vinyl` 命令和 WebView 依赖。Debian 包自动依赖 `libgtk-3-0 | libgtk-3-0t64` 和 `libwebkit2gtk-4.1-0`。本项目登录、音频和视频都用 WebView，不能为减少依赖设为 false。其他发行版需自行准备 GTK3、WebKitGTK 4.1 及其字体、图形和媒体运行库。此处不承诺所有发行版兼容，也不提供 AppImage/RPM。
 
-在 Debian/Ubuntu 桌面本机可用 `sudo apt install ./vinyl_0.4.14_amd64.deb` 安装。非 Debian 环境可解压 tar.gz，保留同目录资源后运行 `./vinyl`；压缩包不包含 GTK/WebKitGTK。`install.sh` 是 MyGo 生成的安装器，执行前应检查内容和下载来源，不在此自动执行。
+在 Debian/Ubuntu 桌面本机可用 `sudo apt install ./vinyl_0.4.16_amd64.deb` 安装。非 Debian 环境可解压 tar.gz，保留同目录资源后运行 `./vinyl`；压缩包不包含 GTK/WebKitGTK。`install.sh` 是 MyGo 生成的安装器，执行前应检查内容和下载来源，不在此自动执行。
 
 ## 运行能力和限制
 
@@ -160,7 +160,7 @@ sh scripts/install-linux-webview.sh
 
 内部回归、无 CGO 全套测试、Qt / 播放器 / Spotify 并发检查及 MyGo 静态检查通过。真实 Qt 窗口、Cookie 属性持久化、重启后清理会话的回归运行 5 次通过；窗口截图已人工查看。Qt Cookie 事件不回报 SameSite，测试直接核对合成 Cookie 的持久化属性，没有读取用户 Cookie 值。首次手动登录的完整 OAuth、可听音频、整首自然播放、MV、原生 X11 / Wayland、锁屏及长时间运行尚未验收，仍不能称为与 Windows / macOS 相同的轻量方案。
 
-当前源码、运行日志和数据见 `outputs/linux-qt-2026-11-10/VALIDATION.md`。Linux 实验包未签署自动更新、未发布。
+当前源码、运行日志和数据见 `outputs/linux-qt-2026-11-10/VALIDATION.md`。上述测量用的 0.4.14 快照未发布；0.4.16 发布包启用默认 Qt，另行构建并签署更新。
 
 ## 发布门槛
 
@@ -168,4 +168,4 @@ sh scripts/install-linux-webview.sh
 
 MyGo 的 `SHA256SUMS` 使用文件名而非架构子目录路径，不能直接在 build 根目录执行校验；应将待发布的 deb、tar.gz、install.sh 与校验文件收集到同一目录后校验。本次逐架构目录核对所有条目均匹配，两个架构的 install.sh 内容相同。
 
-正式发布前人工检查 deb 的 control、desktop、图标、命令链接、许可证，tar.gz 内容和 SHA256SUMS；签名更新需要维护者在安全环境配置原有密钥并独立验收。本次不更改版本、签名配置或系统，不创建 GitHub release、提交或推送。
+正式发布前人工检查 deb 的 control、desktop、图标、命令链接、许可证，tar.gz 内容和 SHA256SUMS；签名更新需要维护者在安全环境配置原有密钥并独立验收。后续正式发布应在干净提交上构建，核对更新签名和公开下载摘要后再交付。
