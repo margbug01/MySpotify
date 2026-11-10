@@ -122,6 +122,17 @@ function native(a, handlers, close) {
 }
 
 window.vinyl = {
+  metadata(info) {
+    const title = info.title || 'MySpotify';
+    document.title = title;
+    if (typeof navigator !== 'undefined' && navigator.mediaSession && typeof MediaMetadata !== 'undefined') {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title,
+        artist: info.artist || '',
+        album: info.album || '',
+      });
+    }
+  },
   // kind is 'file' for a file that plays as it is, an episode's where its
   // podcast keeps it: no manifest, no key system.
   load(gen, kind) {

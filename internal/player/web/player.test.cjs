@@ -20,8 +20,9 @@ class Hls {
   destroy() { this.destroyed = true; }
 }
 const session = { handlers: {}, setActionHandler(action, fn) { this.handlers[action] = fn; } };
+class MediaMetadata { constructor(init) { Object.assign(this, init); } }
 const context = vm.createContext({
-  Hls, window: {}, navigator: { mediaSession: session },
+  Hls, MediaMetadata, window: {}, navigator: { mediaSession: session },
   AbortSignal,
   fetch: (url, options) => {
     const event = JSON.parse(options.body);
@@ -32,7 +33,7 @@ const context = vm.createContext({
   clearInterval: (id) => intervals.delete(id),
   setTimeout: (fn) => { timers.set(++timerID, fn); return timerID; },
   clearTimeout: (id) => timers.delete(id),
-  document: { body: { append() {} }, createElement: () => {
+  document: { title: 'Vinyl', body: { append() {} }, createElement: () => {
     const element = {
       currentTime: 0, duration: 250, readyState: 1, paused: false, seeking: false,
       buffered: { length: 1, start: () => 220, end: () => 250 },
@@ -50,6 +51,12 @@ const source = fs.readFileSync(__dirname + '/player.html', 'utf8').match(/<scrip
 vm.runInContext(source, context);
 context.vinyl = context.window.vinyl;
 const player = context.vinyl;
+// Track metadata replaces the page title that Windows would otherwise show as the media item.
+player.metadata({ title: 'Song', artist: 'Singer', album: 'Record' });
+assert.equal(context.document.title, 'Song');
+assert.equal(session.metadata.title, 'Song');
+assert.equal(session.metadata.artist, 'Singer');
+assert.equal(session.metadata.album, 'Record');
 // A short pause reuses the pipeline; a longer one stops loading and resumes at its position.
 player.load(1);
 const first = instances[0];

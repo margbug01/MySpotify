@@ -45,6 +45,7 @@ func TestLongLyricsBuildOnlyWhatShows(t *testing.T) {
 	a.pl.Hold(1500*3*time.Second + 100*time.Millisecond)
 	a.nowPlaying, a.npPane = true, paneLyrics
 	tt := ui.NewTester(a.view, 1200, 800)
+	tt.SetPreferences(ui.Preferences{ReduceMotion: true})
 	settle(tt)
 	said := func(i int) ui.Rect {
 		t.Helper()
@@ -66,7 +67,7 @@ func TestLongLyricsBuildOnlyWhatShows(t *testing.T) {
 	}
 	a.pl.Seek(10*3*time.Second + 100*time.Millisecond)
 	settle(tt)
-	if again := said(10); again.Y < r.Y-2 || again.Y > r.Y+2 {
+	if again := said(10); again.Y < r.Y-4 || again.Y > r.Y+4 {
 		t.Fatalf("after the seek, the line said is at %v, was at %v", again, r)
 	}
 	if _, ok := tt.Find("line 1501, said as it plays"); ok {

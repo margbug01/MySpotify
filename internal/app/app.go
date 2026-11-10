@@ -277,6 +277,9 @@ func Run() error {
 		spotify.OpsFile = filepath.Join(dir, "queries.json")
 		spotify.LoadOps()
 	}
+	if err := ensureWindowsStartMenuShortcut(appName); err != nil {
+		log.Printf("windows: start menu shortcut: %v", err)
+	}
 	log.Printf("start, pid %d", os.Getpid())
 	// MyGo's updater asks GitHub with http.DefaultClient: through the
 	// proxy the requests to Spotify go through.
