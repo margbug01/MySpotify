@@ -239,6 +239,19 @@ func (p *Player) ended() {
 				p.videoFailed(msg)
 				return
 			}
+			if strings.HasPrefix(msg, "startTimeout ") {
+				// The songs after would not start either: it stays at this
+				// one, to try again in a page made anew.
+				p.pending = p.Position()
+				p.stop()
+				if p.Web != nil {
+					p.Web.Close()
+					p.Web = nil
+				}
+				p.err, p.playing = "播放没能开始，这台电脑可能解不开加密音频（DRM），点击播放重试", false
+				p.sync()
+				return
+			}
 			p.failed(licence, wait)
 			return
 		}

@@ -227,6 +227,15 @@ func (w *Web) setVolume(v float64) {
 	}
 }
 
+// startTimeout is how long a track asked to play may stay at its start,
+// the page's time not moving, before it counts as one that cannot play: as
+// where the key system never answers, such as FairPlay on a Mac it does not
+// work on, which leaves the song at 0:00 with no error.
+const startTimeout = 20 * time.Second
+
+// startAfter runs fn after d, on a goroutine; tests run it when they like.
+var startAfter = func(d time.Duration, fn func()) { time.AfterFunc(d, fn) }
+
 var uriAttr = regexp.MustCompile(`URI="([^"]*)"`)
 
 // Open loads m to play, paused at its start, and returns what plays it.
@@ -563,6 +572,8 @@ type webOut struct {
 	err      string
 	licence  int           // how the licence service last answered
 	wait     time.Duration // how long it asked to wait, with a 429
+	heard    time.Duration // where the page, or a seek, last put it
+	started  bool          // the page's time moved on from there: it plays here
 }
 
 // went returns where to ask for the file at source: where it led last.
@@ -606,9 +617,32 @@ func (o *webOut) Play() {
 	}
 	o.playing = true
 	o.asked++
-	asked := o.asked
+	asked, started := o.asked, o.started
 	o.mu.Unlock()
 	o.w.send(fmt.Sprintf("vinyl.play(%d,%d)", o.gen, asked))
+	if !started {
+		startAfter(startTimeout, func() { o.unstarted(asked) })
+	}
+}
+
+// unstarted reports the track as one that cannot play if, asked to play as
+// the asked-th thing Vinyl asked of it, it has not started since: with how
+// far the page got, for the log.
+func (o *webOut) unstarted(asked int) {
+	o.mu.Lock()
+	stuck := o.asked == asked && o.playing && !o.started && o.err == ""
+	licence := o.licence
+	o.mu.Unlock()
+	if !stuck {
+		return
+	}
+	ready := false
+	select {
+	case <-o.w.ready:
+		ready = true
+	default:
+	}
+	o.event("error", 0, fmt.Sprintf("startTimeout no sound after %v (page ready %v, licence http=%d)", startTimeout, ready, licence), 0)
 }
 
 func (o *webOut) Pause() {
@@ -629,7 +663,7 @@ func (o *webOut) Playing() bool {
 
 func (o *webOut) Seek(t time.Duration) {
 	o.mu.Lock()
-	o.pos, o.at = t, time.Now()
+	o.pos, o.at, o.heard = t, time.Now(), t
 	o.mu.Unlock()
 	o.w.send(fmt.Sprintf("vinyl.seek(%d,%.3f)", o.gen, t.Seconds()))
 }
@@ -773,7 +807,10 @@ func (o *webOut) event(kind string, t time.Duration, msg string, seq int) {
 	}
 	// A seek on its way lands where it was asked, not where the page was.
 	if kind != "error" {
-		o.pos, o.at = t, time.Now()
+		if kind == "time" && t > o.heard {
+			o.started = true
+		}
+		o.pos, o.at, o.heard = t, time.Now(), t
 	}
 	fn := o.onSystem
 	o.mu.Unlock()

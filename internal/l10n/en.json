@@ -367,6 +367,7 @@
   "backendError Qt WebEngine 无法打开音频页": "backendError Qt WebEngine could not open the audio page",
   "音频播放进程已退出，点击播放重试": "The audio process exited. Press Play to retry.",
   "当前播放器不支持所需 DRM（Widevine / EME），无法播放加密媒体": "This player does not support the required DRM (Widevine / EME) for encrypted media.",
+  "播放没能开始，这台电脑可能解不开加密音频（DRM），点击播放重试": "Playback didn't start. This computer may not be able to decrypt the audio (DRM). Press Play to retry.",
   "这首歌暂时无法播放": "This song is currently unavailable",
   "网络已断开，恢复后接着播放": "You are offline. Playback will resume when connected.",
   "Spotify 暂时限流，稍后重试": "Spotify is rate limiting requests. Please try again shortly.",

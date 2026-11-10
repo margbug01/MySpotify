@@ -4,6 +4,7 @@ import (
 	"os"
 	"sync"
 	"testing"
+	"time"
 
 	"vinyl/internal/lyrics"
 	"vinyl/internal/spotify"
@@ -36,6 +37,9 @@ func TestMain(m *testing.M) {
 	// Nor do they ask Spotify whether it is reachable: it is, but where a
 	// test says otherwise.
 	online = func() bool { return true }
+	// Nor does a track stop for not starting, where a test doesn't check
+	// that: the pages of tests never play.
+	startAfter = func(time.Duration, func()) {}
 	os.Exit(runTests(m))
 }
 

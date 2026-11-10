@@ -50,6 +50,55 @@ func TestUnsupportedKeySystemStopsQueue(t *testing.T) {
 	}
 }
 
+// A song whose time never moves, as where FairPlay never answers, stops at
+// itself saying so: it used to show as playing at 0:00 for good (#15).
+func TestUnstartedTrackStops(t *testing.T) {
+	for _, c := range []struct {
+		name   string
+		events []string // what the page reports, the song resumed at 12s
+		stops  bool
+	}{
+		{"silent", nil, true},
+		{"at the seek only", []string{`"type":"time","t":12`}, true},
+		{"moving", []string{`"type":"time","t":12`, `"type":"time","t":12.5`}, false},
+	} {
+		var checks []func()
+		after := startAfter
+		startAfter = func(d time.Duration, fn func()) { checks = append(checks, fn) }
+		ch, p, _ := licensed(t, func(w http.ResponseWriter, r *http.Request) {})
+		p.NewWeb = func() (*Web, error) {
+			web, err := listen()
+			if err == nil {
+				t.Cleanup(web.Close)
+			}
+			return web, err
+		}
+		p.out.Seek(12 * time.Second)
+		for _, e := range c.events {
+			page(p, http.MethodPost, "/event", `{"gen":1,`+e+`}`)
+		}
+		for _, check := range checks {
+			check()
+		}
+		startAfter = after
+		if !c.stops {
+			if !p.playing || p.err != "" || len(ch) != 0 {
+				t.Fatalf("%s: a song playing stopped: %+v", c.name, p)
+			}
+			continue
+		}
+		next(t, ch)
+		if p.playing || p.loading || p.at != 0 || p.out != nil || p.Web != nil || p.err == "" {
+			t.Fatalf("%s: did not stop at the song, saying so: %+v", c.name, p)
+		}
+		p.TogglePlay()
+		next(t, ch)
+		if !p.playing || p.at != 0 || p.out == nil || p.Position() != 12*time.Second || p.err != "" {
+			t.Fatalf("%s: Play did not try the song again where it was: %+v", c.name, p)
+		}
+	}
+}
+
 // Repeated playback errors must stop after three failures rather than drain a long queue.
 func TestConsecutivePlaybackFailuresStop(t *testing.T) {
 	ch, p, _ := licensed(t, func(w http.ResponseWriter, r *http.Request) {})
