@@ -39,7 +39,7 @@ go run github.com/tc-hib/go-winres@v0.3.3 simply --icon resources/icon.ico --man
 
 ### Releasing
 
-Both platforms are packaged at once on a Mac. In-app updates accept only packages signed with the update private key, so a release must use `mygo build` with the private key; a version from `go build` can't update itself.
+macOS arm64 / amd64, Windows amd64 and Linux amd64 are packaged at once on a Mac. Intel Mac support is experimental: cross-compilation and package checks pass, but sign-in, music / MV playback and in-app updates still need testing on physical hardware. Linux is also experimental; see [LINUX.md](LINUX.md) for dependencies and verification scope. In-app updates accept only packages signed with the update private key, so a release must use `mygo build` with the private key; a version from `go build` can't update itself.
 
 1. If `go.mod` changed, update `licenses/` (third-party licenses, shipped with the program) and its `README.txt` to match; `go test` reminds you if you forget.
 2. Change the version: `version` in `mygo.json`, and the two version numbers in the go-winres command above (regenerating the syso). The version shown under Settings › About is read directly from `mygo.json`.
@@ -48,12 +48,15 @@ Both platforms are packaged at once on a Mac. In-app updates accept only package
 
    ```sh
    MYGO_UPDATER_PRIVATE_KEY="$(cat "$HOME/Library/Application Support/mygo/update-keys/MySpotify/mygo-update.key")" \
-     go tool mygo build -platform darwin/arm64,windows/amd64
+     go tool mygo build -platform darwin/arm64,darwin/amd64,windows/amd64,linux/amd64
    ```
 
 5. Create a `v<version>` release on GitHub. Save it as a draft first, upload all the attachments, and after checking them publish it and set it as Latest. The app reads the manifest in the latest release and can't see drafts, so it never finds a manifest whose archive hasn't finished uploading.
    - `build/darwin-arm64/`: the dmg (renamed to `MySpotify-<version>-macos-arm64.dmg`), `vinyl-<version>-darwin-arm64.tar.gz`, `*.delta`, `update-darwin-arm64.json`
+   - `build/darwin-amd64/`: the dmg (renamed to `MySpotify-<version>-macos-amd64.dmg`), `vinyl-<version>-darwin-amd64.tar.gz`, `*.delta` (when earlier versions exist), `update-darwin-amd64.json`
    - `build/windows-amd64/`: put the program files in this folder and a `README.txt` into `MySpotify-<version>-windows-amd64/` and zip it under the same name; add `vinyl-<version>-windows-amd64.tar.gz`, `*.delta`, `update-windows-amd64.json`
+
+Linux attachments include the `.deb`, `.tar.gz`, `update-linux-amd64.json` and `install-linux-webview.sh`; the install script also ships in the app's resources. Desktop users install the dependencies separately.
 
 `*.delta` files are incremental packages from the previous few versions to this one. `mygo build` reads the published versions and makes them automatically, and the app prefers them when updating.
 

@@ -4,7 +4,7 @@ root.classList.add("js")
 if (/Win/.test(navigator.userAgent)) root.classList.add("win")
 
 // Direct links to the installers, as the release page lists a dozen other files.
-const installers = { mac: /macos-arm64\.dmg$/, win: /windows-amd64\.zip$/ }
+const installers = { mac: /macos-arm64\.dmg$/, "mac-intel": /macos-amd64\.dmg$/, win: /windows-amd64\.zip$/ }
 const barButton = document.querySelector(".bar .btn")
 barButton.dataset.dl = root.classList.contains("win") ? "win" : "mac"
 

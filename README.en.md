@@ -85,10 +85,12 @@ Experimental Linux `.deb` / `.tar.gz` builds are available. On amd64, Qt WebEngi
 
 Updating: from 0.4.0 on, click 更新并重启 (Update and restart) under 设置 › 关于 (Settings › About); the bottom left of the sidebar tells you when there's a new version. Coming from 0.3.0 or earlier takes one manual update: right-click the tray icon, quit MySpotify, overwrite the old files with the new ones and open it again. Settings and your sign-in aren't kept beside the exe, so nothing is lost.
 
-### macOS (Apple silicon)
+### macOS (Apple silicon / Intel)
 
-1. Download `MySpotify-<version>-macos-arm64.dmg`, open it and drag MySpotify to Applications.
+1. For Apple silicon, download `MySpotify-<version>-macos-arm64.dmg`; for Intel, download `MySpotify-<version>-macos-amd64.dmg` (experimental). Open it and drag MySpotify to Applications.
 2. The app isn't notarized by Apple, so the first launch is blocked: go to System Settings › Privacy & Security and click Open Anyway at the bottom. Or run `xattr -dr com.apple.quarantine /Applications/MySpotify.app` in Terminal and open it.
+
+The Intel build has passed cross-compilation and package checks. Sign-in, music / MV playback and in-app updates still need testing on a physical Intel Mac. Please report your Mac model, macOS version and error log in [#15](https://github.com/margbug01/MySpotify/issues/15) if anything fails.
 
 Updating: from 0.4.0 on, click 更新并重启 (Update and restart) under 设置 › 关于 (Settings › About), or use the MySpotify menu's 检查更新… (Check for Updates). The app must be somewhere writable such as Applications; one opened from inside the dmg can't update itself. Coming from 0.3.0 takes one manual update: quit the old version and overwrite it in Applications with the new one. Settings and your sign-in aren't kept in the app, so nothing is lost.
 
@@ -142,7 +144,7 @@ This part is still experimental. Registering and handing off work in testing on 
 | Some podcasts on macOS | Shows hosted by Spotify with Widevine-encrypted audio only can't be decrypted by FairPlay; video podcasts and shows with an original audio address all play |
 | Chinese translation of podcast transcripts | Transcripts come only in the original language and a few foreign translations from Spotify, without Chinese |
 | Spectrum | The audio is inside the decryption module, out of reach; the little bars during playback are an animation worked out from the position |
-| Intel Macs, Linux | Installers are for Windows and Apple silicon Macs for now |
+| Intel Macs, Linux | Experimental installers, not yet stable support; Intel needs physical hardware testing, and Linux has separate [installation instructions](LINUX.md) |
 | Exact alignment of videos and lyrics | Spotify doesn't say how far a video and the original are apart, so it's estimated from their lengths; adjust with `[` / `]` when it's off |
 | Friend activity, local files, Blend | Not built yet |
 

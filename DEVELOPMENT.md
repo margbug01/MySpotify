@@ -39,7 +39,7 @@ go run github.com/tc-hib/go-winres@v0.3.3 simply --icon resources/icon.ico --man
 
 ### 发版
 
-macOS arm64、Windows amd64 和 Linux amd64 在 Mac 上一次打出来。Linux 为实验支持，依赖安装与验收范围见 [LINUX.md](LINUX.md)。应用内更新只认用更新私钥签过名的包，所以发版必须用 `mygo build` 并带上私钥；`go build` 出来的版本不能自己更新。
+macOS arm64 / amd64、Windows amd64 和 Linux amd64 在 Mac 上一次打出来。Intel Mac 为实验支持，首次构建已通过交叉编译和安装包检查，尚待真机验证登录、音乐 / MV 播放和应用内更新；Linux 也为实验支持，依赖安装与验收范围见 [LINUX.md](LINUX.md)。应用内更新只认用更新私钥签过名的包，所以发版必须用 `mygo build` 并带上私钥；`go build` 出来的版本不能自己更新。
 
 1. 改了 `go.mod` 的话，跟着改 `licenses/`（第三方许可证，随程序发出去）和里面的 `README.txt`；漏了的话 `go test` 会提醒。
 2. 改版本号：`mygo.json` 的 `version`，上面 go-winres 命令里的两个版本号（重新生成 syso）。「设置 › 关于」显示的版本直接读 `mygo.json`。
@@ -48,11 +48,12 @@ macOS arm64、Windows amd64 和 Linux amd64 在 Mac 上一次打出来。Linux �
 
    ```sh
    MYGO_UPDATER_PRIVATE_KEY="$(cat "$HOME/Library/Application Support/mygo/update-keys/MySpotify/mygo-update.key")" \
-     go tool mygo build -platform darwin/arm64,windows/amd64,linux/amd64
+     go tool mygo build -platform darwin/arm64,darwin/amd64,windows/amd64,linux/amd64
    ```
 
 5. 在 GitHub 上建 `v<版本>` 的 Release，先存成草稿，把附件都传上去，确认后再发布并设为 Latest。应用读的是最新 Release 里的清单，草稿对它不可见，不会出现清单已经能读到、压缩包还没传完的情况。
    - `build/darwin-arm64/`：dmg（改名为 `MySpotify-<版本>-macos-arm64.dmg`）、`vinyl-<版本>-darwin-arm64.tar.gz`、`*.delta`、`update-darwin-arm64.json`
+   - `build/darwin-amd64/`：dmg（改名为 `MySpotify-<版本>-macos-amd64.dmg`）、`vinyl-<版本>-darwin-amd64.tar.gz`、`*.delta`（有旧版时）、`update-darwin-amd64.json`
    - `build/windows-amd64/`：把这个文件夹里的程序文件和一份 `README.txt` 放进 `MySpotify-<版本>-windows-amd64/` 打成同名 zip；再加上 `vinyl-<版本>-windows-amd64.tar.gz`、`*.delta`、`update-windows-amd64.json`
 
 Linux 附件包括 `.deb`、`.tar.gz`、`update-linux-amd64.json` 及 `install-linux-webview.sh`；安装脚本也随程序资源附带。依赖组件需普通桌面用户单独安装，不在安装 deb 时自动下载。

@@ -45,6 +45,7 @@
       <p class="lead">原生界面，会滚动的歌词，MV 和视频播客。免费账号也能整首播放，不登录也能先逛。</p>
       <div class="cta">
         <a class="btn" data-dl="mac" href="https://github.com/margbug01/MySpotify/releases/latest">下载 macOS 版<small data-size="Apple 芯片">Apple 芯片</small></a>
+        <a class="btn" data-dl="mac-intel" href="https://github.com/margbug01/MySpotify/releases/latest">下载 Intel Mac 版<small data-size="实验版">实验版</small></a>
         <a class="btn" data-dl="win" href="https://github.com/margbug01/MySpotify/releases/latest">下载 Windows 版<small data-size="Windows 10 / 11">Windows 10 / 11</small></a>
       </div>
       <p class="caveat">个人项目，和 Spotify 没有任何关系，使用它账号有被限制的风险。<a href="#risk">先看风险说明</a></p>
@@ -134,7 +135,7 @@
           <li class="off"><i></i><div><b>Jam、DJ</b><span>需要 Premium 或手机端</span></div></li>
           <li class="off"><i></i><div><b>逐字歌词</b><span>Spotify 只给网页播放器逐行时间</span></div></li>
           <li class="off"><i></i><div><b>macOS 上部分播客</b><span>Spotify 自己托管、只给 Widevine 加密音频的节目</span></div></li>
-          <li class="off"><i></i><div><b>Intel Mac、Linux</b><span>目前只有 Windows 和 Apple 芯片 Mac 的安装包</span></div></li>
+          <li class="off"><i></i><div><b>Intel Mac、Linux 稳定支持</b><span>提供实验性安装包，Intel 版尚待真机验证</span></div></li>
           <li class="off"><i></i><div><b>好友动态、本地文件、Blend</b><span>暂时没做</span></div></li>
         </ul>
       </div>
@@ -183,13 +184,14 @@
     <div class="install">
       <div>
         <h3>macOS</h3>
-        <p class="req">Apple 芯片</p>
+        <p class="req">Apple 芯片 / Intel（实验版，尚待真机验证）</p>
         <ol>
           <li>打开 dmg，把 MySpotify 拖进「应用程序」。</li>
           <li>app 没有经过 Apple 公证，第一次打开会被拦下：到「系统设置 › 隐私与安全性」最下面点「仍要打开」。也可以在终端执行 <code>xattr -dr com.apple.quarantine /Applications/MySpotify.app</code>。</li>
           <li>点「登录 Spotify」，在 Spotify 官方登录页里登录。</li>
         </ol>
-        <a class="btn" data-dl="mac" href="https://github.com/margbug01/MySpotify/releases/latest">下载 .dmg</a>
+        <a class="btn" data-dl="mac" href="https://github.com/margbug01/MySpotify/releases/latest">下载 Apple 芯片 .dmg</a>
+        <a class="btn" data-dl="mac-intel" href="https://github.com/margbug01/MySpotify/releases/latest">下载 Intel .dmg（实验版）</a>
       </div>
       <div>
         <h3>Windows</h3>

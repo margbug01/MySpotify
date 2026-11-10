@@ -45,6 +45,7 @@
       <p class="lead">A native interface, lyrics that scroll, music videos and video podcasts. Free accounts play whole songs, and you can look around before signing in.</p>
       <div class="cta">
         <a class="btn" data-dl="mac" href="https://github.com/margbug01/MySpotify/releases/latest">Download for macOS<small data-size="Apple silicon">Apple silicon</small></a>
+        <a class="btn" data-dl="mac-intel" href="https://github.com/margbug01/MySpotify/releases/latest">Download for Intel Mac<small data-size="Experimental">Experimental</small></a>
         <a class="btn" data-dl="win" href="https://github.com/margbug01/MySpotify/releases/latest">Download for Windows<small data-size="Windows 10 / 11">Windows 10 / 11</small></a>
       </div>
       <p class="caveat">A personal project with no ties to Spotify. Using it could get your account restricted. <a href="#risk">Read the risks first</a></p>
@@ -134,7 +135,7 @@
           <li class="off"><i></i><div><b>Jam, DJ</b><span>Needs Premium or the phone app</span></div></li>
           <li class="off"><i></i><div><b>Word-by-word lyrics</b><span>Spotify gives the web player timing per line only</span></div></li>
           <li class="off"><i></i><div><b>Some podcasts on macOS</b><span>Shows hosted by Spotify with Widevine-encrypted audio only</span></div></li>
-          <li class="off"><i></i><div><b>Intel Macs, Linux</b><span>Installers are for Windows and Apple silicon Macs for now</span></div></li>
+          <li class="off"><i></i><div><b>Stable Intel Mac / Linux support</b><span>Experimental installers; Intel still needs physical hardware testing</span></div></li>
           <li class="off"><i></i><div><b>Friend activity, local files, Blend</b><span>Not built yet</span></div></li>
         </ul>
       </div>
@@ -184,13 +185,14 @@
     <div class="install">
       <div>
         <h3>macOS</h3>
-        <p class="req">Apple silicon</p>
+        <p class="req">Apple silicon / Intel (experimental, hardware testing pending)</p>
         <ol>
           <li>Open the dmg and drag MySpotify to Applications.</li>
           <li>The app isn't notarized by Apple, so the first launch is blocked: go to System Settings › Privacy &amp; Security and click Open Anyway at the bottom. Or run <code>xattr -dr com.apple.quarantine /Applications/MySpotify.app</code> in Terminal.</li>
           <li>Click “登录 Spotify” (Sign in) and sign in on Spotify's own page.</li>
         </ol>
-        <a class="btn" data-dl="mac" href="https://github.com/margbug01/MySpotify/releases/latest">Download .dmg</a>
+        <a class="btn" data-dl="mac" href="https://github.com/margbug01/MySpotify/releases/latest">Download Apple silicon .dmg</a>
+        <a class="btn" data-dl="mac-intel" href="https://github.com/margbug01/MySpotify/releases/latest">Download Intel .dmg (experimental)</a>
       </div>
       <div>
         <h3>Windows</h3>

@@ -82,10 +82,12 @@ Linux 提供实验性 `.deb` / `.tar.gz` 构建。amd64 默认使用 Qt WebEngin
 
 升级：0.4.0 起在「设置 › 关于」里点「更新并重启」就行，有新版本时侧边栏左下角会提示。从 0.3.0 及更早的版本升上来要手动一次：右键托盘图标 › 退出 MySpotify，用新的文件覆盖旧的再打开。设置和登录都不在 exe 旁边，不会丢。
 
-### macOS（Apple 芯片）
+### macOS（Apple 芯片 / Intel）
 
-1. 下载 `MySpotify-<版本>-macos-arm64.dmg`，打开后把 MySpotify 拖进「应用程序」。
+1. Apple 芯片下载 `MySpotify-<版本>-macos-arm64.dmg`；Intel 下载 `MySpotify-<版本>-macos-amd64.dmg`（实验版）。打开后把 MySpotify 拖进「应用程序」。
 2. app 没有经过 Apple 公证，第一次打开会被拦下：到「系统设置 › 隐私与安全性」最下面点「仍要打开」。也可以在终端里执行 `xattr -dr com.apple.quarantine /Applications/MySpotify.app` 再打开。
+
+Intel 版已通过交叉编译和安装包检查，尚未在 Intel 真机验证登录、音乐 / MV 播放和应用内更新。遇到问题请在 [#15](https://github.com/margbug01/MySpotify/issues/15) 附上 Mac 型号、macOS 版本和错误日志。
 
 升级：0.4.0 起在「设置 › 关于」里点「更新并重启」（菜单「MySpotify › 检查更新…」也行）；app 要在能写入的地方，比如「应用程序」，还在 dmg 里打开的不能自己更新。从 0.3.0 升上来要手动一次：退出旧版，用新的覆盖「应用程序」里的旧版。设置和登录不在 app 里，不会丢。
 
@@ -139,7 +141,7 @@ Linux 提供实验性 `.deb` / `.tar.gz` 构建。amd64 默认使用 Qt WebEngin
 | macOS 上部分播客 | Spotify 自己托管、只给 Widevine 加密音频的节目（比如忽左忽右），FairPlay 解不了；视频播客和有原始音频地址的节目都能放 |
 | 播客字幕的中文翻译 | 逐字稿只有原文和 Spotify 给的几种外语翻译，没有中文 |
 | 频谱 | 音频在解密模块里，拿不到；播放中的小音柱是按位置算的动画 |
-| Intel Mac、Linux | 目前只有 Windows 和 Apple 芯片 Mac 的安装包 |
+| Intel Mac、Linux | 提供实验性安装包，尚不属于稳定支持平台；Intel 版待真机验证，Linux 见 [安装说明](LINUX.md) |
 | MV 和歌词精确对齐 | Spotify 不给 MV 和原曲之间差多少，只能按时长估，偏了用 `[` / `]` 手动调 |
 | 好友动态、本地文件、Blend | 暂时没做 |
 

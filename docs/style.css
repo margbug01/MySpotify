@@ -229,6 +229,7 @@ html:lang(en) .line h3 { letter-spacing: -0.022em; }
 .install li::before { content: counter(step); position: absolute; left: 0; font: 13px/1.9 var(--mono); color: var(--accent); }
 .install ol { margin-bottom: 10px; }
 .install .btn { margin-top: auto; min-height: 48px; }
+.install .btn + .btn { margin-top: 12px; }
 code { padding: 1px 6px; border-radius: 6px; background: rgb(255 255 255 / 0.08); font: 0.86em var(--mono); overflow-wrap: anywhere; }
 kbd { padding: 1px 7px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px; font: 13px var(--mono); white-space: nowrap; }
 .keys { display: flex; flex-wrap: wrap; gap: 10px 24px; margin-top: 28px; font-size: 15px; color: var(--muted); }
