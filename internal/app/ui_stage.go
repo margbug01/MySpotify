@@ -1,11 +1,13 @@
 package app
 
 import (
+	"fmt"
 	"math"
 	"time"
 
 	"github.com/egoist/mygo/ui"
 
+	"vinyl/internal/l10n"
 	"vinyl/internal/lyrics"
 	"vinyl/internal/spotify"
 )
@@ -95,7 +97,7 @@ func (a *app) stage(c *ui.Context, tr *spotify.Track, accent ui.Color) {
 					stageSkeleton(c, npShimmer(c), f, w)
 					return
 				}
-				ui.Text(c, "暂无"+lyricsName(tr)).FontSize(28).FontWeight(800).TextColor(white.Alpha(0.4))
+				ui.Text(c, fmt.Sprintf(l10n.T("暂无%s"), lyricsName(tr))).FontSize(28).FontWeight(800).TextColor(white.Alpha(0.4))
 			})
 		})
 		return

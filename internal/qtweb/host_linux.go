@@ -9,6 +9,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+
+	"vinyl/internal/l10n"
 )
 
 //go:embed host.py
@@ -23,15 +25,15 @@ func enabled() bool {
 
 func hostCommand() (*exec.Cmd, error) {
 	if runtime.GOARCH != "amd64" {
-		return nil, errors.New("Qt WebEngine 音频后端目前仅支持已安装官方 Widevine 的 Linux amd64")
+		return nil, errors.New(l10n.T("Qt WebEngine 音频后端目前仅支持已安装官方 Widevine 的 Linux amd64"))
 	}
 	flatpak, err := exec.LookPath("flatpak")
 	if err != nil {
-		return nil, errors.New("缺少 Qt WebEngine 运行时，请先运行 Linux 音频组件安装脚本")
+		return nil, errors.New(l10n.T("缺少 Qt WebEngine 运行时，请先运行 Linux 音频组件安装脚本"))
 	}
 	cdm := "/opt/google/chrome/WidevineCdm/_platform_specific/linux_x64/libwidevinecdm.so"
 	if _, err := os.Stat(cdm); err != nil {
-		return nil, errors.New("缺少官方 Widevine 组件，请先安装 Google Chrome；播放时不会启动 Chrome 浏览器")
+		return nil, errors.New(l10n.T("缺少官方 Widevine 组件，请先安装 Google Chrome；播放时不会启动 Chrome 浏览器"))
 	}
 	cache, err := os.UserCacheDir()
 	if err != nil {

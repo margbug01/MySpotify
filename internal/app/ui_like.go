@@ -6,6 +6,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"vinyl/internal/l10n"
 	"vinyl/internal/spotify"
 )
 
@@ -90,7 +91,7 @@ func (a *app) toggleLike(tr *spotify.Track) {
 			if err != nil {
 				delete(a.liking, id)
 				a.setLiked(id, !like)
-				a.toast = "操作失败，请稍后再试"
+				a.toast = l10n.T("操作失败，请稍后再试")
 				return
 			}
 			l.took = time.Now()
@@ -115,9 +116,9 @@ func (a *app) likeCurrent() {
 		return // asked to sign in
 	}
 	if a.liked[libraryID(tr)] {
-		a.toast = "已添加到我喜欢的音乐"
+		a.toast = l10n.T("已添加到我喜欢的音乐")
 	} else {
-		a.toast = "已取消喜欢"
+		a.toast = l10n.T("已取消喜欢")
 	}
 }
 
@@ -147,9 +148,9 @@ func (a *app) likeButton(c *ui.Context, tr *spotify.Track, size float32, color u
 		return ui.Box(c).Size(size, size)
 	}
 	liked := a.liked[libraryID(tr)]
-	icon, label := iconHeart, "喜欢"
+	icon, label := iconHeart, l10n.T("喜欢")
 	if liked {
-		icon, color, label = iconHeartFill, a.pal.accent, "取消喜欢"
+		icon, color, label = iconHeartFill, a.pal.accent, l10n.T("取消喜欢")
 	}
 	// The burst goes on a wrapper, which the heart's pop does not scale.
 	wrap := ui.Box(c).Center()

@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"time"
 
+	"vinyl/internal/l10n"
 	"vinyl/internal/qtweb"
 )
 
@@ -80,7 +81,7 @@ func startQtBrowser(w *Web) (bool, error) {
 		client, release, err := qtweb.Acquire()
 		if err != nil {
 			if w.ctx.Err() == nil {
-				w.backendFailed("backendError Qt WebEngine 启动失败，请检查音频组件和显示服务")
+				w.backendFailed(l10n.T("backendError Qt WebEngine 启动失败，请检查音频组件和显示服务"))
 			}
 			return
 		}
@@ -103,7 +104,7 @@ func startQtBrowser(w *Web) (bool, error) {
 		_, err = client.Call(ctx, "audio.open", map[string]any{"id": controlKey, "url": "http://" + w.addr + "/?ks=" + keySystem + "#control=" + controlKey})
 		cancel()
 		if err != nil && w.ctx.Err() == nil {
-			w.backendFailed("backendError Qt WebEngine 无法打开音频页")
+			w.backendFailed(l10n.T("backendError Qt WebEngine 无法打开音频页"))
 			return
 		}
 		<-w.ctx.Done()

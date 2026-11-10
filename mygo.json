@@ -5,7 +5,13 @@
   "version": "0.4.16",
   "out": "build",
   "resources": ["LICENSE", "licenses", "scripts/install-linux-webview.sh"],
-  "macos": { "icon": "AppIcon.icon" },
+  "macos": {
+    "icon": "AppIcon.icon",
+    "infoPlist": {
+      "CFBundleDevelopmentRegion": "zh_CN",
+      "CFBundleLocalizations": ["zh-Hans", "en"]
+    }
+  },
   "linux": {
     "comment": "Spotify desktop client (experimental Linux support)",
     "categories": ["AudioVideo", "Audio", "Player"],

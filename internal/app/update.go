@@ -9,6 +9,8 @@ import (
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
+
+	"vinyl/internal/l10n"
 )
 
 // MySpotify updates itself with MyGo's signed updates. mygo build signs each
@@ -91,7 +93,7 @@ func (a *app) checkUpdate(manual bool) {
 			case err != nil:
 				u.stage = before // a version found before is still there
 				if manual {
-					u.err, u.detail = "检查更新失败："+updateError(err), err.Error()
+					u.err, u.detail = l10n.T("检查更新失败：")+updateError(err), err.Error()
 				}
 			case found == nil:
 				u.stage, u.found, u.latest = updateIdle, nil, true
@@ -130,7 +132,7 @@ func (a *app) installUpdate() {
 		})
 		u.post(func() {
 			if err != nil {
-				u.stage, u.err, u.detail = updateAvailable, "更新没装上："+updateError(err), err.Error()
+				u.stage, u.err, u.detail = updateAvailable, l10n.T("更新没装上：")+updateError(err), err.Error()
 				return
 			}
 			u.stage = updateReady
@@ -166,11 +168,11 @@ func (a *app) watchUpdates() {
 func updateError(err error) string {
 	switch {
 	case errors.Is(err, context.DeadlineExceeded):
-		return "连接 GitHub 超时"
+		return l10n.T("连接 GitHub 超时")
 	case strings.Contains(err.Error(), "404"):
-		return "GitHub 上的最新版本还没有更新包"
+		return l10n.T("GitHub 上的最新版本还没有更新包")
 	}
-	return "连不上 GitHub，看看网络或代理"
+	return l10n.T("连不上 GitHub，看看网络或代理")
 }
 
 // noteLines puts the Markdown release notes in a few lines of plain text:
@@ -200,7 +202,7 @@ func appVersion() string {
 	if v := mygo.App.Version(); v != "" {
 		return v
 	}
-	return "开发版"
+	return l10n.T("开发版")
 }
 
 // aboutRows are the settings' 关于: the version, and updating. row is the
@@ -208,17 +210,17 @@ func appVersion() string {
 func (a *app) aboutRows(c *ui.Context, row func(label, desc string, control func())) {
 	p := a.pal
 	u := &a.upd
-	row(appName+" "+appVersion(), "Windows 和 macOS 上的 Spotify 播放器，和 Spotify 没有关系", func() {
+	row(appName+" "+appVersion(), l10n.T("Windows 和 macOS 上的 Spotify 播放器，和 Spotify 没有关系"), func() {
 		ui.Link(c, "GitHub", "https://github.com/margbug01/MySpotify")
 	})
 	switch {
 	case !u.enabled:
-		row("这一份不能自己更新", "自己编译的，或者放在没有写入权限的地方（比如还在 dmg 里）。新版本到 GitHub 下载", func() {
-			ui.Link(c, "打开下载页", releasesPage)
+		row(l10n.T("这一份不能自己更新"), l10n.T("自己编译的，或者放在没有写入权限的地方（比如还在 dmg 里）。新版本到 GitHub 下载"), func() {
+			ui.Link(c, l10n.T("打开下载页"), releasesPage)
 		})
 	case u.stage == updateAvailable:
-		row("有新版本 "+u.found.Version, "当前 "+appVersion()+"，更新时 MySpotify 会重新打开一下", func() {
-			if ui.PrimaryButton(c.Key("install-update"), "更新并重启").Clicked() {
+		row(l10n.T("有新版本 ")+u.found.Version, l10n.T("当前 ")+appVersion()+l10n.T("，更新时 MySpotify 会重新打开一下"), func() {
+			if ui.PrimaryButton(c.Key("install-update"), l10n.T("更新并重启")).Clicked() {
 				a.installUpdate()
 			}
 		})
@@ -230,29 +232,29 @@ func (a *app) aboutRows(c *ui.Context, row func(label, desc string, control func
 			})
 		}
 	case u.stage == updateDownloading:
-		row("正在下载 "+u.found.Version, fmt.Sprintf("%d%%，装好会自己重新打开", int(u.progress*100)), func() {
+		row(l10n.T("正在下载 ")+u.found.Version, fmt.Sprintf(l10n.T("%d%%，装好会自己重新打开"), int(u.progress*100)), func() {
 			ui.Progress(c, u.progress).Width(140)
 		})
 	case u.stage == updateReady:
-		row(u.found.Version+" 已经装好", "重新打开 MySpotify 后生效", func() {
-			if ui.PrimaryButton(c.Key("restart-update"), "立即重启").Clicked() {
+		row(u.found.Version+l10n.T(" 已经装好"), l10n.T("重新打开 MySpotify 后生效"), func() {
+			if ui.PrimaryButton(c.Key("restart-update"), l10n.T("立即重启")).Clicked() {
 				u.relaunch()
 			}
 		})
 	default: // not asked, up to date, asking
-		title, desc := "检查新版本", "还没检查过"
+		title, desc := l10n.T("检查新版本"), l10n.T("还没检查过")
 		if u.latest {
 			now := time.Now()
 			at := u.checked.Format("15:04")
 			if y, m, d := u.checked.Date(); y != now.Year() || m != now.Month() || d != now.Day() {
 				at = u.checked.Format("01-02 15:04")
 			}
-			title, desc = "已是最新版本", at+" 检查过"
+			title, desc = l10n.T("已是最新版本"), fmt.Sprintf(l10n.T("%s检查过"), at)
 		}
 		row(title, desc, func() {
-			label := "检查更新"
+			label := l10n.T("检查更新")
 			if u.stage == updateChecking {
-				label = "检查中…"
+				label = l10n.T("检查中…")
 			}
 			if ui.Button(c.Key("check-update"), label).Disabled(u.stage == updateChecking).Clicked() {
 				a.checkUpdate(true)
@@ -263,8 +265,8 @@ func (a *app) aboutRows(c *ui.Context, row func(label, desc string, control func
 		ui.Text(c, u.err).FontSize(12).TextColor(ui.RGB(229, 72, 77)).Padding(10, 16).Tooltip(u.detail)
 	}
 	if u.enabled {
-		row("自动检查更新", "打开时和之后每 12 小时问一次 GitHub，只提示，不自己装", func() {
-			if ui.Switch(c.Key("auto-update"), &a.settings.AutoUpdate).Label("自动检查更新").Changed() {
+		row(l10n.T("自动检查更新"), l10n.T("打开时和之后每 12 小时问一次 GitHub，只提示，不自己装"), func() {
+			if ui.Switch(c.Key("auto-update"), &a.settings.AutoUpdate).Label(l10n.T("自动检查更新")).Changed() {
 				a.settings.save()
 				if a.settings.AutoUpdate {
 					a.checkUpdate(false)
@@ -282,9 +284,9 @@ func (a *app) updateBadge(c *ui.Context) {
 		return
 	}
 	p := a.pal
-	text := "新版本 " + u.found.Version
+	text := l10n.T("新版本 ") + u.found.Version
 	b := ui.ButtonBase(c.Key("update-badge")).Height(30).PaddingX(10).Radius(9).AlignItems(ui.Center).Justify(ui.Start).
-		Label(text).Tooltip("打开设置，更新 MySpotify").FocusRing(false)
+		Label(text).Tooltip(l10n.T("打开设置，更新 MySpotify")).FocusRing(false)
 	if b.Hovered() {
 		b.Background(p.hover)
 	}

@@ -2,12 +2,12 @@ package app
 
 import (
 	"cmp"
-	"fmt"
 	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
 
+	"vinyl/internal/l10n"
 	"vinyl/internal/player"
 	"vinyl/internal/spotify"
 )
@@ -35,7 +35,7 @@ func (a *app) section(c *ui.Context, title string) {
 }
 
 func weekday(t time.Time) string {
-	return [...]string{"星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"}[t.Weekday()]
+	return [...]string{l10n.T("星期日"), l10n.T("星期一"), l10n.T("星期二"), l10n.T("星期三"), l10n.T("星期四"), l10n.T("星期五"), l10n.T("星期六")}[t.Weekday()]
 }
 
 // inCurrentWeek reports whether day falls between the Monday of now's calendar
@@ -72,11 +72,11 @@ func (a *app) chartsPage(c *ui.Context) {
 	ui.Scroll(c.Key("charts")).TrackScroll(&a.pageScroll).Grow(1).Padding(top+pageGap, pagePad, bottom+48, pagePad).ScrollbarInsets(top, 0, bottom, 0).Children(func() {
 		a.startMark(c)
 		defer a.endMark(c)
-		a.heading(c, "排行榜", "Spotify 官方榜单")
+		a.heading(c, l10n.T("排行榜"), l10n.T("Spotify 官方榜单"))
 		if loading {
 			s := a.pageShimmer(c)
 			a.chartCardsSkeleton(c, s)
-			a.section(c, "全部榜单")
+			a.section(c, l10n.T("全部榜单"))
 			a.playlistCardsSkeleton(c, s, a.columns(c, 150)*2, 150, true)
 			return
 		}
@@ -88,7 +88,7 @@ func (a *app) chartsPage(c *ui.Context) {
 			}
 		})
 		if len(a.charts) > 4 {
-			a.section(c, "全部榜单")
+			a.section(c, l10n.T("全部榜单"))
 			rest := a.charts[4:]
 			ui.Grid(c).Columns(a.columns(c, 150)).GapX(20).GapY(28).Children(func() {
 				for i := range rest {
@@ -105,7 +105,7 @@ func (a *app) playlistCard(c *ui.Context, pl *spotify.Playlist) {
 	p := a.pal
 	// Justify(Start) resets ButtonBase's centering, which in a grid pushes
 	// the cover down beside a taller card.
-	card := ui.ButtonBase(c).Column().Gap(10).AlignItems(ui.Stretch).Justify(ui.Start).FocusRing(false).Label(pl.Name)
+	card := ui.ButtonBase(c).Column().Gap(10).AlignItems(ui.Stretch).Justify(ui.Start).FocusRing(false).Label(pl.DisplayName())
 	hovered := card.Hovered()
 	card.Children(func() {
 		art := ui.Box(c).AspectRatio(1).Radius(10)
@@ -121,8 +121,8 @@ func (a *app) playlistCard(c *ui.Context, pl *spotify.Playlist) {
 			a.listArt(c, pl, 400, 10)
 			a.coverPlayButton(c, pl.ID, hovered)
 		})
-		ui.Text(c, pl.Name).FontSize(13).FontWeight(500).MaxLines(2).LineHeight(1.35)
-		if note := cmp.Or(pl.Note, pl.Creator.Nickname); note != "" {
+		ui.Text(c, pl.DisplayName()).FontSize(13).FontWeight(500).MaxLines(2).LineHeight(1.35)
+		if note := cmp.Or(pl.DisplayNote(), pl.Creator.Nickname); note != "" {
 			ui.Text(c, note).FontSize(12).TextColor(p.muted).SingleLine().Margin(-6, 0, 0, 0)
 		}
 	})
@@ -157,7 +157,7 @@ func (a *app) listArt(c *ui.Context, pl *spotify.Playlist, px int, radius float3
 // coverPlayButton plays a playlist from its card, without opening it.
 func (a *app) coverPlayButton(c *ui.Context, id string, shown bool) {
 	b := ui.ButtonBase(c.Key("play")).Absolute().Bottom(10).Right(10).Size(38, 38).Radius(999).Center().
-		Background(a.pal.accent).TextColor(ui.RGB(255, 255, 255)).Label("播放").FocusRing(false).
+		Background(a.pal.accent).TextColor(ui.RGB(255, 255, 255)).Label(l10n.T("播放")).FocusRing(false).
 		Shadow(0, 4, 12, 0, ui.RGBA(0, 0, 0, 0.3))
 	pose := ui.Pose{Fade: 1, Scale: 0.8, Y: 6}
 	if shown || b.Hovered() {
@@ -176,7 +176,7 @@ func (a *app) coverPlayButton(c *ui.Context, id string, shown bool) {
 // chartCard shows a chart with its top three songs beside its cover.
 func (a *app) chartCard(c *ui.Context, pl *spotify.Playlist) {
 	p := a.pal
-	card := ui.ButtonBase(c).Gap(14).Padding(12).Radius(14).AlignItems(ui.Center).FocusRing(false).Label(pl.Name)
+	card := ui.ButtonBase(c).Gap(14).Padding(12).Radius(14).AlignItems(ui.Center).FocusRing(false).Label(pl.DisplayName())
 	hovered := card.Hovered()
 	bg := p.hover
 	if hovered {
@@ -188,7 +188,7 @@ func (a *app) chartCard(c *ui.Context, pl *spotify.Playlist) {
 			a.coverFill(c, pl.Cover(), 200, 9)
 		})
 		ui.Column(c).Grow(1).Shrink(1).MinWidth(0).Gap(5).Children(func() {
-			ui.Text(c, pl.Name).FontSize(14).FontWeight(700).SingleLine()
+			ui.Text(c, pl.DisplayName()).FontSize(14).FontWeight(700).SingleLine()
 			for i, line := range pl.Preview {
 				ui.Row(c).Gap(7).Children(func() {
 					ui.Textf(c, "%d", i+1).FontSize(12).FontWeight(700).Width(10).FontFeatures("tnum").TextColor(p.muted)
@@ -227,15 +227,15 @@ func (a *app) playlistHeader(c *ui.Context, pl *spotify.Playlist) {
 			a.listArt(c, pl, 600, 14)
 		})
 		ui.Column(c).Grow(1).Shrink(1).MinWidth(0).Gap(8).Children(func() {
-			kind, unit := "歌单", "首"
+			kind, countKey := l10n.T("歌单"), "songCount"
 			switch {
 			case strings.HasPrefix(pl.ID, "spotify:album:"):
-				kind = "专辑"
+				kind = l10n.T("专辑")
 			case strings.HasPrefix(pl.ID, "spotify:show:"):
-				kind, unit = "播客", "集"
+				kind, countKey = l10n.T("播客"), "episodeCount"
 			}
 			ui.Text(c, kind).FontSize(12).FontWeight(600).TextColor(p.accent)
-			ui.Text(c, pl.Name).FontSize(30).FontWeight(800).LetterSpacing(-0.6).MaxLines(2).LineHeight(1.2)
+			ui.Text(c, pl.DisplayName()).FontSize(30).FontWeight(800).LetterSpacing(-0.6).MaxLines(2).LineHeight(1.2)
 			ui.Row(c).AlignItems(ui.Center).Children(func() {
 				if len(pl.Artists) > 0 {
 					a.artistLinks(c.Key("by"), pl.Artists, 13, p.muted, p.text)
@@ -249,45 +249,45 @@ func (a *app) playlistHeader(c *ui.Context, pl *spotify.Playlist) {
 					ui.Text(c, pl.Creator.Nickname+" · ").FontSize(13).TextColor(p.muted)
 				}
 				n := len(pl.Tracks)
-				if unit == "集" {
+				if countKey == "episodeCount" {
 					// The latest episodes list; the podcast has them all.
 					n = max(n, pl.TrackCount)
 				}
-				ui.Text(c, fmt.Sprintf("%d %s", n, unit)).FontSize(13).TextColor(p.muted).Shrink(0)
+				ui.Text(c, l10n.Count(countKey, n)).FontSize(13).TextColor(p.muted).Shrink(0)
 			})
 			if d := strings.TrimSpace(pl.Description); d != "" {
 				ui.Text(c, strings.ReplaceAll(d, "\n", " ")).FontSize(12.5).TextColor(p.muted).MaxLines(2).LineHeight(1.45).Margin(2, 0, 0, 0)
 			}
 			ui.Row(c).Gap(10).Margin(10, 0, 0, 0).Children(func() {
-				if pillButton(c.Key("play"), iconPlay, "播放", p.accent, p.onAccent).Clicked() {
+				if pillButton(c.Key("play"), iconPlay, l10n.T("播放"), p.accent, p.onAccent).Clicked() {
 					if a.pl.Shuffle() {
 						a.pl.ToggleShuffle()
 					}
 					a.playFrom(spotify.HomeItem{List: pl}, pl.Tracks, firstPlayable(pl.Tracks))
 				}
-				if pillButton(c.Key("shuffle"), iconShuffle, "随机播放", p.hover.Over(p.bg), p.text).Clicked() {
+				if pillButton(c.Key("shuffle"), iconShuffle, l10n.T("随机播放"), p.hover.Over(p.bg), p.text).Clicked() {
 					if !a.pl.Shuffle() {
 						a.pl.ToggleShuffle()
 					}
 					a.playFrom(spotify.HomeItem{List: pl}, pl.Tracks, firstPlayable(pl.Tracks))
 				}
 				if a.profile != nil && !pl.Liked() && a.editable(pl.ID) == nil {
-					icon, label := iconPlus, "收藏"
+					icon, label := iconPlus, l10n.T("收藏")
 					if a.isSaved(pl.ID) {
-						icon, label = iconCheck, "已收藏"
+						icon, label = iconCheck, l10n.T("已收藏")
 					}
 					if pillButton(c.Key("save"), icon, label, p.hover.Over(p.bg), p.text).Clicked() {
 						a.toggleSaved(pl)
 					}
 				}
 				if mine := a.editable(pl.ID); mine != nil {
-					more := iconButton(c.Key("more"), iconMore, 18, p.muted, "更多")
+					more := iconButton(c.Key("more"), iconMore, 18, p.muted, l10n.T("更多"))
 					more.Menu(func(m *ui.Menu) {
-						if m.Item("重命名…").Chosen() {
+						if m.Item(l10n.T("重命名…")).Chosen() {
 							a.startRename(mine)
 						}
 						m.Separator()
-						if m.Item("删除歌单…").Chosen() {
+						if m.Item(l10n.T("删除歌单…")).Chosen() {
 							a.confirmDelete(mine)
 						}
 					})
@@ -300,24 +300,24 @@ func (a *app) playlistHeader(c *ui.Context, pl *spotify.Playlist) {
 func (a *app) searchPage(c *ui.Context) {
 	if len(a.results) == 0 && a.searching {
 		a.trackSkeleton(c, a.pageShimmer(c), true, func(c *ui.Context) {
-			a.heading(c, "“"+a.searched+"”", "搜索")
+			a.heading(c, "“"+a.searched+"”", l10n.T("搜索"))
 		})
 		return
 	}
 	if len(a.results) == 0 {
 		msg := a.searchErr
 		if msg == "" {
-			msg = "没有找到相关歌曲"
+			msg = l10n.T("没有找到相关歌曲")
 		}
 		top, bottom := a.insets(c)
 		ui.Column(c).Grow(1).Padding(top+pageGap, pagePad, bottom, pagePad).Children(func() {
-			a.heading(c, "“"+a.searched+"”", "搜索")
+			a.heading(c, "“"+a.searched+"”", l10n.T("搜索"))
 			a.centered(c, msg, nil)
 		})
 		return
 	}
 	a.trackRows(c, a.results, true, func(c *ui.Context) {
-		a.heading(c, "“"+a.searched+"”", "搜索")
+		a.heading(c, "“"+a.searched+"”", l10n.T("搜索"))
 		if len(a.found)+len(a.foundAlbums)+len(a.foundLists)+len(a.foundShows) == 0 {
 			return
 		}
@@ -326,7 +326,7 @@ func (a *app) searchPage(c *ui.Context) {
 				ui.Text(c, s).FontSize(19).FontWeight(700).LetterSpacing(-0.3).Margin(4, 0, 14, 0)
 			}
 			if len(a.found) > 0 {
-				title("艺人")
+				title(l10n.T("艺人"))
 				a.artistRow(c, a.found)
 				ui.Box(c).Height(26)
 			}
@@ -335,7 +335,7 @@ func (a *app) searchPage(c *ui.Context) {
 			for _, s := range []struct {
 				name  string
 				lists []spotify.Playlist
-			}{{"专辑", a.foundAlbums}, {"歌单", a.foundLists}, {"播客", a.foundShows}} {
+			}{{l10n.T("专辑"), a.foundAlbums}, {l10n.T("歌单"), a.foundLists}, {l10n.T("播客"), a.foundShows}} {
 				if len(s.lists) == 0 {
 					continue
 				}
@@ -346,7 +346,7 @@ func (a *app) searchPage(c *ui.Context) {
 					}
 				})
 			}
-			ui.Text(c, "歌曲").FontSize(19).FontWeight(700).LetterSpacing(-0.3).Margin(4, 0, 6, 0)
+			ui.Text(c, l10n.T("歌曲")).FontSize(19).FontWeight(700).LetterSpacing(-0.3).Margin(4, 0, 6, 0)
 		})
 	}, nil)
 }
@@ -434,7 +434,7 @@ func (a *app) trackRows(c *ui.Context, tracks []spotify.Track, covers bool, head
 				ui.Text(c, tr.Name).FontWeight(500).TextColor(name).FontSize(14).SingleLine()
 				ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
 					if !tr.Playable() {
-						ui.Text(c, "不可播放").FontSize(9).FontWeight(800).TextColor(p.accent).Padding(0, 4).Radius(3).Border(1, p.accent.Alpha(0.6))
+						ui.Text(c, l10n.T("不可播放")).FontSize(9).FontWeight(800).TextColor(p.accent).Padding(0, 4).Radius(3).Border(1, p.accent.Alpha(0.6))
 					} else if tr.Video && a.mvTag(c.Key("mv"), tr).Clicked() {
 						a.playMV(a.routeItem(), tracks, i)
 					}

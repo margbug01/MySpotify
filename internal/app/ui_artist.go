@@ -7,6 +7,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"vinyl/internal/l10n"
 	"vinyl/internal/spotify"
 )
 
@@ -42,7 +43,7 @@ func (a *app) loadArtist(uri string) {
 			delete(a.loadingAr, uri)
 			if err != nil {
 				log.Printf("artist %s: %v", uri, err)
-				a.arErr[uri] = "艺人加载失败"
+				a.arErr[uri] = l10n.T("艺人加载失败")
 				return
 			}
 			a.artists[uri] = pg
@@ -67,7 +68,7 @@ func (a *app) loadReleases(pg *spotify.ArtistPage, kind spotify.ReleaseKind) {
 			if err != nil || pg == nil {
 				if err != nil {
 					log.Printf("releases %s: %v", key, err)
-					a.toast = "加载失败，请稍后再试"
+					a.toast = l10n.T("加载失败，请稍后再试")
 				}
 				return
 			}
@@ -96,7 +97,7 @@ func (a *app) toggleFollow(pg *spotify.ArtistPage) {
 				if pg := a.artists[uri]; pg != nil {
 					pg.Followed = !follow
 				}
-				a.toast = "操作失败，请稍后再试"
+				a.toast = l10n.T("操作失败，请稍后再试")
 				return
 			}
 			if a.profile != nil {
@@ -133,16 +134,16 @@ func (a *app) artistHeader(c *ui.Context, pg *spotify.ArtistPage) {
 	p := a.pal
 	var stats []string
 	if pg.MonthlyListeners > 0 {
-		stats = append(stats, plays(float64(pg.MonthlyListeners))+" 位月听众")
+		stats = append(stats, plays(float64(pg.MonthlyListeners))+l10n.T(" 位月听众"))
 	}
 	if pg.Followers > 0 {
-		stats = append(stats, plays(float64(pg.Followers))+" 人关注")
+		stats = append(stats, plays(float64(pg.Followers))+l10n.T(" 人关注"))
 	}
 	kind := func(color ui.Color) {
 		ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, "艺人").FontSize(12).FontWeight(600).TextColor(color)
+			ui.Text(c, l10n.T("艺人")).FontSize(12).FontWeight(600).TextColor(color)
 			if pg.Verified {
-				ui.Text(c, "已认证").FontSize(10).FontWeight(700).TextColor(color).Padding(1, 6).Radius(999).Border(1, color.Alpha(0.6))
+				ui.Text(c, l10n.T("已认证")).FontSize(10).FontWeight(700).TextColor(color).Padding(1, 6).Radius(999).Border(1, color.Alpha(0.6))
 			}
 		})
 	}
@@ -176,36 +177,36 @@ func (a *app) artistHeader(c *ui.Context, pg *spotify.ArtistPage) {
 	}
 	ui.Row(c).Gap(10).Children(func() {
 		if len(pg.TopTracks) > 0 {
-			if pillButton(c.Key("play"), iconPlay, "播放", p.accent, p.onAccent).Clicked() {
+			if pillButton(c.Key("play"), iconPlay, l10n.T("播放"), p.accent, p.onAccent).Clicked() {
 				if a.pl.Shuffle() {
 					a.pl.ToggleShuffle()
 				}
 				a.playFrom(spotify.HomeItem{Artist: &pg.ArtistCard}, pg.TopTracks, firstPlayable(pg.TopTracks))
 			}
-			if pillButton(c.Key("shuffle"), iconShuffle, "随机播放", p.hover.Over(p.bg), p.text).Clicked() {
+			if pillButton(c.Key("shuffle"), iconShuffle, l10n.T("随机播放"), p.hover.Over(p.bg), p.text).Clicked() {
 				if !a.pl.Shuffle() {
 					a.pl.ToggleShuffle()
 				}
 				a.playFrom(spotify.HomeItem{Artist: &pg.ArtistCard}, pg.TopTracks, firstPlayable(pg.TopTracks))
 			}
-			label := "电台"
+			label := l10n.T("电台")
 			if a.radioStarting == radioName(pg.ID, pg.Name) {
-				label = "正在开启…"
+				label = l10n.T("正在开启…")
 			}
 			if pillButton(c.Key("radio"), iconRadio, label, p.hover.Over(p.bg), p.text).Clicked() {
 				a.startRadio(pg.ID, pg.Name)
 			}
 		}
-		icon, label := iconPlus, "关注"
+		icon, label := iconPlus, l10n.T("关注")
 		if pg.Followed {
-			icon, label = iconCheck, "已关注"
+			icon, label = iconCheck, l10n.T("已关注")
 		}
 		if pillButton(c.Key("follow"), icon, label, p.hover.Over(p.bg), p.text).Clicked() {
 			a.toggleFollow(pg)
 		}
 	})
 	if len(pg.TopTracks) > 0 {
-		a.section(c, "热门歌曲")
+		a.section(c, l10n.T("热门歌曲"))
 	}
 }
 
@@ -223,22 +224,22 @@ func (a *app) artistFooter(c *ui.Context, pg *spotify.ArtistPage) {
 			})
 		}
 		if len(pg.Popular) > 0 {
-			a.section(c, "热门作品")
+			a.section(c, l10n.T("热门作品"))
 			cards(pg.Popular)
 		}
 		for _, s := range []struct {
 			rs    *spotify.Releases
 			title string
-		}{{&pg.Albums, "专辑"}, {&pg.Singles, "单曲和 EP"}, {&pg.Compilations, "合辑"}} {
+		}{{&pg.Albums, l10n.T("albums")}, {&pg.Singles, l10n.T("单曲和 EP")}, {&pg.Compilations, l10n.T("compilations")}} {
 			if len(s.rs.Items) == 0 {
 				continue
 			}
 			ui.Row(c.Key(s.title)).AlignItems(ui.Center).Margin(34, 0, 14, 0).Children(func() {
 				ui.Text(c, s.title).FontSize(19).FontWeight(700).LetterSpacing(-0.3).Grow(1)
 				if more := s.rs.Total - len(s.rs.Items); more > 0 {
-					label := "显示全部 " + plays(float64(s.rs.Total))
+					label := l10n.T("显示全部 ") + plays(float64(s.rs.Total))
 					if a.loadingRel[pg.ID+"#"+string(s.rs.Kind)] {
-						label = "正在加载…"
+						label = l10n.T("正在加载…")
 					}
 					if ui.Button(c.Key("all"), label).Clicked() {
 						a.loadReleases(pg, s.rs.Kind)
@@ -248,7 +249,7 @@ func (a *app) artistFooter(c *ui.Context, pg *spotify.ArtistPage) {
 			cards(s.rs.Items)
 		}
 		if len(pg.Related) > 0 {
-			a.section(c, "相似艺人")
+			a.section(c, l10n.T("相似艺人"))
 			ui.Grid(c).Columns(a.columns(c, 150)).GapX(20).GapY(24).Children(func() {
 				for i := range pg.Related {
 					a.artistCard(c.Key(pg.Related[i].ID), &pg.Related[i])
@@ -256,7 +257,7 @@ func (a *app) artistFooter(c *ui.Context, pg *spotify.ArtistPage) {
 			})
 		}
 		if bio := strings.TrimSpace(pg.Bio); bio != "" {
-			a.section(c, "简介")
+			a.section(c, l10n.T("简介"))
 			ui.Text(c, bio).FontSize(13).TextColor(p.muted).LineHeight(1.6).MaxLines(8)
 		}
 	})
@@ -281,7 +282,7 @@ func (a *app) artistCard(c *ui.Context, ar *spotify.ArtistCard) {
 		art.Children(func() { a.coverFill(c, ar.Avatar, 320, 999) })
 		ui.Column(c).Gap(2).AlignItems(ui.Center).Children(func() {
 			ui.Text(c, ar.Name).FontSize(13).FontWeight(500).SingleLine()
-			ui.Text(c, "艺人").FontSize(12).TextColor(p.muted)
+			ui.Text(c, l10n.T("艺人")).FontSize(12).TextColor(p.muted)
 		})
 	})
 	if card.Clicked() {
@@ -356,7 +357,7 @@ func (a *app) followedArtists(c *ui.Context) {
 		return
 	}
 	p := a.pal
-	ui.Text(c, "关注的艺人").FontSize(11.5).FontWeight(600).TextColor(p.faint).Margin(18, 4, 6, 10)
+	ui.Text(c, l10n.T("关注的艺人")).FontSize(11.5).FontWeight(600).TextColor(p.faint).Margin(18, 4, 6, 10)
 	for i := range a.followed {
 		ar := &a.followed[i]
 		selected := a.route.page == pageArtist && a.route.artist == ar.ID && !a.nowPlaying

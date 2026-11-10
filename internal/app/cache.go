@@ -6,6 +6,7 @@ import (
 
 	"github.com/egoist/mygo"
 
+	"vinyl/internal/l10n"
 	"vinyl/internal/player"
 )
 
@@ -14,7 +15,7 @@ var cacheLimits = []struct {
 	mb    int
 	label string
 }{
-	{0, "关闭"},
+	{0, "关闭缓存"},
 	{512, "512 MB"},
 	{1024, "1 GB"},
 	{2048, "2 GB"},
@@ -76,10 +77,10 @@ func (a *app) clearCache() {
 func (a *app) cacheUsage() string {
 	switch n := a.cacheUsed; {
 	case n < 0:
-		return "正在计算已用空间…"
+		return l10n.T("正在计算已用空间…")
 	case n >= 1<<30:
-		return fmt.Sprintf("已用 %.1f GB", float64(n)/(1<<30))
+		return fmt.Sprintf(l10n.T("已用 %.1f GB"), float64(n)/(1<<30))
 	default:
-		return fmt.Sprintf("已用 %d MB", n>>20)
+		return fmt.Sprintf(l10n.T("已用 %d MB"), n>>20)
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"slices"
 	"strings"
 
+	"vinyl/internal/l10n"
 	"vinyl/internal/spotify"
 )
 
@@ -48,13 +49,13 @@ func (a *app) toggleSaved(pl *spotify.Playlist) {
 				} else if !a.isSaved(uri) {
 					a.saved = append([]spotify.Playlist{kept}, a.saved...)
 				}
-				a.toast = "操作失败，请稍后再试"
+				a.toast = l10n.T("操作失败，请稍后再试")
 				return
 			}
 			if save {
-				a.toast = "已收藏"
+				a.toast = l10n.T("已收藏")
 			} else {
-				a.toast = "已取消收藏"
+				a.toast = l10n.T("已取消收藏")
 			}
 		})
 	}()

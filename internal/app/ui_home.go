@@ -9,6 +9,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"vinyl/internal/l10n"
 	"vinyl/internal/spotify"
 )
 
@@ -63,7 +64,7 @@ func (a *app) homePage(c *ui.Context) {
 				if err := a.loadErr[key]; err != "" && !a.loading[key] {
 					ui.Column(c).Padding(80, 0).Center().Gap(12).Children(func() {
 						ui.Text(c, err).TextColor(a.pal.muted).FontSize(13)
-						if ui.Button(c, "重试").Clicked() {
+						if ui.Button(c, l10n.T("重试")).Clicked() {
 							a.loadFacet(a.homeFacet)
 						}
 					})
@@ -109,7 +110,7 @@ func (a *app) homeChips(c *ui.Context) {
 	ui.Row(c).Gap(8).Margin(0, 0, 22, 0).Children(func() {
 		for _, f := range homeFacets {
 			on := a.homeFacet == f.id
-			b := ui.ButtonBase(c.Key(f.label)).Height(32).PaddingX(14).Radius(999).Center().FocusRing(false).Label(f.label)
+			b := ui.ButtonBase(c.Key(f.label)).Height(32).PaddingX(14).Radius(999).Center().FocusRing(false).Label(l10n.T(f.label))
 			bg, fg := p.text.Alpha(0.07), p.text
 			switch {
 			case on:
@@ -119,7 +120,7 @@ func (a *app) homeChips(c *ui.Context) {
 			}
 			b.Background(b.AnimateColor("bg", bg, ui.Animation{Duration: 140 * time.Millisecond}))
 			b.Children(func() {
-				ui.Text(c, f.label).FontSize(13).FontWeight(500).TextColor(fg).SingleLine()
+				ui.Text(c, l10n.T(f.label)).FontSize(13).FontWeight(500).TextColor(fg).SingleLine()
 			})
 			if b.Clicked() {
 				a.chooseFacet(f.id)
@@ -141,7 +142,7 @@ func (a *app) chooseFacet(id string) {
 
 // loadFacet loads the home with the chip id chosen.
 func (a *app) loadFacet(id string) {
-	fetch(a, "home:"+id, "加载失败，请稍后再试", func() (*spotify.Home, error) { return homeFeed(id) }, func(h *spotify.Home) {
+	fetch(a, "home:"+id, l10n.T("加载失败，请稍后再试"), func() (*spotify.Home, error) { return homeFeed(id) }, func(h *spotify.Home) {
 		if a.facets == nil {
 			a.facets = map[string][]spotify.HomeSection{}
 		}
@@ -255,17 +256,17 @@ func (a *app) shelf(c *ui.Context, s *spotify.HomeSection) {
 		items = all
 	}
 	ui.Row(c).AlignItems(ui.Center).Gap(10).Margin(26, 0, 6, 0).Children(func() {
-		ui.Text(c, s.Title).FontSize(22).FontWeight(700).LetterSpacing(-0.4).SingleLine().Grow(1).Shrink(1).MinWidth(0)
+		ui.Text(c, l10n.T(s.Title)).FontSize(22).FontWeight(700).LetterSpacing(-0.4).SingleLine().Grow(1).Shrink(1).MinWidth(0)
 		if len(items) > cols {
 			step := cardWidth * float32(max(1, cols-1))
-			if iconButton(c.Key("left"), iconBack, 16, a.pal.muted, s.Title+"：向左滑动").Disabled(state.X <= 0).Clicked() {
+			if iconButton(c.Key("left"), iconBack, 16, a.pal.muted, s.Title+l10n.T("：向左滑动")).Disabled(state.X <= 0).Clicked() {
 				state.ScrollTo(max(0, state.X-step), 0, ui.Smooth)
 			}
-			if iconButton(c.Key("right"), iconForward, 16, a.pal.muted, s.Title+"：向右滑动").Disabled(state.X >= state.MaxX && state.MaxX > 0).Clicked() {
+			if iconButton(c.Key("right"), iconForward, 16, a.pal.muted, s.Title+l10n.T("：向右滑动")).Disabled(state.X >= state.MaxX && state.MaxX > 0).Clicked() {
 				state.ScrollTo(min(state.MaxX, state.X+step), 0, ui.Smooth)
 			}
 		}
-		if max(s.Total, len(items)) > cols && link(c.Key("all"), "显示全部", 13, a.pal.muted, a.pal.text).Clicked() {
+		if max(s.Total, len(items)) > cols && link(c.Key("all"), l10n.T("显示全部"), 13, a.pal.muted, a.pal.text).Clicked() {
 			a.goTo(route{page: pageSection, section: sectionKey(s)})
 		}
 	})
@@ -292,7 +293,7 @@ func (a *app) withPlayedFrom(sections []spotify.HomeSection) []spotify.HomeSecti
 			return out
 		}
 	}
-	return append([]spotify.HomeSection{{Title: "最近播放", Recent: true, Total: len(a.playedFrom), Items: a.playedFrom}}, out...)
+	return append([]spotify.HomeSection{{Title: l10n.T("最近播放"), Recent: true, Total: len(a.playedFrom), Items: a.playedFrom}}, out...)
 }
 
 // firstThen returns front, then those of rest it lacks.
@@ -332,7 +333,7 @@ func (a *app) loadSection(key string) {
 	if !strings.HasPrefix(key, "spotify:section:") || a.sectionAll[key] != nil {
 		return
 	}
-	fetch(a, key, "加载失败，请稍后再试", func() ([]spotify.HomeItem, error) { return homeSectionItems(key) }, func(items []spotify.HomeItem) {
+	fetch(a, key, l10n.T("加载失败，请稍后再试"), func() ([]spotify.HomeItem, error) { return homeSectionItems(key) }, func(items []spotify.HomeItem) {
 		if a.sectionAll == nil {
 			a.sectionAll = map[string][]spotify.HomeItem{}
 		}
@@ -344,7 +345,7 @@ func (a *app) loadSection(key string) {
 func (a *app) sectionPage(c *ui.Context) {
 	s := a.findSection(a.route.section)
 	if s == nil {
-		a.centered(c, "这一栏已经不在首页了", nil)
+		a.centered(c, l10n.T("这一栏已经不在首页了"), nil)
 		return
 	}
 	items := s.Items
@@ -358,7 +359,7 @@ func (a *app) sectionPage(c *ui.Context) {
 	ui.Scroll(c.Key("section")).TrackScroll(&a.pageScroll).Grow(1).Padding(top+pageGap, pagePad, bottom+48, pagePad).ScrollbarInsets(top, 0, bottom, 0).Children(func() {
 		a.startMark(c)
 		defer a.endMark(c)
-		a.heading(c, s.Title, "")
+		a.heading(c, l10n.T(s.Title), "")
 		ui.Grid(c).Columns(a.columns(c, homeCardMin)).GapY(6).Margin(0, -12, 0, -12).Children(func() {
 			for i := range items {
 				a.homeCard(c.Key(items[i].ID()), &items[i])
@@ -430,7 +431,7 @@ func likedArt(c *ui.Context, radius, icon float32) {
 // greenPlay makes b Spotify's play button, which plays it: it rises into
 // view as shown turns true.
 func (a *app) greenPlay(c *ui.Context, b ui.Element, it *spotify.HomeItem, size float32, shown bool) {
-	b.Size(size, size).Radius(999).Center().FocusRing(false).Label("播放").TextColor(ui.RGB(0, 0, 0)).
+	b.Size(size, size).Radius(999).Center().FocusRing(false).Label(l10n.T("播放")).TextColor(ui.RGB(0, 0, 0)).
 		Shadow(0, 8, 16, -6, ui.RGBA(0, 0, 0, 0.35))
 	fill := spotifyGreen
 	pose := ui.Pose{Fade: 1, Scale: 1, Y: 8}
@@ -451,7 +452,7 @@ func (a *app) greenPlay(c *ui.Context, b ui.Element, it *spotify.HomeItem, size 
 func itemName(it *spotify.HomeItem) string {
 	switch {
 	case it.List != nil:
-		return it.List.Name
+		return it.List.DisplayName()
 	case it.Artist != nil:
 		return it.Artist.Name
 	case it.Episode != nil:
@@ -477,7 +478,7 @@ func itemCover(it *spotify.HomeItem) string {
 func (a *app) itemNote(it *spotify.HomeItem, now time.Time) string {
 	switch {
 	case it.Artist != nil:
-		return "艺人"
+		return l10n.T("艺人")
 	case it.Episode != nil:
 		var parts []string
 		if day, err := time.ParseInLocation(time.DateOnly, cmp.Or(it.Released, it.Episode.Released), time.Local); err == nil {
@@ -485,26 +486,26 @@ func (a *app) itemNote(it *spotify.HomeItem, now time.Time) string {
 			case inCurrentWeek(day, now):
 				parts = append(parts, weekday(day))
 			case day.Year() == now.Year():
-				parts = append(parts, fmt.Sprintf("%d月%d日", day.Month(), day.Day()))
+				parts = append(parts, shortDate(day, false))
 			default:
-				parts = append(parts, fmt.Sprintf("%d年%d月%d日", day.Year(), day.Month(), day.Day()))
+				parts = append(parts, shortDate(day, true))
 			}
 		}
 		if m := (it.Episode.Duration + 30000) / 60000; m >= 60 {
-			parts = append(parts, fmt.Sprintf("%d 小时 %d 分钟", m/60, m%60))
+			parts = append(parts, fmt.Sprintf(l10n.T("%d 小时 %d 分钟"), m/60, m%60))
 		} else if m > 0 {
-			parts = append(parts, fmt.Sprintf("%d 分钟", m))
+			parts = append(parts, fmt.Sprintf(l10n.T("%d 分钟"), m))
 		}
 		return strings.Join(parts, " · ")
 	case it.List != nil:
 		pl := it.List
 		switch {
 		case pl.Liked():
-			return "歌单"
+			return l10n.T("歌单")
 		case strings.HasPrefix(pl.ID, "spotify:playlist:") && strings.TrimSpace(pl.Description) != "":
 			return strings.TrimSpace(pl.Description)
 		}
-		return cmp.Or(pl.Note, pl.Creator.Nickname)
+		return cmp.Or(pl.DisplayNote(), pl.Creator.Nickname)
 	}
 	return ""
 }
@@ -549,7 +550,7 @@ func (a *app) playArtist(uri string) {
 		pg, err := spotify.ArtistDetail(uri)
 		a.post(func() {
 			if err != nil {
-				a.toast = "艺人加载失败"
+				a.toast = l10n.T("艺人加载失败")
 				return
 			}
 			a.artists[uri] = pg

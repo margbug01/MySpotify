@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/egoist/mygo/i18n"
 	"github.com/egoist/mygo/ui"
 
+	"vinyl/internal/l10n"
 	"vinyl/internal/player"
 	"vinyl/internal/spotify"
 )
@@ -69,7 +71,7 @@ func iconButton(c *ui.Context, icon *ui.SVG, size float32, color ui.Color, label
 // playButton is the icon button that plays and pauses, its icon turning
 // from one into the other.
 func playButton(c *ui.Context, playing bool, size float32, color ui.Color) ui.Element {
-	b := roundButton(c, size, color, "播放/暂停")
+	b := roundButton(c, size, color, l10n.T("播放/暂停"))
 	b.Children(func() { playPause(c, b, playing, size) })
 	return b
 }
@@ -203,13 +205,16 @@ func clock(d time.Duration) string {
 	return fmt.Sprintf("%d:%02d", s/60, s%60)
 }
 
-// plays formats a play count as people in China read it.
+// plays formats a count using the interface language's compact units.
 func plays(n float64) string {
+	if l10n.English() {
+		return i18n.FormatNumber("en", n, i18n.NumberOptions{Notation: i18n.CompactShort})
+	}
 	switch {
 	case n >= 1e8:
-		return fmt.Sprintf("%.1f亿", n/1e8)
+		return fmt.Sprintf(l10n.T("%.1f亿"), n/1e8)
 	case n >= 1e4:
-		return fmt.Sprintf("%.0f万", n/1e4)
+		return fmt.Sprintf(l10n.T("%.0f万"), n/1e4)
 	default:
 		return fmt.Sprintf("%.0f", n)
 	}
@@ -219,15 +224,15 @@ func plays(n float64) string {
 func greeting(now time.Time) string {
 	switch h := now.Hour(); {
 	case h < 5:
-		return "夜深了"
+		return l10n.T("夜深了")
 	case h < 11:
-		return "早上好"
+		return l10n.T("早上好")
 	case h < 13:
-		return "中午好"
+		return l10n.T("中午好")
 	case h < 18:
-		return "下午好"
+		return l10n.T("下午好")
 	default:
-		return "晚上好"
+		return l10n.T("晚上好")
 	}
 }
 

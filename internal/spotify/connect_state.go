@@ -5,6 +5,8 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+
+	"vinyl/internal/l10n"
 )
 
 type ConnectDevice struct {
@@ -198,16 +200,16 @@ func (m ConnectMachine) Queue(index int) []Track {
 
 func (m ConnectMachine) Track(index int) (Track, error) {
 	if index < 0 || index >= len(m.States) {
-		return Track{}, errors.New("Connect: 无效播放状态")
+		return Track{}, errors.New(l10n.T("Connect: 无效播放状态"))
 	}
 	at := m.States[index].Track
 	if at < 0 || at >= len(m.Tracks) {
-		return Track{}, errors.New("Connect: 无效曲目")
+		return Track{}, errors.New(l10n.T("Connect: 无效曲目"))
 	}
 	meta := m.Tracks[at].Metadata
 	id := connectTrackID(meta.URI)
 	if id == "" {
-		return Track{}, errors.New("Connect: 此内容类型暂不支持，已暂停本机")
+		return Track{}, errors.New(l10n.T("Connect: 此内容类型暂不支持，已暂停本机"))
 	}
 	track := Track{ID: id, Episode: strings.HasPrefix(meta.URI, "spotify:episode:"), Name: meta.Name, Duration: int64(meta.Duration), Album: Album{ID: meta.AlbumURI, Name: meta.Album}}
 	track.LinkedFrom = linkedFrom(id, meta.LinkedFrom)

@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
+	"vinyl/internal/l10n"
 	"vinyl/internal/spotify"
 )
 
@@ -175,12 +177,12 @@ func (a *app) recentPage(c *ui.Context) {
 		ui.Text(c, s).FontSize(19).FontWeight(700).LetterSpacing(-0.3).Margin(4, 0, 14, 0)
 	}
 	header := func(c *ui.Context) {
-		a.heading(c, "最近播放", "")
+		a.heading(c, l10n.T("最近播放"), "")
 		if !elsewhere {
 			return
 		}
 		ui.Column(c).PaddingX(12).Margin(0, 0, 8, 0).Children(func() {
-			title(c, "在 Spotify 其他应用里")
+			title(c, l10n.T("在 Spotify 其他应用里"))
 			if lists := a.recentLists; len(lists) > 0 {
 				cols := a.columns(c, 150)
 				ui.Grid(c).Columns(cols).GapX(20).GapY(28).Children(func() {
@@ -194,14 +196,14 @@ func (a *app) recentPage(c *ui.Context) {
 				a.artistRow(c, a.recentArtists)
 			}
 			ui.Box(c).Height(16)
-			title(c, "在 "+appName+" 里")
+			title(c, fmt.Sprintf(l10n.T("在%s里"), appName))
 		})
 	}
 	if len(a.played) == 0 {
 		top, bottom := a.insets(c)
 		ui.Column(c).Grow(1).Padding(top+pageGap, pagePad, bottom, pagePad).Children(func() {
 			header(c)
-			a.centered(c, "在 "+appName+" 里听过的歌会出现在这里", nil)
+			a.centered(c, fmt.Sprintf(l10n.T("本机最近播放说明"), appName), nil)
 		})
 		return
 	}

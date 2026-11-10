@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
+
+	"vinyl/internal/l10n"
 	"vinyl/internal/player"
 	"vinyl/internal/spotify"
 )
@@ -209,7 +211,7 @@ func (a *app) connectJob(job func() error) bool {
 	case a.connect.jobs <- job:
 		return true
 	default:
-		a.toast = "Connect 操作正在排队，请稍后再试"
+		a.toast = l10n.T("Connect 操作正在排队，请稍后再试")
 		return false
 	}
 }
@@ -417,7 +419,7 @@ func (a *app) connectEvent(event spotify.ConnectEvent) {
 					Paused  bool   `json:"paused"`
 				}
 				if json.Unmarshal(command.Previous, &previous) == nil && (previous.Machine != state.machine.ID || previous.State != state.machine.States[state.ref.Index].ID || previous.Paused != state.ref.Paused) {
-					state.err = "Connect 状态冲突，正在重新同步"
+					state.err = l10n.T("Connect 状态冲突，正在重新同步")
 					current := map[string]any{"state_machine_id": state.machine.ID, "state_id": state.machine.States[state.ref.Index].ID, "paused": state.ref.Paused}
 					position, duration, paused := a.pl.Position().Milliseconds(), a.pl.Duration().Milliseconds(), !a.pl.Playing()
 					a.connectJob(func() error {
@@ -551,7 +553,7 @@ func (a *app) connectControl(action string, value any) bool {
 	}
 	if !state.observer || !state.receiver {
 		if a.pl.IsRemote() || state.ref != nil {
-			a.toast = "Connect 正在重连，请稍后"
+			a.toast = l10n.T("Connect 正在重连，请稍后")
 			return true
 		}
 		return false
@@ -583,7 +585,7 @@ func (a *app) connectControl(action string, value any) bool {
 		}
 	case "seek":
 		if state.ref != nil && state.machine.States[state.ref.Index].NoSeek {
-			a.toast = "当前内容不支持拖动进度"
+			a.toast = l10n.T("当前内容不支持拖动进度")
 			return true
 		}
 		if target == state.client.ID && !a.pl.IsRemote() {
@@ -680,7 +682,7 @@ func (a *app) connectControl(action string, value any) bool {
 func connectMessage(err error) string {
 	var turned *spotify.ConnectError
 	if errors.As(err, &turned) {
-		return fmt.Sprintf("Spotify 没有接受这个操作（%d），原因已写进日志", turned.Status)
+		return fmt.Sprintf(l10n.T("Spotify 没有接受这个操作（%d），原因已写进日志"), turned.Status)
 	}
 	return err.Error()
 }
@@ -706,7 +708,7 @@ func (a *app) connectButton(c *ui.Context) {
 	if state.cluster.Active != "" && state.cluster.Active != state.client.ID {
 		color = a.pal.accent
 	}
-	button := iconButton(c.Key("connect"), iconDevice, 16, color, "播放设备")
+	button := iconButton(c.Key("connect"), iconDevice, 16, color, l10n.T("播放设备"))
 	if button.Clicked() {
 		state.open = !state.open
 	}
@@ -715,12 +717,12 @@ func (a *app) connectButton(c *ui.Context) {
 		panel.AttachTo(button, ui.AnchorTop, ui.AnchorBottom).Margin(0, 0, 8, 0).Width(270).Padding(12).Radius(10).Background(pop.fill).Border(0.5, pop.edge).Shadow(0, 8, 24, -4, ui.RGBA(0, 0, 0, 0.2))
 		panel.Children(func() {
 			ui.Column(c).Gap(8).Children(func() {
-				ui.Text(c, "选择播放设备").FontSize(15).FontWeight(600)
+				ui.Text(c, l10n.T("选择播放设备")).FontSize(15).FontWeight(600)
 				if state.err != "" {
 					ui.Text(c, state.err).FontSize(12).TextColor(a.pal.muted)
 				}
 				if !state.receiver || !state.observer {
-					ui.Text(c, "正在连接 Spotify…").FontSize(12)
+					ui.Text(c, l10n.T("正在连接 Spotify…")).FontSize(12)
 					return
 				}
 				ids := []string{state.client.ID}
@@ -733,10 +735,10 @@ func (a *app) connectButton(c *ui.Context) {
 				for _, id := range ids {
 					name := state.cluster.Devices[id].Name
 					if id == state.client.ID {
-						name = "此电脑 · " + appName
+						name = l10n.T("此电脑 · ") + appName
 					}
 					if name == "" {
-						name = "Spotify 设备"
+						name = l10n.T("Spotify 设备")
 					}
 					if id == state.cluster.Active {
 						name = "✓ " + name
@@ -753,7 +755,7 @@ func (a *app) connectButton(c *ui.Context) {
 					}
 				}
 				if len(ids) == 1 {
-					ui.Text(c, "在同账号的手机或网页打开 Spotify").FontSize(12).TextColor(a.pal.muted)
+					ui.Text(c, l10n.T("在同账号的手机或网页打开 Spotify")).FontSize(12).TextColor(a.pal.muted)
 				}
 			})
 		})

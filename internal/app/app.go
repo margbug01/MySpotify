@@ -97,6 +97,7 @@ type app struct {
 	charts      []spotify.Playlist
 	homeErr     string
 	homeLoading bool
+	languageGen int // ignores localized responses requested before a language change
 
 	homeShelves   map[string]*ui.ScrollState
 	homeSections  []spotify.HomeSection            // what the home page shows: Spotify's sections
@@ -291,6 +292,9 @@ func Run() error {
 	}
 	mygo.App.WhenReady(func() {
 		a.settings = loadSettings()
+		if os.Getenv("MYGO_LOCALE") == "" {
+			mygo.App.SetLocale(a.settings.Language)
+		}
 		a.settings.applyAppearance()
 		// Before anything asks Spotify, or a web page loads.
 		a.applyProxy()
@@ -369,6 +373,7 @@ func Run() error {
 		a.scheduleMine()
 		a.upd = myGoUpdates(a.post)
 		a.setMenu()
+		mygo.App.OnLocaleChanged(func(string) { a.languageChanged() })
 		a.boot()
 		if shotHook == nil {
 			a.watchUpdates()

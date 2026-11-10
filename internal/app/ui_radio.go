@@ -1,11 +1,13 @@
 package app
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
 
+	"vinyl/internal/l10n"
 	"vinyl/internal/spotify"
 )
 
@@ -17,7 +19,7 @@ func radioName(uri, label string) string { return "radio:" + uri + "#" + label }
 // radioLabel names a radio as the listener knows it.
 func radioLabel(name string) string {
 	_, label, _ := strings.Cut(name, "#")
-	return label + " 电台"
+	return label + l10n.T(" 电台")
 }
 
 // radioTracks loads the songs of Spotify's radio of seed, those that play.
@@ -80,7 +82,7 @@ func (a *app) radioLoaded(name, uri string, tracks []spotify.Track, err error) {
 	}
 	a.radioStarting = ""
 	if err != nil || len(tracks) == 0 {
-		a.toast = "电台暂时无法开启，请稍后再试"
+		a.toast = l10n.T("电台暂时无法开启，请稍后再试")
 		return
 	}
 	if cur := a.pl.Current(); cur != nil && cur.URI() == uri {
@@ -88,21 +90,21 @@ func (a *app) radioLoaded(name, uri string, tracks []spotify.Track, err error) {
 	} else {
 		a.playRadio(name, tracks)
 	}
-	a.toast = "已开启" + radioLabel(name)
+	a.toast = fmt.Sprintf(l10n.T("已开启%s"), radioLabel(name))
 }
 
 // exitRadio stops the radio playing, but not the song it plays.
 func (a *app) exitRadio() {
 	if name := a.pl.Radio(); name != "" {
 		a.pl.EndRadio()
-		a.toast = "已退出" + radioLabel(name)
+		a.toast = fmt.Sprintf(l10n.T("已退出%s"), radioLabel(name))
 	}
 }
 
 // radioChip says which radio plays, over the title: a click on it, or on
 // its cross, leaves the radio, playing on the song.
 func (a *app) radioChip(c *ui.Context, name string) {
-	const exit = "退出电台"
+	var exit = l10n.T("退出电台")
 	chip := ui.ButtonBase(c.Key("radio-chip")).Gap(5).Padding(3, 6, 3, 8).Margin(0, 0, 4, -8).Radius(999).
 		AlignItems(ui.Center).AlignSelf(ui.Start).FocusRing(false).Label(exit).Tooltip(exit)
 	bg, fg, cross := ui.Transparent, white.Alpha(0.6), float32(0.5)

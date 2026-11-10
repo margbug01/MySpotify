@@ -74,6 +74,8 @@ Linux 提供实验性 `.deb` / `.tar.gz` 构建。amd64 默认使用 Qt WebEngin
 
 ## 开始使用
 
+开发版已支持简体中文和英语：在「设置 › 外观 › 语言」选择跟随系统、简体中文或 English，即时切换并记住选择。已发布的 v0.4.16 仍是中文界面；歌曲名、歌手名和歌词内容保持原样。
+
 ### Windows
 
 1. 到 [Releases](https://github.com/margbug01/MySpotify/releases/latest) 下载 `MySpotify-<版本>-windows-amd64.zip`，解压到任意文件夹，双击 `MySpotify.exe`。

@@ -16,6 +16,7 @@ import (
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
+	"vinyl/internal/l10n"
 	"vinyl/internal/qtweb"
 	"vinyl/internal/spotify"
 )
@@ -145,7 +146,7 @@ func (a *app) signinWindow(url string) *mygo.Window {
 		return s.win
 	}
 	w := mygo.NewWindow(mygo.WindowOptions{
-		Title: "登录 Spotify", Width: 480, Height: 720, Hidden: true, URL: url,
+		Title: l10n.T("登录 Spotify"), Width: 480, Height: 720, Hidden: true, URL: url,
 		Page: mygo.PageOptions{PreloadScript: spotify.CaptureJS, UserAgentSuffix: spotify.WebViewAgentSuffix},
 	})
 	w.OnClosed(func() {
@@ -324,7 +325,7 @@ func (a *app) openLogin() {
 				a.closeSignin()
 			}
 			if err != nil {
-				a.toast = "登录失败，请稍后再试"
+				a.toast = l10n.T("登录失败，请稍后再试")
 				return
 			}
 			a.signedIn(prof)
@@ -501,12 +502,12 @@ func (a *app) signedOutPage(c *ui.Context) {
 	p := a.pal
 	top, bottom := a.insets(c)
 	ui.Column(c).Grow(1).Padding(top, 0, bottom, 0).Center().Gap(10).Children(func() {
-		ui.Text(c, "连不上 Spotify").FontSize(20).FontWeight(700)
-		ui.Text(c, "登录后可以听歌，免费账号也能完整播放").FontSize(13).TextColor(p.muted).Margin(0, 0, 8, 0)
-		if pillButton(c.Key("login"), iconUser, "登录 Spotify", p.accent, p.onAccent).Clicked() {
+		ui.Text(c, l10n.T("连不上 Spotify")).FontSize(20).FontWeight(700)
+		ui.Text(c, l10n.T("登录后可以听歌，免费账号也能完整播放")).FontSize(13).TextColor(p.muted).Margin(0, 0, 8, 0)
+		if pillButton(c.Key("login"), iconUser, l10n.T("登录 Spotify"), p.accent, p.onAccent).Clicked() {
 			a.openLogin()
 		}
-		if ui.Button(c, "重试").Clicked() {
+		if ui.Button(c, l10n.T("重试")).Clicked() {
 			a.loadHome()
 		}
 	})
@@ -529,11 +530,11 @@ func (a *app) accountRow(c *ui.Context) {
 	}
 	if a.profile == nil {
 		a.accountOpen = false
-		b.Label("登录").Children(func() {
+		b.Label(l10n.T("登录")).Children(func() {
 			ui.Box(c).Size(26, 26).Radius(13).Background(p.press).Center().Children(func() {
 				ui.Icon(c, iconUser).Size(14, 14).TextColor(p.muted)
 			})
-			ui.Text(c, "登录 Spotify").FontSize(13).FontWeight(500).TextColor(p.muted)
+			ui.Text(c, l10n.T("登录 Spotify")).FontSize(13).FontWeight(500).TextColor(p.muted)
 		})
 		if b.Clicked() {
 			a.openLogin()
@@ -559,7 +560,7 @@ func (a *app) accountMenu(c *ui.Context, row ui.Element) {
 	ui.PopoverBase(c.Key("account-menu"), row, &a.accountOpen, func(panel ui.Element) {
 		panel.AttachTo(row, ui.AnchorTopStart, ui.AnchorBottomStart).Margin(0, 0, 6, 0).Padding(5).Gap(1).
 			Radius(12).Background(pop.fill).Border(0.5, pop.edge).Shadow(0, 8, 24, -4, ui.RGBA(0, 0, 0, 0.2)).
-			Role(ui.RoleMenu).FocusGroup(ui.Vertical).Label("账户").TransformOrigin(0.5, 1).
+			Role(ui.RoleMenu).FocusGroup(ui.Vertical).Label(l10n.T("账户")).TransformOrigin(0.5, 1).
 			Transition(ui.ElementTransition{Animation: &ui.Snappy, Enter: &ui.Motion{Scale: 0.96, Y: 4}, Exit: &ui.Motion{Scale: 0.98}})
 		if w := row.Bounds().W; w > 0 {
 			panel.Width(w)
@@ -568,18 +569,18 @@ func (a *app) accountMenu(c *ui.Context, row ui.Element) {
 		if runtime.GOOS == "darwin" {
 			shortcut = "⌘,"
 		}
-		if a.menuItem(c, iconUser, "个人主页", "").AutoFocus().Clicked() {
+		if a.menuItem(c, iconUser, l10n.T("个人主页"), "").AutoFocus().Clicked() {
 			a.accountOpen = false
 			a.goTo(route{page: pageUser, user: a.profile.UserID})
 		}
-		if a.menuItem(c, iconSettings, "设置…", shortcut).Clicked() {
+		if a.menuItem(c, iconSettings, l10n.T("设置…"), shortcut).Clicked() {
 			a.accountOpen = false
 			a.openSettings()
 		}
 		// A box shorter than a device pixel snaps to none of them at a
 		// fractional scale; a Divider keeps one at every scale.
 		ui.Divider(c).Background(pop.edge).Margin(4, 8)
-		if a.menuItem(c, iconSignOut, "退出登录", "").Clicked() {
+		if a.menuItem(c, iconSignOut, l10n.T("退出登录"), "").Clicked() {
 			a.accountOpen = false
 			a.signOut()
 		}
@@ -689,7 +690,7 @@ func (a *app) myPlaylists(c *ui.Context, title string, lists []spotify.Playlist,
 	p := a.pal
 	ui.Row(c.Key(title)).AlignItems(ui.Center).Margin(18, 4, 6, 10).Children(func() {
 		ui.Text(c, title).FontSize(11.5).FontWeight(600).TextColor(p.faint).Grow(1)
-		if mine && iconButton(c.Key("new"), iconPlus, 13, p.faint, "新建歌单").Clicked() {
+		if mine && iconButton(c.Key("new"), iconPlus, 13, p.faint, l10n.T("新建歌单")).Clicked() {
 			a.newPlaylist(nil)
 		}
 	})
@@ -711,7 +712,7 @@ func (a *app) myPlaylists(c *ui.Context, title string, lists []spotify.Playlist,
 func (a *app) myPlaylist(c *ui.Context, pl *spotify.Playlist, mine, grid bool) {
 	p := a.pal
 	selected := a.route.page == pagePlaylist && a.route.playlist == pl.ID && !a.nowPlaying
-	b := ui.ButtonBase(c.Key(pl.ID)).Radius(8).FocusRing(false).Label(pl.Name)
+	b := ui.ButtonBase(c.Key(pl.ID)).Radius(8).FocusRing(false).Label(pl.DisplayName())
 	if grid {
 		b.Column().Padding(6).Gap(6).AlignItems(ui.Stretch)
 	} else {
@@ -726,7 +727,7 @@ func (a *app) myPlaylist(c *ui.Context, pl *spotify.Playlist, mine, grid bool) {
 	b.Children(func() {
 		if grid {
 			ui.Box(c).AspectRatio(1).Radius(6).Children(func() { a.listArt(c, pl, 200, 6) })
-			ui.Text(c, pl.Name).FontSize(12.5).SingleLine()
+			ui.Text(c, pl.DisplayName()).FontSize(12.5).SingleLine()
 			return
 		}
 		if pl.Liked() {
@@ -734,22 +735,22 @@ func (a *app) myPlaylist(c *ui.Context, pl *spotify.Playlist, mine, grid bool) {
 		} else {
 			a.cover(c, pl.Cover(), 80, 22, 5)
 		}
-		ui.Text(c, pl.Name).FontSize(13).SingleLine().Shrink(1).MinWidth(0)
+		ui.Text(c, pl.DisplayName()).FontSize(13).SingleLine().Shrink(1).MinWidth(0)
 	})
 	switch {
 	case mine && !pl.Liked():
 		b.ContextMenu(func(m *ui.Menu) {
-			if m.Item("重命名…").Chosen() {
+			if m.Item(l10n.T("重命名…")).Chosen() {
 				a.startRename(pl)
 			}
 			m.Separator()
-			if m.Item("删除歌单…").Chosen() {
+			if m.Item(l10n.T("删除歌单…")).Chosen() {
 				a.confirmDelete(pl)
 			}
 		})
 	case !mine:
 		b.ContextMenu(func(m *ui.Menu) {
-			if m.Item("取消收藏").Chosen() {
+			if m.Item(l10n.T("取消收藏")).Chosen() {
 				a.toggleSaved(pl)
 			}
 		})

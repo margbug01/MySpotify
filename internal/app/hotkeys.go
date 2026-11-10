@@ -8,6 +8,8 @@ import (
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
+
+	"vinyl/internal/l10n"
 )
 
 // hotkeyActions are what global shortcuts do, as the settings list them.
@@ -47,20 +49,20 @@ func (a *app) applyHotkeys() {
 // waits for the keys of a new one, which Esc gives up and Delete clears.
 func (a *app) hotkeyButton(c *ui.Context, id, label string) {
 	acc, rec := a.settings.Hotkeys[id], a.recording == id
-	text := "未设置"
+	text := l10n.T("未设置")
 	switch {
 	case rec:
-		text = "请按下快捷键…"
+		text = l10n.T("请按下快捷键…")
 	case acc != "":
 		text = hotkeyLabel(acc)
 	}
 	ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
 		if acc != "" && !rec {
-			if ui.Button(c.Key("hotkey-clear-"+id), "清除").Label("清除" + label + "的快捷键").Clicked() {
+			if ui.Button(c.Key("hotkey-clear-"+id), l10n.T("清除")).Label(fmt.Sprintf(l10n.T("清除%s的快捷键"), label)).Clicked() {
 				a.setHotkey(id, "")
 			}
 		}
-		b := ui.Button(c.Key("hotkey-"+id), text).Label(label + "的快捷键").MinWidth(128)
+		b := ui.Button(c.Key("hotkey-"+id), text).Label(fmt.Sprintf(l10n.T("%s的快捷键"), label)).MinWidth(128)
 		b.HandleInput(func(ev ui.InputEvent) bool { return a.hotkeyKey(id, ev) })
 		if rec {
 			// Focused as the press left it; elsewhere, it gives up.

@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/egoist/mygo/audio"
 	"github.com/egoist/mygo/ui"
 
 	"vinyl/internal/spotify"
@@ -19,11 +18,8 @@ func TestScrubSeeksOnRelease(t *testing.T) {
 	tr := spotify.Track{ID: "7", Name: "宝船", Duration: 200000}
 	a.pl.Cue([]spotify.Track{tr, {ID: "8", Name: "下一首"}})
 	a.pl.SetLyrics(nil)
-	out := audio.NewPlayer(&silence{})
-	out.SetVolume(0)
-	out.Play()
-	a.pl.Attach(out)
-	defer out.Close()
+	// A real audio clock advanced during slow race rendering and looked like seeking.
+	a.pl.Hold(0)
 	a.nowPlaying = true
 	tt := ui.NewTester(a.view, 1200, 800)
 	tt.Advance(time.Second)
@@ -41,7 +37,7 @@ func TestScrubSeeksOnRelease(t *testing.T) {
 	tt.Frame()
 	tt.Move(at(1)+30, y+30) // past its end, below it
 	tt.Frame()
-	if pos := a.pl.Position(); pos > 10*time.Second {
+	if pos := a.pl.Position(); pos != 0 {
 		t.Fatalf("seeked to %v while dragging", pos)
 	}
 	if a.pl.Current().ID != "7" {

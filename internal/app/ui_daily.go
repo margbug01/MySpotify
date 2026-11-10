@@ -8,6 +8,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"vinyl/internal/l10n"
 	"vinyl/internal/player"
 	"vinyl/internal/spotify"
 )
@@ -32,7 +33,7 @@ func (a *app) dailyArt(c *ui.Context, now time.Time, size float32) {
 			}})
 		ui.Column(c).Absolute().Left(size * 0.09).Bottom(size * 0.08).TextColor(white).Children(func() {
 			ui.Textf(c, "%d", now.Day()).FontSize(size * 0.44).FontWeight(300).LetterSpacing(-size * 0.02).FontFeatures("tnum").LineHeight(1)
-			ui.Textf(c, "%d月 · %s", now.Month(), weekday(now)).FontSize(max(11, size*0.075)).FontWeight(600).TextColor(white.Alpha(0.85))
+			ui.Text(c, dailyMonth(now)).FontSize(max(11, size*0.075)).FontWeight(600).TextColor(white.Alpha(0.85))
 		})
 	})
 }
@@ -52,7 +53,7 @@ func (a *app) dailyCard(c *ui.Context, now time.Time) {
 	inner := w - sidebarWidth - 2*pagePad
 	still := c.Preferences().ReduceMotion
 	art := a.art.get(spotify.Sized(songs[0].Album.PicURL, 600), true)
-	card := ui.ButtonBase(c.Key("daily")).Height(dailyHeight).Radius(dailyRadius).FocusRing(false).Label("每日推荐").TextColor(white)
+	card := ui.ButtonBase(c.Key("daily")).Height(dailyHeight).Radius(dailyRadius).FocusRing(false).Label(l10n.T("每日推荐")).TextColor(white)
 	hovered := card.Hovered()
 	ours, playing := a.dailyPlaying()
 
@@ -113,12 +114,12 @@ func (a *app) dailyCard(c *ui.Context, now time.Time) {
 		})
 		ui.Row(c).Absolute().Top(0).Left(0).Right(0).Bottom(0).Padding(0, dailyPadX).Gap(28).AlignItems(ui.Center).Children(func() {
 			ui.Column(c).Grow(1).Shrink(1).MinWidth(0).Gap(6).Children(func() {
-				ui.Textf(c, "%d月%d日 %s · %s", now.Month(), now.Day(), weekday(now), a.dailyNote()).FontSize(12).FontWeight(600).LetterSpacing(0.3).TextColor(white.Alpha(0.66)).MaxLines(1)
-				ui.Text(c, "每日推荐").FontSize(32).FontWeight(800).LetterSpacing(-0.8).LineHeight(1.15)
+				ui.Text(c, dailyDate(now)+" · "+a.dailyNote()).FontSize(12).FontWeight(600).LetterSpacing(0.3).TextColor(white.Alpha(0.66)).MaxLines(1)
+				ui.Text(c, l10n.T("每日推荐")).FontSize(32).FontWeight(800).LetterSpacing(-0.8).LineHeight(1.15)
 				ui.Text(c, dailyArtists(songs)).FontSize(13).TextColor(white.Alpha(0.8)).MaxLines(1)
 				ui.Row(c).Gap(10).Margin(12, 0, 0, 0).Children(func() {
 					a.dailyPlayButton(c.Key("play"), songs, ours, playing)
-					if a.profile == nil && pillButton(c.Key("login"), iconUser, "登录", white.Alpha(0.16), white).Clicked() {
+					if a.profile == nil && pillButton(c.Key("login"), iconUser, l10n.T("登录"), white.Alpha(0.16), white).Clicked() {
 						a.openLogin()
 					}
 				})
@@ -283,9 +284,13 @@ func dailyArtists(songs []spotify.Track) string {
 		}
 	}
 	if len(names) == 0 {
-		return fmt.Sprintf("今日 %d 首", len(songs))
+		return l10n.Count("todaySongCount", len(songs))
 	}
-	return fmt.Sprintf("%s 等 %d 首", strings.Join(names, "、"), len(songs))
+	separator := "、"
+	if l10n.English() {
+		separator = ", "
+	}
+	return fmt.Sprintf(l10n.T("%s等%s"), strings.Join(names, separator), l10n.Count("songCount", len(songs)))
 }
 
 // dailyPlayButton plays the day's songs; while they play it says so, its
@@ -304,16 +309,16 @@ func (a *app) dailyPlayButton(c *ui.Context, songs []spotify.Track, ours, playin
 		pose.Scale = 0.95
 	}
 	b.AnimatePose(pose, ui.Snappy)
-	label := "播放"
+	label := l10n.T("播放")
 	// As wide hovered as not, its icon and its four characters: narrower,
 	// it would leave the pointer, and flicker between the two.
 	switch {
 	case playing && b.Hovered():
-		label = "暂停播放"
+		label = l10n.T("暂停播放")
 	case playing:
-		label = "正在播放"
+		label = l10n.T("正在播放")
 	case ours:
-		label = "继续播放"
+		label = l10n.T("继续播放")
 	}
 	b.Label(label)
 	b.Children(func() {
@@ -458,17 +463,17 @@ func drawRecord(p *ui.Painter, r ui.Rect, bmp *ui.Bitmap, angle float32) {
 // dailyNote says, shortly, how the day's songs are picked.
 func (a *app) dailyNote() string {
 	if a.profile == nil {
-		return "登录后为你专属生成"
+		return l10n.T("登录后为你专属生成")
 	}
-	return "每天 6:00 更新"
+	return l10n.T("每天 6:00 更新")
 }
 
 // dailyBlurb says whose taste the day's songs follow.
 func (a *app) dailyBlurb() string {
 	if a.profile == nil {
-		return "大家都在听的好歌，登录后为你专属生成"
+		return l10n.T("大家都在听的好歌，登录后为你专属生成")
 	}
-	return "根据你的音乐口味生成，每天 6:00 更新"
+	return l10n.T("根据你的音乐口味生成，每天 6:00 更新")
 }
 
 func (a *app) dailyPage(c *ui.Context) {
@@ -477,10 +482,10 @@ func (a *app) dailyPage(c *ui.Context) {
 		// The day's songs are the listener's own mix: Spotify makes none
 		// for a visitor, so signed out the page asks who is listening.
 		if a.profile == nil {
-			a.centered(c, "登录后每天都有为你挑的歌", a.openLogin)
+			a.centered(c, l10n.T("登录后每天都有为你挑的歌"), a.openLogin)
 			return
 		}
-		a.centered(c, "暂时没有推荐", a.loadHome)
+		a.centered(c, l10n.T("暂时没有推荐"), a.loadHome)
 		return
 	}
 	now := c.Now()
@@ -491,8 +496,8 @@ func (a *app) dailyPage(c *ui.Context) {
 		ui.Row(c).Gap(28).AlignItems(ui.End).Padding(0, 0, 26, 0).Children(func() {
 			a.dailyArt(c, now, 212)
 			ui.Column(c).Gap(8).Children(func() {
-				ui.Text(c, "每日推荐").FontSize(12).FontWeight(600).TextColor(p.accent)
-				ui.Text(c, "每日歌曲推荐").FontSize(30).FontWeight(800).LetterSpacing(-0.6)
+				ui.Text(c, l10n.T("每日推荐")).FontSize(12).FontWeight(600).TextColor(p.accent)
+				ui.Text(c, l10n.T("每日歌曲推荐")).FontSize(30).FontWeight(800).LetterSpacing(-0.6)
 				if loading {
 					s.text(c, 13, 1.3).Width(240)
 					ui.Row(c).Gap(10).Margin(8, 0, 0, 0).Children(func() {
@@ -501,15 +506,15 @@ func (a *app) dailyPage(c *ui.Context) {
 					})
 					return
 				}
-				ui.Text(c, fmt.Sprintf("%d 首 · %s", len(songs), a.dailyBlurb())).FontSize(13).TextColor(p.muted)
+				ui.Text(c, l10n.Count("songCount", len(songs))+" · "+a.dailyBlurb()).FontSize(13).TextColor(p.muted)
 				ui.Row(c).Gap(10).Margin(8, 0, 0, 0).Children(func() {
-					if pillButton(c.Key("play"), iconPlay, "播放全部", p.accent, p.onAccent).Clicked() {
+					if pillButton(c.Key("play"), iconPlay, l10n.T("播放全部"), p.accent, p.onAccent).Clicked() {
 						if a.pl.Shuffle() {
 							a.pl.ToggleShuffle()
 						}
 						a.playQueue(songs, firstPlayable(songs))
 					}
-					if pillButton(c.Key("shuffle"), iconShuffle, "随机播放", p.hover.Over(p.bg), p.text).Clicked() {
+					if pillButton(c.Key("shuffle"), iconShuffle, l10n.T("随机播放"), p.hover.Over(p.bg), p.text).Clicked() {
 						if !a.pl.Shuffle() {
 							a.pl.ToggleShuffle()
 						}

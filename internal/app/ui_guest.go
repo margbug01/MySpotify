@@ -1,6 +1,7 @@
 package app
 
 import (
+	"vinyl/internal/l10n"
 	"vinyl/internal/spotify"
 )
 
@@ -38,7 +39,7 @@ var askSignIn func(*app)
 func init() { askSignIn = signInForPlayback }
 
 func signInForPlayback(a *app) {
-	a.toast = "登录 Spotify 就能听歌，免费账号也能完整播放"
+	a.toast = l10n.T("登录 Spotify 就能听歌，免费账号也能完整播放")
 	a.openLogin()
 }
 

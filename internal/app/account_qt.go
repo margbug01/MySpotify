@@ -12,6 +12,7 @@ import (
 
 	"github.com/egoist/mygo"
 
+	"vinyl/internal/l10n"
 	"vinyl/internal/qtweb"
 	"vinyl/internal/spotify"
 )
@@ -222,7 +223,7 @@ func (a *app) openQtLogin() {
 		if err := ensureQtCookies(); err != nil || ctx.Err() != nil {
 			a.post(func() {
 				if gen == s.gen && ctx.Err() == nil {
-					a.toast = "登录数据迁移未完成"
+					a.toast = l10n.T("登录数据迁移未完成")
 				}
 			})
 			return
@@ -231,7 +232,7 @@ func (a *app) openQtLogin() {
 		if err != nil {
 			a.post(func() {
 				if gen == s.gen {
-					a.toast = "无法启动登录组件"
+					a.toast = l10n.T("无法启动登录组件")
 				}
 			})
 			return
@@ -246,7 +247,7 @@ func (a *app) openQtLogin() {
 			s.qtID = id
 		})
 		defer closeQtAuth(client, id)
-		if _, err := client.Call(ctx, "auth.open", map[string]any{"id": id, "url": spotify.LoginURL, "preload": spotify.CaptureJS, "show": true}); err != nil {
+		if _, err := client.Call(ctx, "auth.open", map[string]any{"id": id, "url": spotify.LoginURL, "preload": spotify.CaptureJS, "show": true, "title": l10n.T("登录 Spotify")}); err != nil {
 			return
 		}
 		identity, err := captureQt(ctx, client, id, true)
@@ -274,7 +275,7 @@ func (a *app) openQtLogin() {
 			}
 			a.closeSignin()
 			if err != nil {
-				a.toast = "登录失败，请稍后再试"
+				a.toast = l10n.T("登录失败，请稍后再试")
 				return
 			}
 			qtweb.SetKnownLogin(true)
@@ -305,7 +306,7 @@ func clearQtAccount() error {
 	defer cancel()
 	_, err = client.Call(ctx, "cookies.clear", nil)
 	if err != nil {
-		return errors.New("Qt 登录数据清理未完成")
+		return errors.New(l10n.T("Qt 登录数据清理未完成"))
 	}
 	return nil
 }

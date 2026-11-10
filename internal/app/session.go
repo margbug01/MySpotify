@@ -8,6 +8,7 @@ import (
 
 	"github.com/egoist/mygo"
 
+	"vinyl/internal/l10n"
 	"vinyl/internal/player"
 	"vinyl/internal/spotify"
 )
@@ -113,6 +114,7 @@ type homeSnapshot struct {
 	Mine      []spotify.Playlist
 	Saved     []spotify.Playlist
 	Followed  []spotify.ArtistCard
+	Language  string
 }
 
 // keepHome saves what the home page and the sidebar show; signed out, it
@@ -125,7 +127,7 @@ func (a *app) keepHome() {
 		os.Remove(a.homeFile)
 		return
 	}
-	b, err := json.Marshal(homeSnapshot{a.profile, a.homeSections, a.homeShortcuts, a.charts, a.daily, a.mine, a.saved, a.followed})
+	b, err := json.Marshal(homeSnapshot{a.profile, a.homeSections, a.homeShortcuts, a.charts, a.daily, a.mine, a.saved, a.followed, l10n.Language()})
 	if err != nil {
 		return
 	}
@@ -145,7 +147,11 @@ func (a *app) restoreHome() {
 		return
 	}
 	a.profile = s.Profile
-	a.homeSections, a.homeShortcuts = s.Sections, s.Shortcuts
-	a.charts, a.daily = s.Charts, s.Daily
 	a.mine, a.saved, a.followed = s.Mine, s.Saved, s.Followed
+	// Older snapshots were always Chinese. Keep account data across languages,
+	// but wait for fresh localized headings rather than showing the old ones.
+	if s.Language == l10n.Language() || s.Language == "" && !l10n.English() {
+		a.homeSections, a.homeShortcuts = s.Sections, s.Shortcuts
+		a.charts, a.daily = s.Charts, s.Daily
+	}
 }

@@ -5,6 +5,8 @@ import (
 	"log"
 
 	"github.com/egoist/mygo"
+
+	"vinyl/internal/l10n"
 )
 
 // trayIcon is the record, as small as the notification area shows it, and
@@ -32,19 +34,19 @@ func (a *app) newTray() *mygo.Tray {
 				a.redraw()
 			}
 		}
-		toggle := "播放"
+		toggle := l10n.T("播放")
 		if a.pl.Playing() {
-			toggle = "暂停"
+			toggle = l10n.T("暂停")
 		}
 		idle := a.pl.Current() == nil
 		t.SetMenu(mygo.NewMenu([]*mygo.MenuItem{
-			{Label: "打开 " + name, Click: run(a.showMain)},
+			{Label: l10n.T("打开 ") + name, Click: run(a.showMain)},
 			mygo.Separator(),
 			{Label: toggle, Disabled: idle, Click: run(func() { a.pl.TogglePlay() })},
-			{Label: "上一首", Disabled: idle, Click: run(func() { a.pl.Prev() })},
-			{Label: "下一首", Disabled: idle, Click: run(func() { a.pl.Next() })},
+			{Label: l10n.T("上一首"), Disabled: idle, Click: run(func() { a.pl.Prev() })},
+			{Label: l10n.T("下一首"), Disabled: idle, Click: run(func() { a.pl.Next() })},
 			mygo.Separator(),
-			{Label: "退出 " + name, Click: run(mygo.App.Quit)},
+			{Label: l10n.T("退出 ") + name, Click: run(mygo.App.Quit)},
 		}))
 		// Without a menu, a click reaches OnClick.
 		defer t.SetMenu(nil)

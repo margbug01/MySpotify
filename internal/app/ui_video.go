@@ -7,6 +7,7 @@ import (
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
+	"vinyl/internal/l10n"
 	"vinyl/internal/lyrics"
 	"vinyl/internal/spotify"
 )
@@ -35,9 +36,9 @@ var black = ui.RGB(0, 0, 0)
 // play theirs too, as in Spotify.
 func (a *app) mvButton(c *ui.Context) {
 	on, name := a.pl.VideoOn(), mvName(a.pl.Current())
-	label := mvAction("播放", name)
+	label := mvAction(l10n.T("播放"), name)
 	if on {
-		label = mvAction("关闭", name)
+		label = mvAction(l10n.T("关闭"), name)
 	}
 	if badge(c.Key("mv"), name, label, on, white, ink) {
 		a.pl.SetVideo(!on)
@@ -160,16 +161,16 @@ func (a *app) npVideo(c *ui.Context, width, size float32) {
 		frame.Children(func() {
 			ui.WebView(c, a.mvPage()).Size(width, h).Radius(10).Label("MV")
 			// Over the video, which would take the pointer itself.
-			over := ui.Box(c.Key("mv-over")).Absolute().Top(0).Left(0).Right(0).Bottom(0).Radius(10).Label("MV 画面")
+			over := ui.Box(c.Key("mv-over")).Absolute().Top(0).Left(0).Right(0).Bottom(0).Radius(10).Label(l10n.T("MV 画面"))
 			if over.DoubleClicked() {
 				a.toggleMVFullScreen()
 			}
 			ways := ui.Row(c.Key("mv-ways")).Absolute().Right(8).Bottom(8).Gap(2).Padding(3).Radius(8).Background(black.Alpha(0.45))
 			reveal(ways, frame.Hovered()).Children(func() {
-				if iconButton(c.Key("theater"), iconExpand, 17, white.Alpha(0.9), "铺满窗口").Clicked() {
+				if iconButton(c.Key("theater"), iconExpand, 17, white.Alpha(0.9), l10n.T("铺满窗口")).Clicked() {
 					a.showMV(mvTheater)
 				}
-				if iconButton(c.Key("full"), iconFullScreen, 17, white.Alpha(0.9), "全屏").Clicked() {
+				if iconButton(c.Key("full"), iconFullScreen, 17, white.Alpha(0.9), l10n.T("全屏")).Clicked() {
 					a.toggleMVFullScreen()
 				}
 			})
@@ -216,7 +217,7 @@ func (a *app) mvStage(c *ui.Context, tr *spotify.Track, art *artwork, accent ui.
 	})
 	// Over the video, which would take the pointer itself: here its
 	// moves show the controls.
-	over := ui.Box(c.Key("mv-over")).Absolute().Top(0).Left(0).Right(0).Bottom(0).Label("MV 画面")
+	over := ui.Box(c.Key("mv-over")).Absolute().Top(0).Left(0).Right(0).Bottom(0).Label(l10n.T("MV 画面"))
 	over.HandleInput(func(ev ui.InputEvent) bool {
 		if ev.Kind != ui.InputPointerMove {
 			return false
@@ -269,16 +270,16 @@ func (a *app) mvStage(c *ui.Context, tr *spotify.Track, art *artwork, accent ui.
 			right = room
 		}
 		ui.Row(c).Height(topBar(c)).Padding(0, right, 0, left).AlignItems(ui.Center).Gap(10).DragWindow().Children(func() {
-			if iconButton(c.Key("close"), iconBack, 18, white.Alpha(0.8), "返回").Clicked() {
+			if iconButton(c.Key("close"), iconBack, 18, white.Alpha(0.8), l10n.T("返回")).Clicked() {
 				a.nowPlaying = false
 			}
 			ui.Spacer(c)
 			if lines, _ := pl.Lyrics(); timed(lines) {
 				tr := pl.Current()
 				name := lyricsName(tr)
-				label := "显示" + name
+				label := mvAction(l10n.T("显示"), name)
 				if a.settings.MVLyrics {
-					label = "隐藏" + name
+					label = mvAction(l10n.T("隐藏"), name)
 				}
 				// An episode's transcript keeps its time, as its video does:
 				// there is nothing to move it by.
@@ -286,7 +287,7 @@ func (a *app) mvStage(c *ui.Context, tr *spotify.Track, art *artwork, accent ui.
 				// The lyrics, and on either side, earlier and later.
 				ui.Row(c.Key("lyrics")).Gap(2).AlignItems(ui.Center).Margin(0, 6, 0, 0).Children(func() {
 					if nudge {
-						if iconButton(c.Key("earlier"), iconMinus, 15, white.Alpha(0.75), "歌词提前 0.5 秒 ([)").Clicked() {
+						if iconButton(c.Key("earlier"), iconMinus, 15, white.Alpha(0.75), l10n.T("歌词提前 0.5 秒 ([)")).Clicked() {
 							a.nudgeLyrics(-lyricsNudge)
 						}
 					}
@@ -295,28 +296,28 @@ func (a *app) mvStage(c *ui.Context, tr *spotify.Track, art *artwork, accent ui.
 						a.settings.save()
 					}
 					if nudge {
-						if iconButton(c.Key("later"), iconPlus, 15, white.Alpha(0.75), "歌词延后 0.5 秒 (])").Clicked() {
+						if iconButton(c.Key("later"), iconPlus, 15, white.Alpha(0.75), l10n.T("歌词延后 0.5 秒 (])")).Clicked() {
 							a.nudgeLyrics(lyricsNudge)
 						}
 					}
 				})
 			}
 			if len(pl.Queue()) > 1 {
-				color, label := white.Alpha(0.85), "显示待播清单"
+				color, label := white.Alpha(0.85), l10n.T("显示待播清单")
 				if a.settings.MVQueue {
-					color, label = white, "收起待播清单"
+					color, label = white, l10n.T("收起待播清单")
 				}
 				if iconButton(c.Key("queue"), iconQueue, 18, color, label).Clicked() {
 					a.setMVQueue(!a.settings.MVQueue)
 				}
 			}
 			a.mvButton(c)
-			if iconButton(c.Key("shrink"), iconShrink, 20, white.Alpha(0.85), "还原").Clicked() {
+			if iconButton(c.Key("shrink"), iconShrink, 20, white.Alpha(0.85), l10n.T("还原")).Clicked() {
 				a.showMV(mvInCover)
 			}
-			icon, label := iconFullScreen, "全屏"
+			icon, label := iconFullScreen, l10n.T("全屏")
 			if a.mvMode == mvFullScreen {
-				icon, label = iconExitFullScreen, "退出全屏"
+				icon, label = iconExitFullScreen, l10n.T("退出全屏")
 			}
 			if iconButton(c.Key("full"), icon, 20, white.Alpha(0.85), label).Clicked() {
 				a.toggleMVFullScreen()
@@ -343,8 +344,8 @@ func (a *app) mvQueue(c *ui.Context, width float32) {
 	ui.Column(c.Key("mv-queue")).Absolute().Top(0).Right(0).Bottom(0).Width(width).Padding(topBar(c), 0, 0, 10).
 		Background(ui.RGB(18, 18, 20)).BorderWidth(0, 0, 0, 1).BorderColor(white.Alpha(0.08)).Children(func() {
 		ui.Row(c).Padding(4, 14, 8, 10).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, "待播清单").FontSize(15).FontWeight(700).Grow(1)
-			if iconButton(c.Key("close-queue"), iconX, 16, white.Alpha(0.6), "收起待播清单").Clicked() {
+			ui.Text(c, l10n.T("待播清单")).FontSize(15).FontWeight(700).Grow(1)
+			if iconButton(c.Key("close-queue"), iconX, 16, white.Alpha(0.6), l10n.T("收起待播清单")).Clicked() {
 				a.setMVQueue(false)
 			}
 		})
@@ -454,12 +455,12 @@ func (a *app) nudgeLyrics(d time.Duration) {
 	}
 	a.settings.MVLeads[tr.ID] = lead.Milliseconds()
 	a.settings.save()
-	way := "延后"
+	way := l10n.T("延后")
 	if d < 0 {
-		way, d = "提前", -d
+		way, d = l10n.T("提前"), -d
 	}
 	// One toast, changing as the lyrics move, rather than one a press.
-	a.lyricsToast = fmt.Sprintf("歌词%s %.1f 秒（偏移 %+.1f 秒）", way, d.Seconds(), lead.Seconds())
+	a.lyricsToast = fmt.Sprintf(l10n.T("歌词%s %.1f 秒（偏移 %+.1f 秒）"), way, d.Seconds(), lead.Seconds())
 	a.mvMoved = true
 }
 
@@ -468,9 +469,9 @@ func (a *app) nudgeLyrics(d time.Duration) {
 func (a *app) barMVButton(c *ui.Context) {
 	pl := a.pl
 	on, name := pl.VideoOn(), mvName(pl.Current())
-	label := mvAction("播放", name)
+	label := mvAction(l10n.T("播放"), name)
 	if on {
-		label = mvAction("关闭", name)
+		label = mvAction(l10n.T("关闭"), name)
 	}
 	if badge(c.Key("mv"), name, label, on, a.pal.text, a.pal.bg) {
 		pl.SetVideo(!on)
@@ -484,7 +485,7 @@ func (a *app) barMVButton(c *ui.Context) {
 // video podcast's episode, 视频, as Spotify calls it.
 func mvName(tr *spotify.Track) string {
 	if tr != nil && tr.Episode {
-		return "视频"
+		return l10n.T("视频")
 	}
 	return "MV"
 }
@@ -493,15 +494,15 @@ func mvName(tr *spotify.Track) string {
 // transcript, 字幕.
 func lyricsName(tr *spotify.Track) string {
 	if tr != nil && tr.Episode {
-		return "字幕"
+		return l10n.T("字幕")
 	}
-	return "歌词"
+	return l10n.T("歌词")
 }
 
 // mvAction is verb and name together: a space between Chinese and MV.
 func mvAction(verb, name string) string {
-	if name == "MV" {
-		return verb + " MV"
+	if name == "MV" || l10n.English() {
+		return verb + " " + name
 	}
 	return verb + name
 }
@@ -510,7 +511,7 @@ func mvAction(verb, name string) string {
 func (a *app) mvTag(c *ui.Context, tr *spotify.Track) ui.Element {
 	p := a.pal
 	name := mvName(tr)
-	b := ui.ButtonBase(c).Padding(0, 4).Radius(3).FocusRing(false).Label(mvAction("播放", name)).Tooltip(mvAction("播放", name))
+	b := ui.ButtonBase(c).Padding(0, 4).Radius(3).FocusRing(false).Label(mvAction(l10n.T("播放"), name)).Tooltip(mvAction(l10n.T("播放"), name))
 	color := p.muted
 	if b.Hovered() {
 		color = p.text

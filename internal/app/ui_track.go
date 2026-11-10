@@ -7,6 +7,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"vinyl/internal/l10n"
 	"vinyl/internal/spotify"
 )
 
@@ -29,7 +30,7 @@ func (a *app) loadTrack(id string) {
 			delete(a.loadingTr, id)
 			if err != nil {
 				log.Printf("track %s: %v", id, err)
-				a.trErr[id] = "歌曲加载失败，请稍后再试"
+				a.trErr[id] = l10n.T("歌曲加载失败，请稍后再试")
 				return
 			}
 			a.tracks[id] = pg
@@ -62,7 +63,7 @@ func (a *app) trackHeader(c *ui.Context, pg *spotify.TrackPage) {
 			a.coverFill(c, tr.Album.PicURL, 600, 14)
 		})
 		ui.Column(c).Grow(1).Shrink(1).MinWidth(0).Gap(8).Children(func() {
-			ui.Text(c, "歌曲").FontSize(12).FontWeight(600).TextColor(p.accent)
+			ui.Text(c, l10n.T("songKind")).FontSize(12).FontWeight(600).TextColor(p.accent)
 			ui.Text(c, tr.Name).FontSize(30).FontWeight(800).LetterSpacing(-0.6).MaxLines(2).LineHeight(1.2)
 			ui.Row(c).AlignItems(ui.Center).Children(func() {
 				a.artistLinks(c.Key("by"), tr.Artists, 13, p.muted, p.text)
@@ -78,18 +79,18 @@ func (a *app) trackHeader(c *ui.Context, pg *spotify.TrackPage) {
 				}
 				meta = append(meta, clock(tr.Length()))
 				if pg.Plays > 0 {
-					meta = append(meta, plays(float64(pg.Plays))+" 次播放")
+					meta = append(meta, plays(float64(pg.Plays))+l10n.T(" 次播放"))
 				}
 				ui.Text(c, " · "+strings.Join(meta, " · ")).FontSize(13).TextColor(p.muted).Shrink(0)
 			})
 			ui.Row(c).Gap(10).Margin(10, 0, 0, 0).AlignItems(ui.Center).Children(func() {
-				if pillButton(c.Key("play"), iconPlay, "播放", p.accent, p.onAccent).Clicked() && tr.Playable() {
+				if pillButton(c.Key("play"), iconPlay, l10n.T("播放"), p.accent, p.onAccent).Clicked() && tr.Playable() {
 					// The track, then songs like it.
 					a.playQueue(append([]spotify.Track{*tr}, pg.Recommended...), 0)
 				}
-				label := "电台"
+				label := l10n.T("电台")
 				if a.radioStarting == radioName(tr.URI(), tr.Name) {
-					label = "正在开启…"
+					label = l10n.T("正在开启…")
 				}
 				if pillButton(c.Key("radio"), iconRadio, label, p.hover.Over(p.bg), p.text).Clicked() {
 					a.startRadio(tr.URI(), tr.Name)
@@ -100,7 +101,7 @@ func (a *app) trackHeader(c *ui.Context, pg *spotify.TrackPage) {
 		})
 	})
 	if len(pg.Recommended) > 0 {
-		ui.Box(c).PaddingX(12).Children(func() { a.section(c, "推荐") })
+		ui.Box(c).PaddingX(12).Children(func() { a.section(c, l10n.T("推荐")) })
 	}
 }
 
@@ -110,7 +111,7 @@ func (a *app) trackFooter(c *ui.Context, pg *spotify.TrackPage) {
 	p := a.pal
 	ui.Column(c).PaddingX(12).Children(func() {
 		if len(pg.Credits) > 0 {
-			a.section(c, "制作人员")
+			a.section(c, l10n.T("制作人员"))
 			ui.Column(c).Gap(14).Children(func() {
 				for i, cr := range pg.Credits {
 					ui.Column(c.Key(i)).Gap(3).AlignItems(ui.Start).Children(func() {
@@ -125,7 +126,7 @@ func (a *app) trackFooter(c *ui.Context, pg *spotify.TrackPage) {
 			})
 		}
 		if len(pg.Popular) > 0 {
-			a.section(c, pg.Artist.Name+" 的热门作品")
+			a.section(c, pg.Artist.Name+l10n.T(" 的热门作品"))
 			cols := a.columns(c, 150)
 			ui.Grid(c).Columns(cols).GapX(20).GapY(28).Children(func() {
 				for i := range pg.Popular[:min(len(pg.Popular), cols)] {

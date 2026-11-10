@@ -6,6 +6,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"vinyl/internal/l10n"
 	"vinyl/internal/spotify"
 )
 
@@ -98,7 +99,7 @@ func (a *app) submitName() {
 			a.post(func() {
 				if err != nil {
 					a.setPlaylistName(id, old)
-					a.toast = "重命名失败，请稍后再试"
+					a.toast = l10n.T("重命名失败，请稍后再试")
 				}
 			})
 		}()
@@ -111,7 +112,7 @@ func (a *app) submitName() {
 		a.post(func() {
 			a.naming.busy = false
 			if err != nil {
-				a.toast = "创建歌单失败，请稍后再试"
+				a.toast = l10n.T("创建歌单失败，请稍后再试")
 				return
 			}
 			a.naming.open = false
@@ -164,11 +165,11 @@ func (a *app) deleteChosen() {
 		a.post(func() {
 			if err != nil {
 				a.mine = slices.Insert(a.mine, min(i, len(a.mine)), pl)
-				a.toast = "删除失败，请稍后再试"
+				a.toast = l10n.T("删除失败，请稍后再试")
 				return
 			}
 			delete(a.playlists, id)
-			a.toast = "已删除歌单"
+			a.toast = l10n.T("已删除歌单")
 		})
 	}()
 }
@@ -186,7 +187,7 @@ func (a *app) setPlaylistName(id, name string) {
 // Spotify would list it twice: one there already is not added again.
 func (a *app) addTo(pid string, tr *spotify.Track) {
 	if pl := a.playlists[pid]; pl != nil && slices.ContainsFunc(pl.Tracks, func(t spotify.Track) bool { return t.ID == tr.ID }) {
-		a.toast = "歌曲已在歌单中"
+		a.toast = l10n.T("歌曲已在歌单中")
 		return
 	}
 	id := tr.ID
@@ -194,10 +195,10 @@ func (a *app) addTo(pid string, tr *spotify.Track) {
 		err := addToPlaylist(pid, id)
 		a.post(func() {
 			if err != nil {
-				a.toast = "添加失败，请稍后再试"
+				a.toast = l10n.T("添加失败，请稍后再试")
 				return
 			}
-			a.toast = "已添加到歌单"
+			a.toast = l10n.T("已添加到歌单")
 			a.playlistChanged(pid)
 		})
 	}()
@@ -222,7 +223,7 @@ func (a *app) removeFrom(pid string, tr *spotify.Track) {
 				if pl != nil && a.playlists[pid] == pl {
 					pl.Tracks = before
 				}
-				a.toast = "移除失败，请稍后再试"
+				a.toast = l10n.T("移除失败，请稍后再试")
 				return
 			}
 			// The songs listed are right: only the sidebar's covers may
@@ -243,8 +244,8 @@ func (a *app) playlistItems(m *ui.Menu, tr *spotify.Track, pid string) {
 		return
 	}
 	m.Separator()
-	m.Submenu("添加到歌单", func(m *ui.Menu) {
-		if m.Item("新建歌单…").Chosen() {
+	m.Submenu(l10n.T("添加到歌单"), func(m *ui.Menu) {
+		if m.Item(l10n.T("新建歌单…")).Chosen() {
 			a.newPlaylist(tr)
 		}
 		var to []*spotify.Playlist
@@ -262,7 +263,7 @@ func (a *app) playlistItems(m *ui.Menu, tr *spotify.Track, pid string) {
 			}
 		}
 	})
-	if tr.UID != "" && a.editable(pid) != nil && m.Item("从歌单中移除").Chosen() {
+	if tr.UID != "" && a.editable(pid) != nil && m.Item(l10n.T("从歌单中移除")).Chosen() {
 		a.removeFrom(pid, tr)
 	}
 }
@@ -277,20 +278,20 @@ func (a *app) playlistNameDialog(c *ui.Context) {
 		panel.Width(360).Padding(24).Radius(18).Gap(16).
 			Background(p.bg).Border(1, p.hairline).Shadow(0, 24, 60, -12, ui.RGBA(0, 0, 0, 0.4)).
 			Transition(ui.ElementTransition{Animation: &ui.Snappy, Enter: &ui.Motion{Scale: 0.94}, Exit: &ui.Motion{Scale: 0.96}})
-		title, action := "新建歌单", "创建"
+		title, action := l10n.T("新建歌单"), l10n.T("创建")
 		if d.rename != "" {
-			title, action = "重命名歌单", "保存"
+			title, action = l10n.T("重命名歌单"), l10n.T("保存")
 		}
 		if d.busy {
-			action = "正在创建…"
+			action = l10n.T("正在创建…")
 		}
 		ui.Text(c, title).FontSize(17).FontWeight(700)
-		in := ui.TextInput(c.Key("name"), &d.name).Placeholder("歌单名称").Label("歌单名称").FontSize(14).AutoFocus()
+		in := ui.TextInput(c.Key("name"), &d.name).Placeholder(l10n.T("歌单名称")).Label(l10n.T("歌单名称")).FontSize(14).AutoFocus()
 		if in.Submitted() {
 			a.submitName()
 		}
 		ui.Row(c).Gap(10).Justify(ui.End).Children(func() {
-			if pillButton(c.Key("cancel"), nil, "取消", p.hover.Over(p.bg), p.text).Clicked() {
+			if pillButton(c.Key("cancel"), nil, l10n.T("取消"), p.hover.Over(p.bg), p.text).Clicked() {
 				d.open = false
 			}
 			ok := pillButton(c.Key("ok"), nil, action, p.accent, p.onAccent)
@@ -313,13 +314,13 @@ func (a *app) deletePlaylistDialog(c *ui.Context) {
 		panel.Width(360).Padding(24).Radius(18).Gap(8).
 			Background(p.bg).Border(1, p.hairline).Shadow(0, 24, 60, -12, ui.RGBA(0, 0, 0, 0.4)).
 			Transition(ui.ElementTransition{Animation: &ui.Snappy, Enter: &ui.Motion{Scale: 0.94}, Exit: &ui.Motion{Scale: 0.96}})
-		ui.Text(c, "删除歌单").FontSize(17).FontWeight(700)
-		ui.Text(c, "确定删除歌单“"+d.name+"”吗？它会从你的资料库里移除。").FontSize(13).TextColor(p.muted).LineHeight(1.45)
+		ui.Text(c, l10n.T("删除歌单")).FontSize(17).FontWeight(700)
+		ui.Text(c, l10n.T("确定删除歌单“")+d.name+l10n.T("”吗？它会从你的资料库里移除。")).FontSize(13).TextColor(p.muted).LineHeight(1.45)
 		ui.Row(c).Gap(10).Justify(ui.End).Margin(8, 0, 0, 0).Children(func() {
-			if pillButton(c.Key("cancel"), nil, "取消", p.hover.Over(p.bg), p.text).Clicked() {
+			if pillButton(c.Key("cancel"), nil, l10n.T("取消"), p.hover.Over(p.bg), p.text).Clicked() {
 				d.open = false
 			}
-			if pillButton(c.Key("ok"), nil, "删除", p.accent, p.onAccent).Clicked() {
+			if pillButton(c.Key("ok"), nil, l10n.T("删除"), p.accent, p.onAccent).Clicked() {
 				a.deleteChosen()
 			}
 		})

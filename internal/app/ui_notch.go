@@ -7,6 +7,7 @@ import (
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
+	"vinyl/internal/l10n"
 	"vinyl/internal/player"
 	"vinyl/internal/spotify"
 )
@@ -52,7 +53,7 @@ func newNotch(a *app) *notch {
 	n.winW, n.winH = notchOpenW+60, 240
 	n.place()
 	n.win = mygo.NewWindow(mygo.WindowOptions{
-		Title:         appName + "迷你播放器",
+		Title:         appName + l10n.T("迷你播放器"),
 		Panel:         true,
 		Hidden:        true,
 		Frameless:     true,
@@ -425,7 +426,7 @@ func (n *notch) expanded(c *ui.Context, tr *spotify.Track, open, left float32) {
 	col.Translate(0, (1-open)*-10)
 	col.Children(func() {
 		ui.Row(c).Gap(14).AlignItems(ui.Center).Children(func() {
-			cov := ui.ButtonBase(c.Key("cover")).Size(60, 60).Radius(12).FocusRing(false).Label("打开正在播放")
+			cov := ui.ButtonBase(c.Key("cover")).Size(60, 60).Radius(12).FocusRing(false).Label(l10n.T("打开正在播放"))
 			lift := ui.Pose{}
 			if cov.Hovered() {
 				lift.Scale = 1.05
@@ -445,7 +446,7 @@ func (n *notch) expanded(c *ui.Context, tr *spotify.Track, open, left float32) {
 				ui.Text(c, tr.Name).FontSize(15).FontWeight(700).SingleLine()
 				sub := tr.ArtistNames()
 				if pl.Loading() {
-					sub = "正在缓冲…"
+					sub = l10n.T("正在缓冲…")
 				}
 				ui.Text(c, sub).FontSize(12.5).TextColor(white.Alpha(0.55)).SingleLine()
 			})
@@ -473,16 +474,16 @@ func (n *notch) helloRow(c *ui.Context, shown, left float32) {
 		Opacity(max(0, shown*1.4-0.4))
 	row.Translate(0, (1-shown)*-8)
 	row.Children(func() {
-		title, hint := "刘海里也能控制播放", "指针停在这里，即可暂停、切歌"
+		title, hint := l10n.T("刘海里也能控制播放"), l10n.T("指针停在这里，即可暂停、切歌")
 		if !n.real {
-			title, hint = "屏幕顶部也能控制播放", "指针移到顶部中央，即可暂停、切歌"
+			title, hint = l10n.T("屏幕顶部也能控制播放"), l10n.T("指针移到顶部中央，即可暂停、切歌")
 		}
 		ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
 			ui.Text(c, title).FontSize(13.5).FontWeight(700).SingleLine()
 			ui.Text(c, hint).FontSize(11.5).TextColor(white.Alpha(0.55)).SingleLine()
 		})
-		b := ui.ButtonBase(c.Key("keep")).Padding(6, 14).Radius(999).Background(a.pal.accent).FocusRing(false).Label("开启刘海播放器")
-		b.Children(func() { ui.Text(c, "开启").FontSize(12.5).FontWeight(600) })
+		b := ui.ButtonBase(c.Key("keep")).Padding(6, 14).Radius(999).Background(a.pal.accent).FocusRing(false).Label(l10n.T("开启刘海播放器"))
+		b.Children(func() { ui.Text(c, l10n.T("开启")).FontSize(12.5).FontWeight(600) })
 		if b.Clicked() {
 			n.keep()
 		}
@@ -502,10 +503,10 @@ func (n *notch) idle(c *ui.Context, open, left float32) {
 		})
 		ui.Column(c).Grow(1).Gap(2).Children(func() {
 			ui.Text(c, appName).FontSize(14).FontWeight(700)
-			ui.Text(c, "未在播放").FontSize(12).TextColor(white.Alpha(0.5))
+			ui.Text(c, l10n.T("未在播放")).FontSize(12).TextColor(white.Alpha(0.5))
 		})
 		b := ui.ButtonBase(c.Key("open")).Padding(6, 14).Radius(999).Background(white.Alpha(0.14)).FocusRing(false)
-		b.Children(func() { ui.Text(c, "打开").FontSize(12.5).FontWeight(600) })
+		b.Children(func() { ui.Text(c, l10n.T("打开")).FontSize(12.5).FontWeight(600) })
 		if b.Clicked() {
 			a.showMain()
 		}

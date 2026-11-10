@@ -8,6 +8,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"vinyl/internal/l10n"
 	"vinyl/internal/spotify"
 )
 
@@ -30,9 +31,13 @@ func fetch[T any](a *app, key, msg string, get func() (T, error), keep func(T)) 
 	}
 	a.loading[key] = true
 	delete(a.loadErr, key)
+	gen := a.languageGen
 	go func() {
 		v, err := get()
 		a.post(func() {
+			if gen != a.languageGen {
+				return
+			}
 			delete(a.loading, key)
 			if err != nil {
 				log.Printf("%s: %v", key, err)
@@ -48,14 +53,14 @@ func (a *app) loadCategories() {
 	if len(a.cats) > 0 {
 		return
 	}
-	fetch(a, "categories", "分类加载失败，请稍后再试", categories, func(c []spotify.Category) { a.cats = c })
+	fetch(a, "categories", l10n.T("分类加载失败，请稍后再试"), categories, func(c []spotify.Category) { a.cats = c })
 }
 
 func (a *app) loadCategory(uri string) {
 	if a.catPages[uri] != nil {
 		return
 	}
-	fetch(a, "category:"+uri, "分类加载失败，请稍后再试", func() (*spotify.CategoryPage, error) { return categoryDetail(uri) },
+	fetch(a, "category:"+uri, l10n.T("分类加载失败，请稍后再试"), func() (*spotify.CategoryPage, error) { return categoryDetail(uri) },
 		func(pg *spotify.CategoryPage) {
 			if a.catPages == nil {
 				a.catPages = map[string]*spotify.CategoryPage{}
@@ -68,7 +73,7 @@ func (a *app) loadUser(id string) {
 	if a.users[id] != nil {
 		return
 	}
-	fetch(a, "user:"+id, "个人主页加载失败，请稍后再试", func() (*spotify.UserPage, error) { return userProfile(id) },
+	fetch(a, "user:"+id, l10n.T("个人主页加载失败，请稍后再试"), func() (*spotify.UserPage, error) { return userProfile(id) },
 		func(pg *spotify.UserPage) {
 			if a.users == nil {
 				a.users = map[string]*spotify.UserPage{}
@@ -101,7 +106,7 @@ func (a *app) waiting(c *ui.Context, key string, there bool, retry func()) bool 
 			a.playlistCardsSkeleton(c, s, a.columns(c, 168)*2, 168, true)
 		})
 	default:
-		a.centered(c, cmp.Or(a.loadErr[key], "暂时没有内容"), retry)
+		a.centered(c, cmp.Or(a.loadErr[key], l10n.T("暂时没有内容")), retry)
 	}
 	return true
 }
@@ -111,7 +116,7 @@ func (a *app) browsePage(c *ui.Context) {
 		return
 	}
 	a.scrollPage(c, "browse", func() {
-		a.heading(c, "浏览全部", "")
+		a.heading(c, l10n.T("浏览全部"), "")
 		a.tiles(c, a.cats)
 	})
 }
@@ -157,7 +162,7 @@ func (a *app) categoryPage(c *ui.Context) {
 		return
 	}
 	a.scrollPage(c, "category", func() {
-		a.heading(c, pg.Name, "分类")
+		a.heading(c, pg.Name, l10n.T("分类"))
 		cols := a.columns(c, 168)
 		for i, sh := range pg.Shelves {
 			key := uri + "#" + fmt.Sprint(i)
@@ -165,9 +170,9 @@ func (a *app) categoryPage(c *ui.Context) {
 				ui.Row(c.Key(key)).AlignItems(ui.Center).Margin(34, 0, 14, 0).Children(func() {
 					ui.Text(c, sh.Title).FontSize(19).FontWeight(700).LetterSpacing(-0.3).Grow(1)
 					if len(sh.Lists) > cols {
-						label := "显示全部"
+						label := l10n.T("显示全部")
 						if a.shelfOpen[key] {
-							label = "收起"
+							label = l10n.T("收起")
 						}
 						if ui.Button(c.Key("all"), label).Clicked() {
 							if a.shelfOpen == nil {
@@ -208,30 +213,30 @@ func (a *app) userPage(c *ui.Context) {
 		ui.Row(c).Gap(28).AlignItems(ui.End).Padding(0, 0, 8, 0).Children(func() {
 			a.profileAvatar(c, &spotify.Profile{UserID: pg.ID, Nickname: pg.Name, AvatarURL: pg.Image, AvatarColor: pg.Color}, 180)
 			ui.Column(c).Grow(1).Shrink(1).MinWidth(0).Gap(8).Children(func() {
-				ui.Text(c, "个人主页").FontSize(12).FontWeight(600).TextColor(p.accent)
+				ui.Text(c, l10n.T("个人主页")).FontSize(12).FontWeight(600).TextColor(p.accent)
 				ui.Text(c, pg.Name).FontSize(40).FontWeight(800).LetterSpacing(-0.8).MaxLines(2).LineHeight(1.15)
-				stats := []string{fmt.Sprintf("%d 个公开歌单", pg.Total)}
+				stats := []string{l10n.Count("publicPlaylistCount", pg.Total)}
 				if pg.Followers > 0 {
-					stats = append(stats, plays(float64(pg.Followers))+" 位粉丝")
+					stats = append(stats, plays(float64(pg.Followers))+l10n.T(" 位粉丝"))
 				}
 				if pg.Following > 0 {
-					stats = append(stats, fmt.Sprintf("关注 %d 人", pg.Following))
+					stats = append(stats, fmt.Sprintf(l10n.T("关注 %d 人"), pg.Following))
 				}
 				ui.Text(c, strings.Join(stats, " · ")).FontSize(13).TextColor(p.muted)
 			})
 		})
 		if len(pg.Playlists) == 0 {
-			ui.Text(c, "没有公开歌单").FontSize(13).TextColor(p.muted).Margin(34, 0, 0, 0)
+			ui.Text(c, l10n.T("没有公开歌单")).FontSize(13).TextColor(p.muted).Margin(34, 0, 0, 0)
 			return
 		}
-		a.section(c, "公开歌单")
+		a.section(c, l10n.T("公开歌单"))
 		ui.Grid(c).Columns(a.columns(c, 168)).GapX(20).GapY(28).Children(func() {
 			for i := range pg.Playlists {
 				a.playlistCard(c.Key(pg.Playlists[i].ID), &pg.Playlists[i])
 			}
 		})
 		if more := pg.Total - len(pg.Playlists); more > 0 {
-			ui.Text(c, fmt.Sprintf("还有 %d 个歌单在 Spotify 上", more)).FontSize(12.5).TextColor(p.muted).Margin(20, 0, 0, 0)
+			ui.Text(c, l10n.Count("morePlaylistCount", more)).FontSize(12.5).TextColor(p.muted).Margin(20, 0, 0, 0)
 		}
 	})
 }

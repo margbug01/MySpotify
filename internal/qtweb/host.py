@@ -177,7 +177,7 @@ def dispatch(request):
         if args.get('show'):
             auth_view = LoginView()
             auth_view.setPage(auth)
-            auth_view.setWindowTitle('登录 Spotify')
+            auth_view.setWindowTitle(args.get('title', 'Spotify'))
             auth_view.resize(480, 720)
             auth_view.show()
             auth_view.raise_()

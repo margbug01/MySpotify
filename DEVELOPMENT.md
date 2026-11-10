@@ -16,6 +16,12 @@ MySpotify 的实现细节、构建、发版和调试。普通使用看 [README](
 - **播客**：单集也走 `track-playback/v1/media`，多要一种 `file_urls_external`。平台能放的加密音频优先；macOS 上 Spotify 几乎不给单集 cbcs（只有给 Widevine 的 cenc），这时视频播客改放视频清单里的音轨——视频播客的视频不加密（H.264 + AAC 的 fMP4），两个平台都不用许可证，切到视频时时间轴完全一致，截图也不黑；纯音频的改放 `file_urls_external` 给的播客原地址（RSS 里的那个 MP3），经本机小服务按范围转发，跟完一次跳转就记住最后的地址（BBC 的要跳 3 次，每次两三秒）。只剩 Spotify 自己托管、只有 Widevine 加密音频的节目在 macOS 上放不了，会提示并停下，不再一集一集往下试。字幕是 `transcript-read-along/v2/episode/<id>` 给的逐字稿（网页播放器取逐字稿也是这个接口）：每句带开始时间，每个词带开始时间和字数；说话人、章节标题和「Music playing」不算一句；中文稿每两个字之间都有空格，显示时去掉。单集的逐字稿常有几千句，正在播放页只建看得见的几十行，其余用量过的行高（没量过的按文字长度估）占位。
 - **头像**：账号的头像依次用 Spotify 上设的、账号邮箱在 Gravatar 上的、名字首字母（底色用 Spotify 给的颜色）。邮箱是带着 WebView 的 cookie 问 `www.spotify.com/api/account-settings/v1/profile` 拿的。
 
+## 界面语言
+
+文案在 `internal/l10n/zh-Hans.json` 和 `en.json`，通过 MyGo 的 `i18n.Catalog` 读取；应用自己写的文案用 `l10n.T`，带数量的消息用 `l10n.Count` 的 ICU 单复数。歌曲名、用户歌单名等内容不要送进翻译。语言选择保存在设置中，交给 `mygo.App.SetLocale` 应用；`MYGO_LOCALE=en` 可临时预览英文，不改保存的语言。
+
+新增或修改文案时同步两个目录并保留格式参数。`go test ./internal/l10n` 检查参数和数量格式，`go test ./internal/app -run TestLanguageSelection -count=5` 验证语言选择；`NM_FRAMES=<目录> go test ./internal/app -run TestEnglishFrames` 保存普通与最窄窗口的实际渲染。
+
 ## 从源码构建
 
 需要 Go 1.27.3 以上，不需要 cgo。

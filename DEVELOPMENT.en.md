@@ -16,6 +16,12 @@ How MySpotify is built, released and debugged. To just use it, the [README](READ
 - **Podcasts**: episodes also use `track-playback/v1/media`, asking for `file_urls_external` as well. Encrypted audio the platform can play comes first. On macOS Spotify gives almost no cbcs for episodes (only cenc, for Widevine), so video podcasts play the audio track from the video manifest instead: a video podcast's video isn't encrypted (H.264 + AAC in fMP4), needs no license on either platform, keeps exactly the same timeline when switching to video, and isn't black in screenshots. Audio-only shows play the original address `file_urls_external` gives (the MP3 in the RSS feed), forwarded by range through the small local service, which follows redirects once and remembers the final address (BBC's takes 3 hops of two or three seconds each). Only shows hosted by Spotify with nothing but Widevine-encrypted audio can't play on macOS: it says so and stops, rather than trying one episode after another. Subtitles are the transcript from `transcript-read-along/v2/episode/<id>` (the same interface the web player uses): each sentence has a start time, and each word a start time and character count. Speakers, chapter titles and "Music playing" don't count as sentences; Chinese transcripts have a space between every two characters, removed for display. An episode's transcript often runs to thousands of sentences, so Now Playing builds only the few dozen rows in view, with the rest taking up their measured height (or one estimated from the text's length if not yet measured).
 - **Avatars**: an account's avatar is, in order, the one set on Spotify, the one for the account's email on Gravatar, and the name's initial (on a background of the color Spotify gives). The email comes from asking `www.spotify.com/api/account-settings/v1/profile` with the WebView's cookies.
 
+## Interface languages
+
+Messages live in `internal/l10n/zh-Hans.json` and `en.json`, read by MyGo's `i18n.Catalog`. Use `l10n.T` for app-owned text and `l10n.Count` for ICU plural messages; never translate song titles or user playlist names. The language choice is saved in settings and applied with `mygo.App.SetLocale`. `MYGO_LOCALE=en` previews English without changing the saved language.
+
+Keep both catalogs and their formatting arguments in sync. `go test ./internal/l10n` checks arguments and count forms; `go test ./internal/app -run TestLanguageSelection -count=5` checks language selection. `NM_FRAMES=<directory> go test ./internal/app -run TestEnglishFrames` saves rendered pages at normal and minimum widths.
+
 ## Build from source
 
 Needs Go 1.27.3 or later, and no cgo.
@@ -43,7 +49,7 @@ macOS arm64 / amd64, Windows amd64 and Linux amd64 are packaged at once on a Mac
 
 1. If `go.mod` changed, update `licenses/` (third-party licenses, shipped with the program) and its `README.txt` to match; `go test` reminds you if you forget.
 2. Change the version: `version` in `mygo.json`, and the two version numbers in the go-winres command above (regenerating the syso). The version shown under Settings › About is read directly from `mygo.json`.
-3. Write this version's section in [`CHANGELOG.md`](CHANGELOG.md). The release notes under Settings › About come from it, and `mygo build` stops if the section is missing. The changelog stays in Chinese, as the app's interface does.
+3. Write this version's section in [`CHANGELOG.md`](CHANGELOG.md). The release notes under Settings › About come from it, and `mygo build` stops if the section is missing. The changelog currently stays in Chinese; interface translations live in `internal/l10n/`.
 4. Package in a clean working tree:
 
    ```sh

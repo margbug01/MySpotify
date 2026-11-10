@@ -16,6 +16,8 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
+
+	"vinyl/internal/l10n"
 )
 
 type ConnectEvent struct {
@@ -65,7 +67,7 @@ func (c *Connect) requestOnce(ctx context.Context, method, path, connection stri
 	}
 	id, err := CurrentIdentity()
 	if err != nil {
-		return nil, errors.New("Connect: 请重新登录")
+		return nil, errors.New(l10n.T("Connect: 请重新登录"))
 	}
 	raw, err := json.Marshal(body)
 	if err != nil {
@@ -75,7 +77,7 @@ func (c *Connect) requestOnce(ctx context.Context, method, path, connection stri
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, method, "https://"+c.host+path, bytes.NewReader(raw))
 	if err != nil {
-		return nil, errors.New("Connect: 请求地址无效")
+		return nil, errors.New(l10n.T("Connect: 请求地址无效"))
 	}
 	req.Header.Set("Authorization", "Bearer "+id.Token)
 	req.Header.Set("client-token", id.ClientToken)
@@ -89,7 +91,7 @@ func (c *Connect) requestOnce(ctx context.Context, method, path, connection stri
 	}
 	res, err := Client.Do(req)
 	if err != nil {
-		return nil, errors.New("Connect: 网络请求失败")
+		return nil, errors.New(l10n.T("Connect: 网络请求失败"))
 	}
 	defer res.Body.Close()
 	data, err := io.ReadAll(io.LimitReader(res.Body, 4<<20))
@@ -98,7 +100,7 @@ func (c *Connect) requestOnce(ctx context.Context, method, path, connection stri
 	}
 	if res.StatusCode == http.StatusUnauthorized && renew {
 		if _, err := RenewedIdentity(); err != nil {
-			return nil, errors.New("Connect: 身份刷新失败，请重新登录")
+			return nil, errors.New(l10n.T("Connect: 身份刷新失败，请重新登录"))
 		}
 		return c.requestOnce(ctx, method, path, connection, body, false)
 	}
@@ -139,14 +141,14 @@ func (c *Connect) loop(receiver bool) {
 func (c *Connect) session(receiver bool) error {
 	id, err := CurrentIdentity()
 	if err != nil {
-		return errors.New("Connect: 登录身份不可用")
+		return errors.New(l10n.T("Connect: 登录身份不可用"))
 	}
 	ctx, cancel := context.WithCancel(c.ctx)
 	defer cancel()
 	address := "wss://dealer.spotify.com/?access_token=" + url.QueryEscape(id.Token)
 	conn, _, err := websocket.Dial(ctx, address, &websocket.DialOptions{HTTPClient: Client, HTTPHeader: http.Header{"User-Agent": {UserAgent}}})
 	if err != nil {
-		return errors.New("Connect: Dealer 连接失败")
+		return errors.New(l10n.T("Connect: Dealer 连接失败"))
 	}
 	defer conn.CloseNow()
 	conn.SetReadLimit(4 << 20)
@@ -187,7 +189,7 @@ func (c *Connect) session(receiver bool) error {
 		_, raw, err := conn.Read(readCtx)
 		stop()
 		if err != nil {
-			return errors.New("Connect: Dealer 已断开")
+			return errors.New(l10n.T("Connect: Dealer 已断开"))
 		}
 		var msg struct {
 			Type     string            `json:"type"`
@@ -352,7 +354,7 @@ func (c *Connect) Report(ref any, position, duration int64, paused bool) error {
 
 func (c *Connect) Reject(machine ConnectMachine, ref *ConnectRef, current any, position, duration int64, paused bool) error {
 	if ref == nil || ref.Index < 0 || ref.Index >= len(machine.States) {
-		return errors.New("Connect: 无效冲突状态")
+		return errors.New(l10n.T("Connect: 无效冲突状态"))
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()

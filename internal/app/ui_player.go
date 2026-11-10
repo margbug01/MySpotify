@@ -7,6 +7,7 @@ import (
 	"github.com/egoist/mygo/plugins/glass"
 	"github.com/egoist/mygo/ui"
 
+	"vinyl/internal/l10n"
 	"vinyl/internal/player"
 )
 
@@ -34,7 +35,7 @@ func (a *app) scrubber(c *ui.Context, st *scrubState, track, fill ui.Color, heig
 	if !st.active && !st.held {
 		st.v = pl.Position().Seconds()
 	}
-	s := ui.SliderBase(c, &st.v, 0, max(dur, 1)).Height(height).FocusRing(false).Label("播放进度").Cursor(ui.CursorPointer)
+	s := ui.SliderBase(c, &st.v, 0, max(dur, 1)).Height(height).FocusRing(false).Label(l10n.T("播放进度")).Cursor(ui.CursorPointer)
 	// The press and its release come to the bar wherever the pointer is,
 	// and go on to the slider, which follows the pointer.
 	s.HandleInput(func(ev ui.InputEvent) bool {
@@ -174,7 +175,7 @@ func (a *app) tickTimes(c *ui.Context) {
 // percent over it. The wheel over the speaker turns it up and down
 // without opening it.
 func (a *app) volumeButton(c *ui.Context, color ui.Color) {
-	b := iconButton(c.Key("volume-button"), volumeIcon(a.volume), 16, color, "音量")
+	b := iconButton(c.Key("volume-button"), volumeIcon(a.volume), 16, color, l10n.T("音量"))
 	if b.Clicked() {
 		a.volumeOpen = !a.volumeOpen
 	}
@@ -184,7 +185,7 @@ func (a *app) volumeButton(c *ui.Context, color ui.Color) {
 		const arrow = 7
 		panel.AttachTo(b, ui.AnchorTop, ui.AnchorBottom).Margin(0, 0, arrow+3, 0).Width(52).Padding(11, 0, 12, 0).
 			Radius(12).Background(pop.fill).Border(0.5, pop.edge).Shadow(0, 8, 24, -4, ui.RGBA(0, 0, 0, 0.2)).
-			AlignItems(ui.Center).Gap(8).Label("音量")
+			AlignItems(ui.Center).Gap(8).Label(l10n.T("音量"))
 		panel.Draw(func(p *ui.Painter, r ui.Rect) {
 			// The arrow pointing at the speaker, its sides edged as the
 			// panel is, over the panel's border.
@@ -218,7 +219,7 @@ func popoverColors(dark bool) popover {
 func (a *app) nativeVolumeSlider(c *ui.Context, pop popover) {
 	const knob, track = 20, 4
 	s := ui.SliderBase(c.Key("volume"), &a.volume, 0, 1).Vertical().Size(knob+8, 124).PaddingY(knob / 2).
-		Step(0.01).AutoFocus().FocusRing(false).Label("音量")
+		Step(0.01).AutoFocus().FocusRing(false).Label(l10n.T("音量"))
 	if s.Changed() {
 		a.pl.SetVolume(a.volume)
 	}
@@ -272,7 +273,7 @@ func (a *app) muteButton(c *ui.Context, color ui.Color) {
 	if a.volume == 0 {
 		icon = iconMute
 	}
-	if iconButton(c.Key("mute"), icon, 16, color, "静音").Clicked() {
+	if iconButton(c.Key("mute"), icon, 16, color, l10n.T("静音")).Clicked() {
 		if a.volume > 0 {
 			a.mutedFrom, a.volume = a.volume, 0
 		} else {
@@ -286,7 +287,7 @@ func (a *app) muteButton(c *ui.Context, color ui.Color) {
 func (a *app) volumeSlider(c *ui.Context, color, track ui.Color, width float32) {
 	ui.Row(c).Gap(4).AlignItems(ui.Center).Children(func() {
 		a.muteButton(c, color)
-		s := ui.SliderBase(c.Key("volume"), &a.volume, 0, 1).Width(width).Height(16).FocusRing(false).Label("音量")
+		s := ui.SliderBase(c.Key("volume"), &a.volume, 0, 1).Width(width).Height(16).FocusRing(false).Label(l10n.T("音量"))
 		if s.Changed() {
 			a.pl.SetVolume(a.volume)
 		}
@@ -313,16 +314,16 @@ func (a *app) transport(c *ui.Context, color, dim, on ui.Color, size float32) {
 		if pl.Shuffle() {
 			shuffle = on
 		}
-		if iconButton(c.Key("shuffle"), iconShuffle, size*0.62, shuffle, "随机播放").Clicked() {
+		if iconButton(c.Key("shuffle"), iconShuffle, size*0.62, shuffle, l10n.T("随机播放")).Clicked() {
 			pl.ToggleShuffle()
 		}
-		if iconButton(c.Key("prev"), iconPrev, size*0.85, color, "上一首").Clicked() {
+		if iconButton(c.Key("prev"), iconPrev, size*0.85, color, l10n.T("上一首")).Clicked() {
 			pl.Prev()
 		}
 		if playButton(c.Key("play"), pl.Playing(), size*1.25, color).Clicked() {
 			pl.TogglePlay()
 		}
-		if iconButton(c.Key("next"), iconNext, size*0.85, color, "下一首").Clicked() {
+		if iconButton(c.Key("next"), iconNext, size*0.85, color, l10n.T("下一首")).Clicked() {
 			pl.Next()
 		}
 		repeat, ricon := dim, iconRepeat
@@ -332,7 +333,7 @@ func (a *app) transport(c *ui.Context, color, dim, on ui.Color, size float32) {
 		case player.RepeatOne:
 			repeat, ricon = on, iconRepeat1
 		}
-		if iconButton(c.Key("repeat"), ricon, size*0.62, repeat, "循环").Clicked() {
+		if iconButton(c.Key("repeat"), ricon, size*0.62, repeat, l10n.T("循环")).Clicked() {
 			pl.CycleRepeat()
 		}
 	})
@@ -362,11 +363,11 @@ func (a *app) playerBar(c *ui.Context) {
 					ui.Box(c).Size(48, 48).Radius(8).Background(p.hover).Center().Children(func() {
 						ui.Icon(c, iconNote).Size(18, 18).TextColor(p.faint)
 					})
-					ui.Text(c, "未在播放").FontSize(13).TextColor(p.muted)
+					ui.Text(c, l10n.T("未在播放")).FontSize(13).TextColor(p.muted)
 				})
 				return
 			}
-			info := ui.ButtonBase(c.Key("info")).Gap(12).AlignItems(ui.Center).FocusRing(false).Shrink(1).MinWidth(0).Label("打开正在播放")
+			info := ui.ButtonBase(c.Key("info")).Gap(12).AlignItems(ui.Center).FocusRing(false).Shrink(1).MinWidth(0).Label(l10n.T("打开正在播放"))
 			hovered := info.Hovered()
 			info.Children(func() {
 				ui.Box(c).Size(48, 48).Shrink(0).Children(func() {
@@ -382,7 +383,7 @@ func (a *app) playerBar(c *ui.Context) {
 					ui.Text(c, tr.Name).FontSize(13.5).FontWeight(600).SingleLine()
 					switch {
 					case pl.Loading():
-						ui.Text(c, "正在缓冲…").FontSize(12).TextColor(p.muted).SingleLine()
+						ui.Text(c, l10n.T("正在缓冲…")).FontSize(12).TextColor(p.muted).SingleLine()
 					case pl.Err() != "":
 						ui.Text(c, pl.Err()).FontSize(12).TextColor(p.accent).SingleLine()
 					default:
@@ -418,7 +419,7 @@ func (a *app) playerBar(c *ui.Context) {
 			if iconButton(c.Key("lyrics"), iconLyrics, 16, lyr, lyricsName(tr)).Clicked() && tr != nil {
 				a.nowPlaying, a.npPane = true, a.lyricsPaneChosen()
 			}
-			if iconButton(c.Key("queue"), iconQueue, 16, p.muted, "播放队列").Clicked() && tr != nil {
+			if iconButton(c.Key("queue"), iconQueue, 16, p.muted, l10n.T("播放队列")).Clicked() && tr != nil {
 				a.nowPlaying, a.npPane = true, paneQueue
 			}
 			a.connectButton(c)

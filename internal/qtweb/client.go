@@ -11,6 +11,8 @@ import (
 	"os/exec"
 	"sync"
 	"time"
+
+	"vinyl/internal/l10n"
 )
 
 var makeHostCommand = hostCommand
@@ -47,7 +49,7 @@ func sharedLocked() (*Client, error) {
 	defer cancel()
 	if _, err := client.Call(ctx, "ping", nil); err != nil {
 		client.Close()
-		return nil, fmt.Errorf("Qt WebEngine 启动失败，请检查运行时及显示服务: %w", err)
+		return nil, fmt.Errorf(l10n.T("Qt WebEngine 启动失败，请检查运行时及显示服务: %w"), err)
 	}
 	shared.client = client
 	return client, nil
@@ -170,7 +172,7 @@ func start(command *exec.Cmd) (*Client, error) {
 		// Wait only after the output has drained; otherwise Wait can close its pipe early.
 		command.Wait()
 		c.mu.Lock()
-		c.err = errors.New("Qt WebEngine 进程已退出")
+		c.err = errors.New(l10n.T("Qt WebEngine 进程已退出"))
 		watchers := c.watch
 		c.watch = map[int]func(){}
 		c.pending = map[int]chan reply{}
@@ -236,18 +238,18 @@ func (c *Client) Call(ctx context.Context, method string, args any) (json.RawMes
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
-		return nil, errors.New("Qt WebEngine 通道已关闭")
+		return nil, errors.New(l10n.T("Qt WebEngine 通道已关闭"))
 	}
 	select {
 	case response := <-waiting:
 		if response.Error != "" {
-			return nil, errors.New(response.Error)
+			return nil, errors.New(l10n.T(response.Error))
 		}
 		return response.Value, nil
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	case <-c.done:
-		return nil, errors.New("Qt WebEngine 进程已退出")
+		return nil, errors.New(l10n.T("Qt WebEngine 进程已退出"))
 	}
 }
 

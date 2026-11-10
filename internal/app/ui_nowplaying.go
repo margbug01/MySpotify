@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"math"
 	"time"
 	"unicode"
@@ -8,6 +9,7 @@ import (
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
+	"vinyl/internal/l10n"
 	"vinyl/internal/lyrics"
 	"vinyl/internal/spotify"
 )
@@ -130,7 +132,7 @@ func (a *app) nowPlayingBody(c *ui.Context, tr *spotify.Track, art *artwork, acc
 		ui.Row(c).Height(topBar(c)).Justify(ui.Center).AlignItems(ui.Center).DragWindow().Children(func() {
 			back := ui.Row(c.Key("close-reveal")).Absolute().Top(0).Left(left).Height(topBar(c)).AlignItems(ui.Center)
 			reveal(back, pointerIn).Children(func() {
-				if iconButton(c.Key("close"), iconBack, 18, white.Alpha(0.7), "返回").Clicked() {
+				if iconButton(c.Key("close"), iconBack, 18, white.Alpha(0.7), l10n.T("返回")).Clicked() {
 					a.nowPlaying = false
 				}
 			})
@@ -179,7 +181,7 @@ func (a *app) nowPlayingBody(c *ui.Context, tr *spotify.Track, art *artwork, acc
 					ui.Spacer(c)
 					status := "-" + clock(pl.Duration()-pl.Position())
 					if pl.Loading() {
-						status = "正在缓冲…"
+						status = l10n.T("正在缓冲…")
 					}
 					ui.Text(c, status).FontSize(11).FontFeatures("tnum").TextColor(white.Alpha(0.5))
 				})
@@ -242,8 +244,8 @@ const (
 
 func (a *app) paneTabs(c *ui.Context) {
 	a.paneTab(c, paneLyrics, lyricsName(a.pl.Current()))
-	a.paneTab(c, paneStage, "律动")
-	a.paneTab(c, paneQueue, "列表")
+	a.paneTab(c, paneStage, l10n.T("律动"))
+	a.paneTab(c, paneQueue, l10n.T("列表"))
 }
 
 // stageBar is the slim bar along the foot of the stage: what plays, where
@@ -309,7 +311,7 @@ func (a *app) lyricsPane(c *ui.Context, tr *spotify.Track, h float32) {
 				lyricsSkeleton(c, npShimmer(c))
 				return
 			}
-			ui.Text(c, "暂无"+lyricsName(tr)).FontSize(24).FontWeight(700).TextColor(white.Alpha(0.4))
+			ui.Text(c, fmt.Sprintf(l10n.T("暂无%s"), lyricsName(tr))).FontSize(24).FontWeight(700).TextColor(white.Alpha(0.4))
 		})
 		return
 	}
@@ -320,7 +322,7 @@ func (a *app) lyricsPane(c *ui.Context, tr *spotify.Track, h float32) {
 		}
 		ui.Scroll(c.Key("plain-lyrics")).Grow(1).TrackScroll(&a.lyricScroll).Padding(0, 8, 24, 0).Children(func() {
 			ui.Column(c).Gap(16).Padding(10, 12).Children(func() {
-				ui.Text(c, "LRCLIB · 无时间轴歌词").FontSize(13).TextColor(white.Alpha(0.5))
+				ui.Text(c, l10n.T("LRCLIB · 无时间轴歌词")).FontSize(13).TextColor(white.Alpha(0.5))
 				for _, line := range lines {
 					ui.Text(c, line.Text).FontSize(30).FontWeight(800).LineHeight(1.25).TextColor(white.Alpha(0.85))
 				}
@@ -652,7 +654,7 @@ func (a *app) queuePane(c *ui.Context) {
 				})
 			})
 			if at >= 0 && r == at+1 {
-				ui.Text(c, "接下来").FontSize(10.5).FontWeight(700).TextColor(white.Alpha(0.85)).Padding(2, 7).Radius(5).Background(white.Alpha(0.14))
+				ui.Text(c, l10n.T("接下来")).FontSize(10.5).FontWeight(700).TextColor(white.Alpha(0.85)).Padding(2, 7).Radius(5).Background(white.Alpha(0.14))
 			}
 			ui.Text(c, clock(tr.Length())).FontSize(12).FontFeatures("tnum").TextColor(white.Alpha(0.4))
 		})

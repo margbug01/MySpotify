@@ -12,6 +12,7 @@ import (
 
 	"github.com/egoist/mygo"
 
+	"vinyl/internal/l10n"
 	"vinyl/internal/lyrics"
 	"vinyl/internal/spotify"
 )
@@ -602,7 +603,7 @@ func (p *Player) Loading() bool { return p.loading || p.awaiting }
 func (p *Player) Ready() bool { return p.out != nil }
 
 // Err returns why the current track did not play, or "".
-func (p *Player) Err() string { return p.err }
+func (p *Player) Err() string { return l10n.T(p.err) }
 
 func (p *Player) Shuffle() bool      { return p.shuffle }
 func (p *Player) Repeat() RepeatMode { return p.repeat }

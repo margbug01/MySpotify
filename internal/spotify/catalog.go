@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"vinyl/internal/l10n"
 )
 
 type Artist struct {
@@ -113,6 +115,22 @@ const likedName = "我喜欢的音乐"
 
 // Liked reports whether p is the listener's liked songs.
 func (p *Playlist) Liked() bool { return p.ID == LikedURI }
+
+// DisplayName localizes the built-in collection, preserving listeners' names.
+func (p *Playlist) DisplayName() string {
+	if p.Liked() {
+		return l10n.T(likedName)
+	}
+	return p.Name
+}
+
+// DisplayNote translates the app-owned release kind when the card is drawn.
+func (p *Playlist) DisplayNote() string {
+	if year, kind, ok := strings.Cut(p.Note, " · "); ok {
+		return year + " · " + l10n.T(kind)
+	}
+	return l10n.T(p.Note)
+}
 
 // Sized asks the image CDN for a picture at least n pixels across, where
 // it serves more than one size, and says after "#", which no request
@@ -719,7 +737,7 @@ func Charts() ([]Playlist, error) {
 	}
 	rank := func(name string) int {
 		for i, p := range chartsFirst {
-			if strings.HasPrefix(name, p) {
+			if strings.HasPrefix(name, l10n.T(p)) {
 				return i
 			}
 		}

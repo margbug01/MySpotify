@@ -1,6 +1,9 @@
 package app
 
-import "vinyl/internal/spotify"
+import (
+	"vinyl/internal/l10n"
+	"vinyl/internal/spotify"
+)
 
 // applyProxy has the app's requests, and the web pages' that load Spotify
 // itself, go through the proxy the listener set, else the system's.
@@ -14,7 +17,7 @@ func (a *app) applyProxy() {
 func (a *app) setProxy() {
 	u, err := spotify.ParseProxy(a.proxyText)
 	if err != nil {
-		a.proxyErr = "看不懂这个地址：要像 127.0.0.1:7890、http://… 或 socks5://…，带端口"
+		a.proxyErr = l10n.T("看不懂这个地址：要像 127.0.0.1:7890、http://… 或 socks5://…，带端口")
 		return
 	}
 	a.proxyErr, a.settings.Proxy = "", ""

@@ -16,6 +16,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"vinyl/internal/l10n"
 )
 
 // pathfinderURL is where the GraphQL queries go; tests swap it.
@@ -308,7 +310,7 @@ func do(build func() (*http.Request, error)) ([]byte, error) {
 		}
 		req.Header.Set("app-platform", "WebPlayer")
 		req.Header.Set("User-Agent", UserAgent)
-		req.Header.Set("Accept-Language", "zh-CN")
+		req.Header.Set("Accept-Language", l10n.Language())
 		res, err := Client.Do(req)
 		if err != nil {
 			return nil, err

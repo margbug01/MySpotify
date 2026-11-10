@@ -10,6 +10,7 @@ import (
 	"github.com/egoist/mygo/plugins/glass"
 	"github.com/egoist/mygo/ui"
 
+	"vinyl/internal/l10n"
 	"vinyl/internal/spotify"
 )
 
@@ -241,23 +242,23 @@ func (a *app) sidebar(c *ui.Context) {
 		field.Children(func() {
 			ui.Icon(c, iconSearch).Size(14, 14).TextColor(p.muted)
 			in := ui.TextInputBase(c.Key("search"), &a.query).Bind(&a.searchBox).Grow(1).
-				Placeholder("搜索歌曲、歌手").FontSize(13).Label("搜索")
+				Placeholder(l10n.T("搜索歌曲、歌手")).FontSize(13).Label(l10n.T("搜索"))
 			if in.Submitted() && strings.TrimSpace(a.query) != "" {
 				a.search(strings.TrimSpace(a.query))
 			}
 		})
 
 		ui.Scroll(c.Key("nav")).TrackScroll(&a.navScroll).Grow(1).Margin(0, -6).Padding(0, 6).Gap(4).Children(func() {
-			a.navItem(c, iconHome, "为你推荐", route{page: pageHome})
-			a.navItem(c, iconDaily, "每日推荐", route{page: pageDaily})
-			a.navItem(c, iconCharts, "排行榜", route{page: pageCharts})
-			a.navItem(c, iconBrowse, "浏览", route{page: pageBrowse})
-			a.navItem(c, iconRecent, "最近播放", route{page: pageRecent})
+			a.navItem(c, iconHome, l10n.T("为你推荐"), route{page: pageHome})
+			a.navItem(c, iconDaily, l10n.T("每日推荐"), route{page: pageDaily})
+			a.navItem(c, iconCharts, l10n.T("排行榜"), route{page: pageCharts})
+			a.navItem(c, iconBrowse, l10n.T("浏览"), route{page: pageBrowse})
+			a.navItem(c, iconRecent, l10n.T("最近播放"), route{page: pageRecent})
 			if a.searched != "" {
-				a.navItem(c, iconSearch, "搜索结果", route{page: pageSearch})
+				a.navItem(c, iconSearch, l10n.T("搜索结果"), route{page: pageSearch})
 			}
-			a.myPlaylists(c, "我的歌单", a.mine, true)
-			a.myPlaylists(c, "我的收藏", a.saved, false)
+			a.myPlaylists(c, l10n.T("我的歌单"), a.mine, true)
+			a.myPlaylists(c, l10n.T("我的收藏"), a.saved, false)
 			a.followedArtists(c)
 		})
 
@@ -372,14 +373,14 @@ func (a *app) pageTop(c *ui.Context) {
 	edge.Opacity(edgeShown(edge, a.underTop))
 	if len(a.history) > 0 || len(a.forward) > 0 {
 		ui.Row(c).Absolute().Top(0).Left(20).Height(topBar(c)).AlignItems(ui.Center).Children(func() {
-			back := iconButton(c.Key("back"), iconBack, 18, a.pal.muted, "返回").Disabled(len(a.history) == 0)
+			back := iconButton(c.Key("back"), iconBack, 18, a.pal.muted, l10n.T("返回")).Disabled(len(a.history) == 0)
 			if len(a.history) == 0 {
 				back.Opacity(0.35)
 			}
 			if back.Clicked() {
 				a.back()
 			}
-			if len(a.forward) > 0 && iconButton(c.Key("forward"), iconForward, 18, a.pal.muted, "前进").Clicked() {
+			if len(a.forward) > 0 && iconButton(c.Key("forward"), iconForward, 18, a.pal.muted, l10n.T("前进")).Clicked() {
 				a.goForward()
 			}
 		})
@@ -432,7 +433,7 @@ func (a *app) centered(c *ui.Context, err string, retry func()) {
 	top, bottom := a.insets(c)
 	ui.Column(c).Grow(1).Padding(top, 0, bottom, 0).Center().Gap(12).Children(func() {
 		ui.Text(c, err).TextColor(a.pal.muted).FontSize(13)
-		if retry != nil && ui.Button(c, "重试").Clicked() {
+		if retry != nil && ui.Button(c, l10n.T("重试")).Clicked() {
 			retry()
 		}
 	})
@@ -444,6 +445,7 @@ func (a *app) centered(c *ui.Context, err string, retry func()) {
 // background. The chips' feeds stay: one loaded before this ends would be gone
 // with nothing to load it again, and its page would stay on the skeleton.
 func (a *app) loadHome() {
+	gen := a.languageGen
 	a.homeLoading, a.homeErr = true, ""
 	go func() {
 		var (
@@ -468,6 +470,9 @@ func (a *app) loadHome() {
 		}
 		wg.Wait()
 		a.post(func() {
+			if gen != a.languageGen {
+				return
+			}
 			a.homeLoading = false
 			// What failed to load again shows as it did, as restoreHome
 			// had it.
@@ -484,7 +489,7 @@ func (a *app) loadHome() {
 			}
 			if err1 != nil && err2 != nil {
 				log.Printf("home: %v; charts: %v", err1, err2)
-				a.homeErr = "无法连接 Spotify，请检查网络"
+				a.homeErr = l10n.T("无法连接 Spotify，请检查网络")
 			}
 			a.keepHome()
 		})
@@ -514,7 +519,7 @@ func (a *app) loadPlaylist(id string, thenPlay bool) {
 func (a *app) receivePlaylist(id string, pl *spotify.Playlist, err error, thenPlay bool, asked time.Time) {
 	delete(a.loadingPl, id)
 	if err != nil {
-		a.plErr[id] = "歌单加载失败"
+		a.plErr[id] = l10n.T("歌单加载失败")
 		return
 	}
 	a.playlists[id] = pl
@@ -570,7 +575,7 @@ func (a *app) runSearch(q string) {
 			a.results, a.found = res, found
 			a.foundAlbums, a.foundLists, a.foundShows = albums, lists, shows
 			if err != nil {
-				a.searchErr = "搜索失败，请稍后再试"
+				a.searchErr = l10n.T("搜索失败，请稍后再试")
 			}
 		})
 	}()
