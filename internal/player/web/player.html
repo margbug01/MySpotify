@@ -130,6 +130,7 @@ window.vinyl = {
         title,
         artist: info.artist || '',
         album: info.album || '',
+        artwork: info.artwork ? [{ src: info.artwork }] : [],
       });
     }
   },

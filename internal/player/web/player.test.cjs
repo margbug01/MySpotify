@@ -52,11 +52,15 @@ vm.runInContext(source, context);
 context.vinyl = context.window.vinyl;
 const player = context.vinyl;
 // Track metadata replaces the page title that Windows would otherwise show as the media item.
-player.metadata({ title: 'Song', artist: 'Singer', album: 'Record' });
+player.metadata({ title: 'Song', artist: 'Singer', album: 'Record', artwork: 'https://example.com/cover.jpg' });
 assert.equal(context.document.title, 'Song');
 assert.equal(session.metadata.title, 'Song');
 assert.equal(session.metadata.artist, 'Singer');
 assert.equal(session.metadata.album, 'Record');
+// The WebView session used to omit the cover even when the track had one.
+assert.equal(session.metadata.artwork[0].src, 'https://example.com/cover.jpg');
+player.metadata({ title: 'Next' });
+assert.equal(session.metadata.artwork.length, 0);
 // A short pause reuses the pipeline; a longer one stops loading and resumes at its position.
 player.load(1);
 const first = instances[0];

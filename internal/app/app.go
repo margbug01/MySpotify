@@ -277,16 +277,16 @@ func Run() error {
 		spotify.OpsFile = filepath.Join(dir, "queries.json")
 		spotify.LoadOps()
 	}
-	if err := ensureWindowsStartMenuShortcut(appName); err != nil {
-		log.Printf("windows: start menu shortcut: %v", err)
-	}
 	log.Printf("start, pid %d", os.Getpid())
 	// MyGo's updater asks GitHub with http.DefaultClient: through the
 	// proxy the requests to Spotify go through.
 	if t, ok := http.DefaultTransport.(*http.Transport); ok {
 		t.Proxy = spotify.Proxy
 	}
-	os.Setenv("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", strings.TrimSpace(os.Getenv("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS")+" --autoplay-policy=no-user-gesture-required --in-process-gpu --disable-gpu"))
+	// The app publishes its own SMTC session. Keep Chromium from also
+	// publishing the embedded Spotify page as a second, msedgewebview2.exe
+	// session (which can take media-key focus from MySpotify).
+	os.Setenv("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", strings.TrimSpace(os.Getenv("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS")+" --autoplay-policy=no-user-gesture-required --in-process-gpu --disable-gpu --disable-features=HardwareMediaKeyHandling,MediaSessionService"))
 	// What decoding a page of covers takes goes back to the system after,
 	// rather than staying in the heap (20 MB).
 	if os.Getenv("GOMEMLIMIT") == "" {

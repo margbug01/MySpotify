@@ -215,12 +215,13 @@ func (w *Web) send(js string) {
 
 // SetMediaMetadata tells the web view which track it plays. Without its
 // own metadata, the browser can publish the page title (Vinyl) to SMTC.
-func (w *Web) SetMediaMetadata(title, artist, album string) {
+func (w *Web) SetMediaMetadata(title, artist, album, artwork string) {
 	info, err := json.Marshal(struct {
-		Title  string `json:"title"`
-		Artist string `json:"artist"`
-		Album  string `json:"album"`
-	}{title, artist, album})
+		Title   string `json:"title"`
+		Artist  string `json:"artist"`
+		Album   string `json:"album"`
+		Artwork string `json:"artwork"`
+	}{title, artist, album, artwork})
 	if err != nil {
 		return
 	}
