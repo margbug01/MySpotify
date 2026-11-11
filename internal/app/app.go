@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"runtime/debug"
 	"strings"
@@ -249,48 +248,6 @@ func (a *app) showMain() {
 // appName is the name the app shows.
 const appName = "MySpotify"
 
-var webView2DisableFeaturesArg = regexp.MustCompile(`(?:^|\s)--disable-features(?:=|\s+)(?:"([^"]*)"|'([^']*)'|([^\s]+))`)
-
-// webView2BrowserArguments merges feature switches because Chromium only
-// honors one --disable-features switch.
-func webView2BrowserArguments(args string) string {
-	var features []string
-	seen := make(map[string]struct{})
-	addFeatures := func(list string) {
-		for _, feature := range strings.Split(list, ",") {
-			feature = strings.TrimSpace(feature)
-			if feature == "" {
-				continue
-			}
-			if _, exists := seen[feature]; exists {
-				continue
-			}
-			seen[feature] = struct{}{}
-			features = append(features, feature)
-		}
-	}
-	for _, match := range webView2DisableFeaturesArg.FindAllStringSubmatch(args, -1) {
-		list := match[1]
-		if list == "" {
-			list = match[2]
-		}
-		if list == "" {
-			list = match[3]
-		}
-		addFeatures(list)
-	}
-	addFeatures("HardwareMediaKeyHandling,MediaSessionService")
-
-	args = webView2DisableFeaturesArg.ReplaceAllString(args, " ")
-	return strings.TrimSpace(strings.Join([]string{
-		strings.TrimSpace(args),
-		"--autoplay-policy=no-user-gesture-required",
-		"--in-process-gpu",
-		"--disable-gpu",
-		"--disable-features=" + strings.Join(features, ","),
-	}, " "))
-}
-
 func Run() error {
 	a := &app{
 		playlists:  map[string]*spotify.Playlist{},
@@ -326,10 +283,10 @@ func Run() error {
 	if t, ok := http.DefaultTransport.(*http.Transport); ok {
 		t.Proxy = spotify.Proxy
 	}
-	// The app publishes its own SMTC session. Keep Chromium from also
-	// publishing the embedded Spotify page as a second, msedgewebview2.exe
-	// session (which can take media-key focus from MySpotify).
-	os.Setenv("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", webView2BrowserArguments(os.Getenv("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS")))
+	// The app shows Windows what plays itself (mygo.NowPlaying): the page
+	// showed it too, as a second media session of msedgewebview2.exe titled
+	// Vinyl, which could take the media keys.
+	os.Setenv("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", strings.TrimSpace(os.Getenv("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS")+" --autoplay-policy=no-user-gesture-required --in-process-gpu --disable-gpu --disable-features=HardwareMediaKeyHandling,MediaSessionService"))
 	// What decoding a page of covers takes goes back to the system after,
 	// rather than staying in the heap (20 MB).
 	if os.Getenv("GOMEMLIMIT") == "" {

@@ -1028,13 +1028,6 @@ func (p *Player) open(gen int, m *spotify.Media, v *spotify.Video) {
 		}
 		p.out = p.Web.Open(m)
 	}
-	mediaPage := p.Web
-	if p.showsVideo {
-		mediaPage = p.Video
-	}
-	if mediaPage != nil && p.track != nil {
-		mediaPage.SetMediaMetadata(p.track.Name, p.track.ArtistNames(), p.track.Album.Name, spotify.Sized(p.track.Album.PicURL, 600))
-	}
 	// From its middle, as a session picked up again, it fades in.
 	level := 1.0
 	if p.pending > 0 {

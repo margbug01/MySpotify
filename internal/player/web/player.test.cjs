@@ -20,9 +20,8 @@ class Hls {
   destroy() { this.destroyed = true; }
 }
 const session = { handlers: {}, setActionHandler(action, fn) { this.handlers[action] = fn; } };
-class MediaMetadata { constructor(init) { Object.assign(this, init); } }
 const context = vm.createContext({
-  Hls, MediaMetadata, window: {}, navigator: { mediaSession: session },
+  Hls, window: {}, navigator: { mediaSession: session },
   AbortSignal,
   fetch: (url, options) => {
     const event = JSON.parse(options.body);
@@ -33,7 +32,7 @@ const context = vm.createContext({
   clearInterval: (id) => intervals.delete(id),
   setTimeout: (fn) => { timers.set(++timerID, fn); return timerID; },
   clearTimeout: (id) => timers.delete(id),
-  document: { title: 'Vinyl', body: { append() {} }, createElement: () => {
+  document: { body: { append() {} }, createElement: () => {
     const element = {
       currentTime: 0, duration: 250, readyState: 1, paused: false, seeking: false,
       buffered: { length: 1, start: () => 220, end: () => 250 },
@@ -51,16 +50,6 @@ const source = fs.readFileSync(__dirname + '/player.html', 'utf8').match(/<scrip
 vm.runInContext(source, context);
 context.vinyl = context.window.vinyl;
 const player = context.vinyl;
-// Track metadata replaces the page title that Windows would otherwise show as the media item.
-player.metadata({ title: 'Song', artist: 'Singer', album: 'Record', artwork: 'https://example.com/cover.jpg' });
-assert.equal(context.document.title, 'Song');
-assert.equal(session.metadata.title, 'Song');
-assert.equal(session.metadata.artist, 'Singer');
-assert.equal(session.metadata.album, 'Record');
-// The WebView session used to omit the cover even when the track had one.
-assert.equal(session.metadata.artwork[0].src, 'https://example.com/cover.jpg');
-player.metadata({ title: 'Next' });
-assert.equal(session.metadata.artwork.length, 0);
 // A short pause reuses the pipeline; a longer one stops loading and resumes at its position.
 player.load(1);
 const first = instances[0];
