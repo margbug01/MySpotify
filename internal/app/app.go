@@ -284,7 +284,10 @@ func Run() error {
 	if t, ok := http.DefaultTransport.(*http.Transport); ok {
 		t.Proxy = spotify.Proxy
 	}
-	os.Setenv("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", strings.TrimSpace(os.Getenv("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS")+" --autoplay-policy=no-user-gesture-required --in-process-gpu --disable-gpu"))
+	// The app shows Windows what plays itself (mygo.NowPlaying): the page
+	// showed it too, as a second media session of msedgewebview2.exe titled
+	// Vinyl, which could take the media keys.
+	os.Setenv("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", strings.TrimSpace(os.Getenv("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS")+" --autoplay-policy=no-user-gesture-required --in-process-gpu --disable-gpu --disable-features=HardwareMediaKeyHandling,MediaSessionService"))
 	// What decoding a page of covers takes goes back to the system after,
 	// rather than staying in the heap (20 MB).
 	if os.Getenv("GOMEMLIMIT") == "" {
