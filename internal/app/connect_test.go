@@ -146,7 +146,7 @@ func TestConnectQueueIsTheClusters(t *testing.T) {
 	json.Unmarshal([]byte(machine), &a.connect.machine)
 	a.connect.ref = &spotify.ConnectRef{Index: 0}
 	a.connect.known = map[string]spotify.Track{"spotify:track:three": {ID: "three", Name: "Three"}}
-	a.connectEvent(spotify.ConnectEvent{Kind: "cluster", Data: json.RawMessage(`{"active_device_id":"local","player_state":{"duration":"200000","track":{"uri":"spotify:track:one","uid":"u1","metadata":{"title":"One"}},"next_tracks":[{"uri":"spotify:delimiter","uid":"delimiter0","metadata":{"hidden":"true"}},{"uri":"spotify:track:two","uid":"u2","metadata":{"title":"Two"}},{"uri":"spotify:track:three","uid":"u3"},{"uri":"spotify:track:one","uid":"u1","metadata":{"hidden":"true","title":"One"}}]}}`)})
+	a.connectEvent(spotify.ConnectEvent{Kind: "cluster", Data: json.RawMessage(`{"active_device_id":"local","player_state":{"duration":"200000","track":{"uri":"spotify:track:one","uid":"u1","metadata":{"title":"One","artist_name":"Singer"}},"next_tracks":[{"uri":"spotify:delimiter","uid":"delimiter0","metadata":{"hidden":"true"}},{"uri":"spotify:track:two","uid":"u2","metadata":{"title":"Two","artist_name":"Singer"}},{"uri":"spotify:track:three","uid":"u3"},{"uri":"spotify:track:one","uid":"u1","metadata":{"hidden":"true","title":"One"}}]}}`)})
 	a.connectEvent(spotify.ConnectEvent{Kind: "report", Data: json.RawMessage(`{"updated_state_ref":{"state_index":0},"state_machine":` + machine + `}`)})
 	var got []string
 	for _, tr := range a.pl.Queue() {
