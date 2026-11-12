@@ -31,7 +31,7 @@ go test ./...
 CGO_ENABLED=0 go build -trimpath -ldflags="-H windowsgui -s -w" -o outputs/MySpotify.exe .
 ```
 
-The macOS app and dmg use MyGo's own packaging command (run it on a Mac; the output is in `build/darwin-arm64/`, and `-skip-dmg` makes only the app):
+The macOS app and dmg use MyGo's own packaging command (run it on a Mac; the output is in `build.noindex/darwin-arm64/`, and `-skip-dmg` makes only the app):
 
 ```
 go tool mygo build
@@ -58,9 +58,9 @@ macOS arm64 / amd64, Windows amd64 and Linux amd64 are packaged at once on a Mac
    ```
 
 5. Create a `v<version>` release on GitHub. Save it as a draft first, upload all the attachments, and after checking them publish it and set it as Latest. The app reads the manifest in the latest release and can't see drafts, so it never finds a manifest whose archive hasn't finished uploading.
-   - `build/darwin-arm64/`: the dmg (renamed to `MySpotify-<version>-macos-arm64.dmg`), `vinyl-<version>-darwin-arm64.tar.gz`, `*.delta`, `update-darwin-arm64.json`
-   - `build/darwin-amd64/`: the dmg (renamed to `MySpotify-<version>-macos-amd64.dmg`), `vinyl-<version>-darwin-amd64.tar.gz`, `*.delta` (when earlier versions exist), `update-darwin-amd64.json`
-   - `build/windows-amd64/`: put the program files in this folder and a `README.txt` into `MySpotify-<version>-windows-amd64/` and zip it under the same name; add `vinyl-<version>-windows-amd64.tar.gz`, `*.delta`, `update-windows-amd64.json`
+   - `build.noindex/darwin-arm64/`: the dmg (renamed to `MySpotify-<version>-macos-arm64.dmg`), `vinyl-<version>-darwin-arm64.tar.gz`, `*.delta`, `update-darwin-arm64.json`
+   - `build.noindex/darwin-amd64/`: the dmg (renamed to `MySpotify-<version>-macos-amd64.dmg`), `vinyl-<version>-darwin-amd64.tar.gz`, `*.delta` (when earlier versions exist), `update-darwin-amd64.json`
+   - `build.noindex/windows-amd64/`: put the program files in this folder and a `README.txt` into `MySpotify-<version>-windows-amd64/` and zip it under the same name; add `vinyl-<version>-windows-amd64.tar.gz`, `*.delta`, `update-windows-amd64.json`
 
 Linux attachments include the `.deb`, `.tar.gz`, `update-linux-amd64.json` and `install-linux-webview.sh`; the install script also ships in the app's resources. Desktop users install the dependencies separately.
 

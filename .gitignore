@@ -1,4 +1,5 @@
 /build/
+/build.noindex/
 /.mygo/
 mygo_windows_*.syso
 /node_modules/

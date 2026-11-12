@@ -16,7 +16,7 @@ go tool mygo build -platform linux/amd64,linux/arm64
 
 不需要在 macOS 上安装 GTK 开发包或交叉 C 编译器。CLI 使用 Linux 后端、纯 Go 动态库绑定跨编译，再直接生成 Debian 包，不要求宿主安装 dpkg-deb。不要添加 `-upload`。
 
-输出在 `build/linux-amd64/`（arm64 对应 `linux-arm64`）：
+输出在 `build.noindex/linux-amd64/`（arm64 对应 `linux-arm64`）：
 
 - `vinyl`、`vinyl.png`、`vinyl.desktop`，以及 LICENSE 和 licenses；
 - `vinyl_0.4.16_amd64.deb`；

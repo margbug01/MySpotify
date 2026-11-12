@@ -31,7 +31,7 @@ go test ./...
 CGO_ENABLED=0 go build -trimpath -ldflags="-H windowsgui -s -w" -o outputs/MySpotify.exe .
 ```
 
-macOS 的 app 和 dmg 用 MyGo 自带的打包命令（在 Mac 上跑，产物在 `build/darwin-arm64/`，加 `-skip-dmg` 只出 app）：
+macOS 的 app 和 dmg 用 MyGo 自带的打包命令（在 Mac 上跑，产物在 `build.noindex/darwin-arm64/`，加 `-skip-dmg` 只出 app）：
 
 ```
 go tool mygo build
@@ -58,9 +58,9 @@ macOS arm64 / amd64、Windows amd64 和 Linux amd64 在 Mac 上一次打出来�
    ```
 
 5. 在 GitHub 上建 `v<版本>` 的 Release，先存成草稿，把附件都传上去，确认后再发布并设为 Latest。应用读的是最新 Release 里的清单，草稿对它不可见，不会出现清单已经能读到、压缩包还没传完的情况。
-   - `build/darwin-arm64/`：dmg（改名为 `MySpotify-<版本>-macos-arm64.dmg`）、`vinyl-<版本>-darwin-arm64.tar.gz`、`*.delta`、`update-darwin-arm64.json`
-   - `build/darwin-amd64/`：dmg（改名为 `MySpotify-<版本>-macos-amd64.dmg`）、`vinyl-<版本>-darwin-amd64.tar.gz`、`*.delta`（有旧版时）、`update-darwin-amd64.json`
-   - `build/windows-amd64/`：把这个文件夹里的程序文件和一份 `README.txt` 放进 `MySpotify-<版本>-windows-amd64/` 打成同名 zip；再加上 `vinyl-<版本>-windows-amd64.tar.gz`、`*.delta`、`update-windows-amd64.json`
+   - `build.noindex/darwin-arm64/`：dmg（改名为 `MySpotify-<版本>-macos-arm64.dmg`）、`vinyl-<版本>-darwin-arm64.tar.gz`、`*.delta`、`update-darwin-arm64.json`
+   - `build.noindex/darwin-amd64/`：dmg（改名为 `MySpotify-<版本>-macos-amd64.dmg`）、`vinyl-<版本>-darwin-amd64.tar.gz`、`*.delta`（有旧版时）、`update-darwin-amd64.json`
+   - `build.noindex/windows-amd64/`：把这个文件夹里的程序文件和一份 `README.txt` 放进 `MySpotify-<版本>-windows-amd64/` 打成同名 zip；再加上 `vinyl-<版本>-windows-amd64.tar.gz`、`*.delta`、`update-windows-amd64.json`
 
 Linux 附件包括 `.deb`、`.tar.gz`、`update-linux-amd64.json` 及 `install-linux-webview.sh`；安装脚本也随程序资源附带。依赖组件需普通桌面用户单独安装，不在安装 deb 时自动下载。
 
