@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -73,7 +76,8 @@ func accountIdentity(r tokenReply) (Identity, error) {
 }
 
 // lastClientToken is the client token requests go with now, the listener's
-// or else the guest's: either is this device's, which is what it names.
+// or else the guest's, or else the one kept from a run before: any is this
+// device's, which is what it names.
 func lastClientToken() string {
 	idMu.Lock()
 	ct := current.ClientToken
@@ -82,8 +86,51 @@ func lastClientToken() string {
 		return ct
 	}
 	guestMu.Lock()
-	defer guestMu.Unlock()
-	return guest.ClientToken
+	ct = guest.ClientToken
+	guestMu.Unlock()
+	if ct != "" {
+		return ct
+	}
+	return keptClientToken()
+}
+
+// withClientToken gives id the last client token if it came without one, as
+// the web view's does when its page could not get one in time.
+func withClientToken(id Identity) Identity {
+	if id.ClientToken == "" && id.Token != "" && !id.Anonymous {
+		id.ClientToken = lastClientToken()
+	}
+	return id
+}
+
+// ClientTokenFile, set by the app, keeps the last client token granted and
+// when it runs out, for the next start: on a network that cannot reach
+// clienttoken, songs play with it, rather than only once some other network
+// has got one this run (#20).
+var ClientTokenFile string
+
+func keepClientToken(token string, until time.Time) {
+	if ClientTokenFile != "" {
+		os.WriteFile(ClientTokenFile, []byte(token+"\n"+strconv.FormatInt(until.Unix(), 10)), 0o600)
+	}
+}
+
+// keptClientToken is the client token ClientTokenFile keeps, "" if there is
+// none or it has run out.
+func keptClientToken() string {
+	if ClientTokenFile == "" {
+		return ""
+	}
+	b, err := os.ReadFile(ClientTokenFile)
+	if err != nil {
+		return ""
+	}
+	token, until, _ := strings.Cut(string(b), "\n")
+	sec, err := strconv.ParseInt(until, 10, 64)
+	if err != nil || !time.Now().Before(time.Unix(sec, 0)) {
+		return ""
+	}
+	return token
 }
 
 // tokenReply is what /api/token answered: the identity, without its client

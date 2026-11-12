@@ -214,6 +214,7 @@ func SignOut() {
 
 // SetIdentity makes id the one requests go as.
 func SetIdentity(id Identity) {
+	id = withClientToken(id)
 	idMu.Lock()
 	current = id
 	idMu.Unlock()
@@ -259,6 +260,7 @@ func identity(stale bool) (Identity, error) {
 		renewing = wait
 		go func() {
 			next, err := Renew()
+			next = withClientToken(next)
 			idMu.Lock()
 			if err == nil {
 				current = next

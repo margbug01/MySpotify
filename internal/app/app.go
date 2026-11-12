@@ -277,6 +277,7 @@ func Run() error {
 		log.SetOutput(io.MultiWriter(&logFile{path: filepath.Join(dir, "vinyl.log")}, os.Stderr))
 		spotify.OpsFile = filepath.Join(dir, "queries.json")
 		spotify.LoadOps()
+		spotify.ClientTokenFile = filepath.Join(dir, "client-token")
 	}
 	log.Printf("start, pid %d", os.Getpid())
 	// MyGo's updater asks GitHub with http.DefaultClient: through the

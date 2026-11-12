@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -132,6 +133,39 @@ func TestAccountIdentityKeepsTheClientToken(t *testing.T) {
 	SignOut()
 	if id, err := AccountIdentity("sp_dc=abc"); err == nil {
 		t.Fatalf("AccountIdentity = %+v with no client token to go with it, want an error", id)
+	}
+}
+
+// A client token granted in a run before goes with the identity when
+// clienttoken cannot be reached: some proxies' exits cannot reach it, and
+// nothing played after a start on one until another network had got a
+// token that run (#20). One that has run out is not used.
+func TestTheClientTokenOutlastsTheRun(t *testing.T) {
+	ts := testTokenServer(t, theirs)
+	old := ClientTokenFile
+	ClientTokenFile = filepath.Join(t.TempDir(), "client-token")
+	defer func() { ClientTokenFile = old }()
+	if _, err := AccountIdentity("sp_dc=abc"); err != nil {
+		t.Fatal(err)
+	}
+
+	SignOut() // as a new start: nothing in memory
+	ts.clientDown.Store(true)
+	id, err := AccountIdentity("sp_dc=abc")
+	if err != nil || id.ClientToken != "device" {
+		t.Fatalf("AccountIdentity = %+v, %v; want the client token kept", id, err)
+	}
+	SignOut()
+	// The web view's page, which gave up on asking for one.
+	SetIdentity(Identity{Token: "page", Expires: time.Now().Add(time.Hour)})
+	if id, _ := CurrentIdentity(); id.ClientToken != "device" {
+		t.Fatalf("identity from the page = %+v, want the client token kept", id)
+	}
+
+	SignOut()
+	keepClientToken("device", time.Now().Add(-time.Minute))
+	if id, err := AccountIdentity("sp_dc=abc"); err == nil {
+		t.Fatalf("AccountIdentity = %+v with the kept client token run out, want an error", id)
 	}
 }
 

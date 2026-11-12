@@ -2,6 +2,7 @@ package spotify
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -66,6 +67,11 @@ var clientTokenURL = "https://clienttoken.spotify.com/v1/clienttoken"
 // Spotify accepts older ones, and may not forever.
 const clientVersion = "1.3.8.509.g26b6eac7300d"
 
+// clientTokenWait is how long clienttoken is waited on, shorter than
+// Client's: a network that cannot reach it (some proxies' exits cannot) would
+// otherwise hold the first track half a minute before it fails.
+const clientTokenWait = 10 * time.Second
+
 // clientToken asks for this device's client token, as the web player does:
 // naming its build, its client ID and what it runs on.
 func clientToken(clientID string) (string, error) {
@@ -87,7 +93,9 @@ func clientToken(clientID string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	req, err := http.NewRequest(http.MethodPost, clientTokenURL, bytes.NewReader(body))
+	ctx, cancel := context.WithTimeout(context.Background(), clientTokenWait)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, clientTokenURL, bytes.NewReader(body))
 	if err != nil {
 		return "", err
 	}
@@ -108,7 +116,8 @@ func clientToken(clientID string) (string, error) {
 	}
 	var v struct {
 		Granted struct {
-			Token string `json:"token"`
+			Token   string `json:"token"`
+			Expires int64  `json:"expires_after_seconds"`
 		} `json:"granted_token"`
 	}
 	if err := json.Unmarshal(out, &v); err != nil {
@@ -117,6 +126,11 @@ func clientToken(clientID string) (string, error) {
 	if v.Granted.Token == "" {
 		return "", fmt.Errorf("clienttoken: none granted")
 	}
+	lasts := time.Duration(v.Granted.Expires) * time.Second
+	if lasts <= 0 {
+		lasts = 14 * 24 * time.Hour
+	}
+	keepClientToken(v.Granted.Token, time.Now().Add(lasts))
 	return v.Granted.Token, nil
 }
 
