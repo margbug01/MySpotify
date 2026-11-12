@@ -523,10 +523,15 @@ func (p *Player) appendTracks(tracks []spotify.Track) {
 }
 
 // PlayNext puts tr after the track playing, to play next: moved there if
-// queued already. With nothing queued, it plays tr.
+// queued already. With nothing queued, it plays tr. Played through Spotify
+// Connect, Spotify is asked to queue it: what it holds is what plays next,
+// and put here only, tr was gone at its next word.
 func (p *Player) PlayNext(tr spotify.Track) {
 	if p.at < 0 || len(p.order) == 0 {
 		p.PlayQueue([]spotify.Track{tr}, 0)
+		return
+	}
+	if (p.track == nil || p.track.ID != tr.ID) && p.control("queue", tr) {
 		return
 	}
 	if i := slices.IndexFunc(p.queue, func(t spotify.Track) bool { return t.ID == tr.ID }); i >= 0 {
@@ -547,10 +552,16 @@ func (p *Player) PlayNext(tr spotify.Track) {
 }
 
 // AddToQueue puts tr at the end of the queue, and reports whether it did:
-// not if queued already. With nothing queued, it plays tr.
+// not if queued already. With nothing queued, it plays tr. Played through
+// Spotify Connect, Spotify is asked to queue it, as PlayNext: the queue
+// here is then what is left of the playlist playing, and a song further
+// down it was turned away as queued.
 func (p *Player) AddToQueue(tr spotify.Track) bool {
 	if p.at < 0 || len(p.order) == 0 {
 		p.PlayQueue([]spotify.Track{tr}, 0)
+		return true
+	}
+	if p.control("queue", tr) {
 		return true
 	}
 	if slices.ContainsFunc(p.queue, func(t spotify.Track) bool { return t.ID == tr.ID }) {
