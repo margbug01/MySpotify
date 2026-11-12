@@ -223,9 +223,14 @@ func (a *app) redraw() {
 
 // readsTraditional reports whether the first Chinese among the listener's
 // languages is written in traditional characters (zh-Hant, zh-TW, zh-HK).
+// The script wins over the region: zh-Hans-TW is simplified Chinese read
+// by someone whose region is Taiwan.
 func readsTraditional(langs []string) bool {
 	for _, l := range langs {
 		if strings.HasPrefix(l, "zh") {
+			if strings.Contains(l, "Hans") {
+				return false
+			}
 			return strings.Contains(l, "Hant") || strings.Contains(l, "TW") || strings.Contains(l, "HK") || strings.Contains(l, "MO")
 		}
 	}

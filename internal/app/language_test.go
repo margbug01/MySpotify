@@ -6,6 +6,7 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -191,5 +192,25 @@ func TestEnglishFrames(t *testing.T) {
 		a.nowPlaying, a.npPane = true, paneLyrics
 		tt.Move(float32(width)/2, 300)
 		save("now-playing")
+	}
+}
+
+// Lyrics stay traditional only for listeners whose first Chinese is written
+// that way; zh-Hans-TW (simplified, region Taiwan) used to count as
+// traditional because of its region (#21).
+func TestReadsTraditional(t *testing.T) {
+	for langs, want := range map[string]bool{
+		"zh-Hans-TW":    false,
+		"zh-Hans-HK":    false,
+		"zh-Hans-CN":    false,
+		"zh-Hant-TW":    true,
+		"zh-TW":         true,
+		"zh-HK":         true,
+		"en-US":         false,
+		"en-US zh-Hant": true,
+	} {
+		if got := readsTraditional(strings.Fields(langs)); got != want {
+			t.Errorf("readsTraditional(%s) = %v, want %v", langs, got, want)
+		}
 	}
 }
