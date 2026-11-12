@@ -27,11 +27,13 @@ func (a *app) songMenu(c *ui.Context, tr *spotify.Track, size float32, color ui.
 func (a *app) songItems(tr *spotify.Track, pid string) func(m *ui.Menu) {
 	return func(m *ui.Menu) {
 		if tr.Playable() {
-			// With nothing playing, either plays it: no toast needed.
+			// With nothing playing, either plays it: no toast needed. Nor
+			// when Spotify Connect could not take it and said why, such as
+			// while it reconnects: saying it was queued hid that it was not.
 			queued := a.pl.Current() != nil
 			if m.Item(l10n.T("下一首播放")).Chosen() {
 				a.pl.PlayNext(*tr)
-				if queued {
+				if queued && a.toast == "" {
 					a.toast = l10n.T("将在下一首播放")
 				}
 			}
@@ -39,7 +41,7 @@ func (a *app) songItems(tr *spotify.Track, pid string) func(m *ui.Menu) {
 				switch {
 				case !a.pl.AddToQueue(*tr):
 					a.toast = l10n.T("歌曲已在待播清单中")
-				case queued:
+				case queued && a.toast == "":
 					a.toast = l10n.T("已添加到待播清单")
 				}
 			}

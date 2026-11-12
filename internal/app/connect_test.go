@@ -269,3 +269,90 @@ func TestConnectReportTurnedDown(t *testing.T) {
 		t.Fatal("registered again, the controls should go through Connect")
 	}
 }
+
+// Played through Connect, a song played next or queued was put only in
+// Vinyl's queue: Spotify, which says what plays next, never heard of it,
+// and the cluster that followed dropped it. It is now put in Spotify's.
+func TestConnectQueuesThroughSpotify(t *testing.T) {
+	a := testConnectApp(t)
+	a.connect.ref = &spotify.ConnectRef{Index: 0}
+
+	oldClient := spotify.Client
+	oldIdentity, _ := spotify.CurrentIdentity()
+	defer func() { spotify.Client = oldClient; spotify.SetIdentity(oldIdentity) }()
+	spotify.SetIdentity(spotify.Identity{Token: "test", Expires: time.Now().Add(time.Hour)})
+	var sent []string
+	spotify.Client = &http.Client{Transport: connectTransport(func(r *http.Request) (*http.Response, error) {
+		if !strings.Contains(r.URL.Path, "/player/command/") {
+			return &http.Response{StatusCode: 404, Body: io.NopCloser(strings.NewReader("{}")), Header: http.Header{}}, nil
+		}
+		var body struct {
+			Command struct {
+				Endpoint string `json:"endpoint"`
+				Track    struct {
+					URI string `json:"uri"`
+				} `json:"track"`
+			} `json:"command"`
+		}
+		json.NewDecoder(r.Body).Decode(&body)
+		sent = append(sent, body.Command.Endpoint+" "+body.Command.Track.URI)
+		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader("{}")), Header: http.Header{}}, nil
+	})}
+
+	// The queue here is what is left of the playlist: "two", further down
+	// it, was turned away as queued already.
+	a.pl.Cue([]spotify.Track{{ID: "one", Duration: 200000}, {ID: "two", Duration: 200000}})
+	a.pl.PlayNext(spotify.Track{ID: "next"})
+	if !a.pl.AddToQueue(spotify.Track{ID: "two"}) {
+		t.Fatal("a song further down the playlist was turned away as queued")
+	}
+	a.pl.PlayNext(spotify.Track{ID: "one"}) // the one playing: nothing to do
+	for len(a.connect.jobs) > 0 {
+		if err := (<-a.connect.jobs)(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if strings.Join(sent, ", ") != "add_to_queue spotify:track:next, add_to_queue spotify:track:two" {
+		t.Fatalf("sent %v", sent)
+	}
+	if len(a.pl.Queue()) != 2 {
+		t.Fatal("queued in Vinyl's queue too, which Spotify's replaces")
+	}
+
+	// Not played through Connect, the songs are queued here.
+	a.connect.ref = nil
+	a.pl.PlayNext(spotify.Track{ID: "here"})
+	if len(a.connect.jobs) != 0 || len(a.pl.Queue()) != 3 {
+		t.Fatal("a song played here was sent to Spotify")
+	}
+}
+
+// While Connect reconnects, a song played next from its menu is not
+// queued: the menu said it would play next all the same, over the toast
+// saying to wait.
+func TestConnectQueueWhileReconnectingSaysSo(t *testing.T) {
+	a := testConnectApp(t)
+	a.settings = defaultSettings()
+	a.connect.ref = &spotify.ConnectRef{Index: 0}
+	a.connect.observer = false
+	a.playlists["42"] = &spotify.Playlist{ID: "42", Name: "List", Tracks: []spotify.Track{{ID: "2", Name: "Two", Duration: 200000}}}
+	a.route = route{page: pagePlaylist, playlist: "42"}
+	tt := ui.NewTester(a.view, 1200, 800)
+	tt.Frame()
+	for _, item := range []string{"下一首播放", "添加到待播清单"} {
+		if err := tt.RightClick("Two"); err != nil {
+			t.Fatal(err)
+		}
+		if err := tt.ChooseMenuItem(item); err != nil {
+			t.Fatalf("%v; the menu shows %q", err, tt.Menu())
+		}
+		if !tt.HasText("Connect 正在重连，请稍后") || tt.HasText("将在下一首播放") || tt.HasText("已添加到待播清单") {
+			t.Fatalf("%s did not say to wait, or said it queued", item)
+		}
+		tt.Advance(10 * time.Second)
+		tt.Frame()
+	}
+	if len(a.connect.jobs) != 0 || len(a.pl.Queue()) != 1 {
+		t.Fatal("queued while Connect reconnects")
+	}
+}

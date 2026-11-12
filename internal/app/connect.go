@@ -669,6 +669,16 @@ func (a *app) connectControl(action string, value any) bool {
 			return err
 		})
 		return true
+	case "queue":
+		// Played through Connect, Spotify holds the queue and says what
+		// plays next: a song only put in Vinyl's was dropped at its next
+		// word. It is put in Spotify's, as phones queue one.
+		if state.ref == nil && !a.pl.IsRemote() {
+			return false
+		}
+		action = "add_to_queue"
+		track := value.(spotify.Track)
+		extra["track"] = map[string]any{"uri": track.URI(), "metadata": map[string]string{"is_queued": "true"}, "provider": "queue"}
 	case "skip_next", "skip_prev":
 	default:
 		return false
