@@ -2,7 +2,7 @@
   "name": "MySpotify",
   "identifier": "dev.margbug.vinyl",
   "slug": "vinyl",
-  "version": "0.4.20",
+  "version": "0.4.21",
   "out": "build",
   "resources": ["LICENSE", "licenses", "scripts/install-linux-webview.sh"],
   "macos": {
