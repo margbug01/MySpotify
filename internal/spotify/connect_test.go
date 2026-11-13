@@ -138,3 +138,51 @@ func TestConnectModels(t *testing.T) {
 		t.Fatal("unsupported content accepted")
 	}
 }
+
+// Receiver registration sends 0 when SetInitialVolume(0) was called and defaults to 52428 only when unset.
+func TestConnectRegisterReceiverInitialVolume(t *testing.T) {
+	oldClient := Client
+	idMu.Lock()
+	oldID := current
+	idMu.Unlock()
+	defer func() { Client = oldClient; SetIdentity(oldID) }()
+	SetIdentity(Identity{Token: "test-token", ClientToken: "test-client", Expires: time.Now().Add(time.Hour)})
+
+	for _, tc := range []struct {
+		name  string
+		set   bool
+		value int
+		want  int
+	}{
+		{name: "unset defaults to 80%", set: false, want: 52428},
+		{name: "explicit zero sends 0", set: true, value: 0, want: 0},
+		{name: "explicit positive sends value", set: true, value: 32768, want: 32768},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var got struct {
+				Volume int `json:"volume"`
+			}
+			Client = &http.Client{Transport: lyricsTransport(func(req *http.Request) (*http.Response, error) {
+				if req.URL.Path != "/track-playback/v1/devices" {
+					t.Fatalf("unexpected path: %s", req.URL.Path)
+				}
+				if err := json.NewDecoder(req.Body).Decode(&got); err != nil {
+					t.Fatalf("decode body: %v", err)
+				}
+				return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{"initial_seq_num":1}`)), Header: http.Header{}}, nil
+			})}
+
+			c := NewConnect("test-device", "Vinyl", nil)
+			defer c.Close()
+			if tc.set {
+				c.SetInitialVolume(tc.value)
+			}
+			if err := c.registerReceiver(context.Background(), "conn-1"); err != nil {
+				t.Fatalf("registerReceiver: %v", err)
+			}
+			if got.Volume != tc.want {
+				t.Fatalf("got volume %d, want %d", got.Volume, tc.want)
+			}
+		})
+	}
+}
