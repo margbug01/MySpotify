@@ -13,7 +13,7 @@ var setLocale = mygo.App.SetLocale
 
 // chooseLanguage keeps the choice, while MyGo saves and applies its locale.
 func (a *app) chooseLanguage(tag string) {
-	if tag != "" && tag != "zh-Hans" && tag != "en" {
+	if tag != "" && tag != "zh-Hans" && tag != "en" && tag != "it" {
 		return
 	}
 	a.settings.Language = tag
@@ -64,6 +64,12 @@ func (a *app) reloadLocalizedPages() {
 }
 
 func shortDate(day time.Time, year bool) string {
+	if l10n.Language() == "it" {
+		if year {
+			return fmt.Sprintf("%d/%d/%d", day.Day(), day.Month(), day.Year())
+		}
+		return fmt.Sprintf("%d/%d", day.Day(), day.Month())
+	}
 	if l10n.English() {
 		if year {
 			return day.Format("Jan 2, 2006")
@@ -77,6 +83,9 @@ func shortDate(day time.Time, year bool) string {
 }
 
 func dailyMonth(day time.Time) string {
+	if l10n.Language() == "it" {
+		return fmt.Sprintf("%s · %s", [...]string{"gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"}[day.Month()-1], weekday(day))
+	}
 	if l10n.English() {
 		return day.Format("Jan · Mon")
 	}
@@ -84,6 +93,9 @@ func dailyMonth(day time.Time) string {
 }
 
 func dailyDate(day time.Time) string {
+	if l10n.Language() == "it" {
+		return fmt.Sprintf("%s %d/%d", weekday(day), day.Day(), day.Month())
+	}
 	if l10n.English() {
 		return day.Format("Mon, Jan 2")
 	}

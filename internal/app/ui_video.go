@@ -501,7 +501,7 @@ func lyricsName(tr *spotify.Track) string {
 
 // mvAction is verb and name together: a space between Chinese and MV.
 func mvAction(verb, name string) string {
-	if name == "MV" || l10n.English() {
+	if name == "MV" || !l10n.Chinese() {
 		return verb + " " + name
 	}
 	return verb + name

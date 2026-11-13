@@ -150,7 +150,7 @@ func (a *app) restoreHome() {
 	a.mine, a.saved, a.followed = s.Mine, s.Saved, s.Followed
 	// Older snapshots were always Chinese. Keep account data across languages,
 	// but wait for fresh localized headings rather than showing the old ones.
-	if s.Language == l10n.Language() || s.Language == "" && !l10n.English() {
+	if s.Language == l10n.Language() || s.Language == "" && l10n.Chinese() {
 		a.homeSections, a.homeShortcuts = s.Sections, s.Shortcuts
 		a.charts, a.daily = s.Charts, s.Daily
 	}
