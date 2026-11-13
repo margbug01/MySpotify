@@ -27,14 +27,14 @@ type ConnectEvent struct {
 }
 
 type Connect struct {
-	ID     string
-	Name   string
-	ctx    context.Context
-	cancel context.CancelFunc
-	emit   func(ConnectEvent)
-	mu     sync.Mutex
-	wg     sync.WaitGroup
-	seq    int64
+	ID               string
+	Name             string
+	ctx              context.Context
+	cancel           context.CancelFunc
+	emit             func(ConnectEvent)
+	mu               sync.Mutex
+	wg               sync.WaitGroup
+	seq              int64
 	host             string
 	initialVolume    int
 	hasInitialVolume bool

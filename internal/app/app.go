@@ -69,11 +69,11 @@ type app struct {
 	castRegistry *spotify.SpeakerRegistry
 	castWakeup   *spotify.CastWakeupClient
 	castConnect  func(context.Context, *spotify.CastSpeaker) (string, error)
-	mineLoading bool
-	mineAgain   bool
-	mineGen     int
-	mineChecked time.Time
-	mineTimer   *time.Timer
+	mineLoading  bool
+	mineAgain    bool
+	mineGen      int
+	mineChecked  time.Time
+	mineTimer    *time.Timer
 
 	profile                             *spotify.Profile
 	mine, saved                         []spotify.Playlist   // the listener's playlists: made, and saved
@@ -158,8 +158,8 @@ type app struct {
 	queueList   ui.ListState
 	queueAt     int // the row of the queue pane last scrolled to, -1 while it is hidden
 
-	scrub      float64
-	scrubbing  bool
+	scrub          float64
+	scrubbing      bool
 	volume         float64
 	localVolume    float64
 	hasLocalVolume bool
@@ -317,7 +317,8 @@ func Run() error {
 		cacheUsed:  -1,
 		queueAt:    -1,
 	}
-	a.speakersRegistry().Start()
+	// Cast discovery starts when the device picker first opens (it asks
+	// macOS for the local network, which shouldn't be asked at launch).
 	defer a.closeCastResources()
 	// Its data, the web player's sign-in among it, lives under this name,
 	// whatever the executable is called.
@@ -387,7 +388,7 @@ func Run() error {
 		a.applyHotkeys()
 		a.played, a.playedFrom = loadPlayed()
 		a.volume = a.settings.Volume
-			a.syncLocalVolume(a.volume)
+		a.syncLocalVolume(a.volume)
 		a.pl.SetVolume(a.volume)
 		a.win = mygo.NewWindow(mygo.WindowOptions{
 			Title:         appName,

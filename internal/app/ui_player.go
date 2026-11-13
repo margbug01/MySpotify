@@ -289,7 +289,7 @@ func (a *app) volumeSlider(c *ui.Context, color, track ui.Color, width float32) 
 		a.muteButton(c, color)
 		s := ui.SliderBase(c.Key("volume"), &a.volume, 0, 1).Width(width).Height(16).FocusRing(false).Label(l10n.T("音量"))
 		if s.Changed() {
-				a.setVolume(a.volume)
+			a.setVolume(a.volume)
 		}
 		hot := s.Hovered() || s.Pressed()
 		thick := float32(4)

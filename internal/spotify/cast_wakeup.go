@@ -22,6 +22,11 @@ import (
 
 const castSenderID = "sender-0"
 
+// castHeartbeatTimeout is how long a woken receiver may go without a frame
+// (it pings every few seconds) before its connection is let go; tests
+// shorten it.
+var castHeartbeatTimeout = 20 * time.Second
+
 // CastWakeupClient performs CastV2 receiver launch, Spotify auth handshakes, and heartbeat maintenance.
 type CastWakeupClient struct {
 	mu         sync.Mutex
@@ -431,11 +436,11 @@ func (c *CastWakeupClient) startHeartbeat(conn net.Conn, transportID string) {
 			c.wg.Done()
 		}()
 
-		_ = conn.SetDeadline(c.now().Add(20 * time.Second))
 		for {
 			if hbCtx.Err() != nil {
 				return
 			}
+			_ = conn.SetDeadline(c.now().Add(castHeartbeatTimeout))
 			m, err := readCastFrame(conn)
 			if err != nil {
 				return

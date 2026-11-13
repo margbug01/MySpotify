@@ -317,7 +317,6 @@ func (a *app) startConnect() {
 	state.castUnsub = a.speakersRegistry().Subscribe(func() {
 		a.post(func() {})
 	})
-	a.speakersRegistry().Start()
 	a.connectTick(state)
 }
 
@@ -502,11 +501,11 @@ func (a *app) connectEvent(event spotify.ConnectEvent) {
 				a.pl.StopConnect()
 			}
 		} else if cluster.Active == state.client.ID || cluster.Active == "" {
-				wasRemote := a.isRemote() || (oldActive != "" && oldActive != state.client.ID)
-				if a.pl.IsRemote() {
-					a.pl.StopConnect()
-				}
-				if wasRemote {
+			wasRemote := a.isRemote() || (oldActive != "" && oldActive != state.client.ID)
+			if a.pl.IsRemote() {
+				a.pl.StopConnect()
+			}
+			if wasRemote {
 				a.restoreLocalVolume()
 			}
 			if cluster.Active == state.client.ID && state.ref != nil {
@@ -581,7 +580,7 @@ func (a *app) connectEvent(event spotify.ConnectEvent) {
 				state.applying = true
 				v := float64(min(max(*command.Volume, 0), 65535)) / 65535
 				a.volume = v
-					a.syncLocalVolume(v)
+				a.syncLocalVolume(v)
 				a.pl.SetVolume(v)
 				state.applying = false
 			}
@@ -807,8 +806,8 @@ func (a *app) connectControl(action string, value any) bool {
 			// Playing here: heard at once, not when Spotify sends it back.
 			a.here(func() { a.pl.SetVolume(volume) })
 			state.volLocal = time.Now()
-				a.volume = volume
-				a.syncLocalVolume(volume)
+			a.volume = volume
+			a.syncLocalVolume(volume)
 		} else {
 			state.volLocal = time.Now()
 		}

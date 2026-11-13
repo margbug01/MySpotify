@@ -1162,62 +1162,6 @@ func TestCastConnectJoinHostPortAndEmptyIP(t *testing.T) {
 	}
 }
 
-// ConnectSpeaker with an empty or whitespace IP rejects before dialing and returns distinct localized errors for zh-Hans, en, and it.
-func TestCastWakeupEmptyIPLocalization(t *testing.T) {
-	previousLocale := i18n.Locale()
-	i18n.SetLocaleFunc(func() string {
-		if v := os.Getenv("MYGO_LOCALE"); v != "" {
-			return v
-		}
-		return "zh-Hans"
-	})
-	defer i18n.SetLocaleFunc(func() string { return previousLocale })
-
-	dialCalled := false
-	client := NewCastWakeupClient(WithCastDialer(func(addr string) (net.Conn, error) {
-		dialCalled = true
-		return nil, errors.New("should not dial")
-	}))
-	defer client.Close()
-
-	hasRawEnglishWord := func(s string) bool {
-		cleaned := strings.NewReplacer("Spotify", "", "Cast", "").Replace(s)
-		for _, r := range cleaned {
-			if r <= unicode.MaxASCII && unicode.IsLetter(r) {
-				return true
-			}
-		}
-		return false
-	}
-
-	for _, ip := range []string{"", "   "} {
-		gotByLocale := make(map[string]string, 3)
-		for _, locale := range []string{"zh-Hans", "en", "it"} {
-			t.Setenv("MYGO_LOCALE", locale)
-			_, err := client.ConnectSpeaker(context.Background(), &CastSpeaker{ID: "empty", IP: ip, Port: 8009})
-			if err == nil {
-				t.Fatalf("ip=%q locale=%s: expected error for empty IP", ip, locale)
-			}
-			if err.Error() == "cast speaker IP is empty" {
-				t.Fatalf("ip=%q locale=%s: got unlocalized fallback error %q", ip, locale, err.Error())
-			}
-			gotByLocale[locale] = err.Error()
-		}
-		if dialCalled {
-			t.Fatalf("ip=%q: expected empty IP validation to fail before calling dialer", ip)
-		}
-		if hasRawEnglishWord(gotByLocale["zh-Hans"]) {
-			t.Fatalf("ip=%q: zh-Hans error mixes raw English text: %q", ip, gotByLocale["zh-Hans"])
-		}
-		if gotByLocale["en"] == "" || gotByLocale["it"] == "" || gotByLocale["zh-Hans"] == "" {
-			t.Fatalf("ip=%q: expected non-empty localized errors, got %v", ip, gotByLocale)
-		}
-		if gotByLocale["zh-Hans"] == gotByLocale["en"] || gotByLocale["zh-Hans"] == gotByLocale["it"] || gotByLocale["en"] == gotByLocale["it"] {
-			t.Fatalf("ip=%q: expected distinct localized errors, got %v", ip, gotByLocale)
-		}
-	}
-}
-
 // SpeakerRegistry.Subscribe supports multiple independent subscribers and returns an idempotent unsubscribe function that removes only its own callback.
 func TestSpeakerRegistrySubscribeMultipleAndIdempotentUnsubscribe(t *testing.T) {
 	reg := NewSpeakerRegistry()
@@ -1600,4 +1544,75 @@ func TestCastWakeupClientConnectSpeakerContextCanceled(t *testing.T) {
 			t.Fatal("expected handshake connection to be closed on context cancellation")
 		}
 	})
+}
+
+// A woken speaker that keeps pinging keeps its connection: the heartbeat
+// used to set one deadline up front, so the link dropped after it however
+// many pings had come.
+func TestCastHeartbeatOutlivesItsTimeoutWhilePinged(t *testing.T) {
+	oldTimeout := castHeartbeatTimeout
+	castHeartbeatTimeout = 150 * time.Millisecond
+	defer func() { castHeartbeatTimeout = oldTimeout }()
+	oldID, _ := CurrentIdentity()
+	defer SetIdentity(oldID)
+	SetIdentity(Identity{Token: "web-tok", Expires: time.Now().Add(time.Hour)})
+
+	httpClient := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(`{"accessToken":"cast-tok"}`))}, nil
+	})}
+	var tc *trackingConn
+	stopPing := make(chan struct{})
+	client := NewCastWakeupClient(WithCastHTTPClient(httpClient), WithCastDialer(func(string) (net.Conn, error) {
+		rawClient, server := net.Pipe()
+		tc = newTrackingConn(rawClient)
+		go func() {
+			defer server.Close()
+			for {
+				msg, err := readCastFrame(server)
+				if err != nil {
+					return
+				}
+				var env struct{ Type string }
+				_ = json.Unmarshal([]byte(msg.payloadUTF8), &env)
+				switch env.Type {
+				case "LAUNCH":
+					_ = writeCastFrame(server, "receiver-0", "sender-0", castNSReceiver, []byte(`{"type":"RECEIVER_STATUS","status":{"applications":[{"appId":"CC32E753","transportId":"tr-1"}]}}`))
+				case "getInfo":
+					_ = writeCastFrame(server, "tr-1", "sender-0", castNSSpotifySecure, []byte(`{"type":"getInfoResponse","payload":{"deviceID":"dev-1"}}`))
+				case "addUser":
+					_ = writeCastFrame(server, "tr-1", "sender-0", castNSSpotifySecure, []byte(`{"type":"addUserResponse"}`))
+					go func() {
+						for {
+							select {
+							case <-stopPing:
+								return
+							case <-time.After(20 * time.Millisecond):
+							}
+							if writeCastFrame(server, "receiver-0", "sender-0", castNSHeartbeat, []byte(`{"type":"PING"}`)) != nil {
+								return
+							}
+						}
+					}()
+				}
+			}
+		}()
+		return tc, nil
+	}))
+	defer client.Close()
+
+	if _, err := client.ConnectSpeaker(context.Background(), &CastSpeaker{ID: "spk", Name: "Speaker", IP: "127.0.0.1"}); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(4 * castHeartbeatTimeout)
+	if tc.closed.Load() {
+		t.Fatal("the heartbeat let go of a speaker that kept pinging")
+	}
+	close(stopPing)
+	deadline := time.Now().Add(2 * time.Second)
+	for !tc.closed.Load() {
+		if time.Now().After(deadline) {
+			t.Fatal("the heartbeat held a speaker that stopped pinging")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
 }

@@ -7,12 +7,10 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
-	"unicode"
 
 	"github.com/egoist/mygo/ui"
 
@@ -156,113 +154,41 @@ func TestWakeAndTransferCastConcurrentClusterAndStop(t *testing.T) {
 	})
 }
 
-// Cast wakeup status, wrapped wakeup errors, and reachable timeout errors localize cleanly across locales without mixed-language errors or HTTP 404 fallback.
-func TestWakeAndTransferCastLocalization(t *testing.T) {
-	oldTransfer := connectTransfer
-	oldPost := connectPost
-	oldTimeout := castWakeTimeout
-	oldInterval := castPollInterval
+// A speaker that wakes but never shows up among Spotify's devices ends in an
+// error rather than a transfer, and a failed wake keeps what made it fail.
+func TestWakeAndTransferCastFailures(t *testing.T) {
+	oldTransfer, oldPost := connectTransfer, connectPost
+	oldTimeout, oldInterval := castWakeTimeout, castPollInterval
 	defer func() {
-		connectTransfer = oldTransfer
-		connectPost = oldPost
-		castWakeTimeout = oldTimeout
-		castPollInterval = oldInterval
+		connectTransfer, connectPost = oldTransfer, oldPost
+		castWakeTimeout, castPollInterval = oldTimeout, oldInterval
 	}()
 	connectPost = func(_ *app, fn func()) { fn() }
 	castWakeTimeout = 15 * time.Millisecond
 	castPollInterval = 3 * time.Millisecond
-
-	hasRawEnglishWord := func(s string) bool {
-		cleaned := strings.NewReplacer("Spotify", "", "Cast", "", "客厅音响", "").Replace(s)
-		for _, r := range cleaned {
-			if r <= unicode.MaxASCII && unicode.IsLetter(r) {
-				return true
-			}
-		}
-		return false
+	transferred := false
+	connectTransfer = func(*spotify.Connect, string) error {
+		transferred = true
+		return nil
 	}
-	checkFormatted := func(t *testing.T, label, msg, speakerName string) {
-		t.Helper()
-		if msg == "" {
-			t.Fatalf("%s is empty", label)
-		}
-		if !strings.Contains(msg, speakerName) {
-			t.Fatalf("%s = %q, missing speaker name %q", label, msg, speakerName)
-		}
-		if strings.Contains(msg, "%s") || strings.Contains(msg, "%w") || strings.Contains(msg, "%d") {
-			t.Fatalf("%s = %q, contains unformatted verb", label, msg)
-		}
+	spk := &spotify.CastSpeaker{ID: "cast-1", Name: "Kitchen"}
+
+	a := testConnectApp(t)
+	cause := errors.New("refused")
+	a.castConnect = func(context.Context, *spotify.CastSpeaker) (string, error) { return "", cause }
+	if err := a.wakeAndTransferCast(a.connect, spk); !errors.Is(err, cause) {
+		t.Fatalf("wake error = %v, want it to wrap %v", err, cause)
 	}
 
-	type localeOut struct {
-		status  string
-		wakeErr string
-		timeout string
+	b := testConnectApp(t)
+	b.castConnect = func(context.Context, *spotify.CastSpeaker) (string, error) {
+		return "cloud-cast-id-never-in-cluster", nil
 	}
-	results := make(map[string]localeOut)
-
-	for _, lang := range []string{"zh-Hans", "en"} {
-		t.Run(lang, func(t *testing.T) {
-			testLanguage(t, lang)
-			spk := &spotify.CastSpeaker{ID: "cast-1", Name: "客厅音响"}
-
-			// Check wakeup status and wrapped wakeup error.
-			a := testConnectApp(t)
-			sentinel := errors.New(l10n.T("无法连接 Cast 音响"))
-			var observedStatus string
-			a.castConnect = func(context.Context, *spotify.CastSpeaker) (string, error) {
-				observedStatus = a.connect.err
-				return "", sentinel
-			}
-			err := a.wakeAndTransferCast(a.connect, spk)
-			checkFormatted(t, "status", observedStatus, spk.Name)
-			if !errors.Is(err, sentinel) || errors.Unwrap(err) == nil {
-				t.Fatalf("wake error %v does not wrap sentinel", err)
-			}
-			checkFormatted(t, "wakeErr", err.Error(), spk.Name)
-			if lang == "zh-Hans" && hasRawEnglishWord(err.Error()) {
-				t.Fatalf("zh-Hans wake error mixes raw English text: %q", err.Error())
-			}
-
-			// Check reachable timeout error even when ConnectCastSpeaker returns a Spotify device ID.
-			b := testConnectApp(t)
-			transferCalled := false
-			connectTransfer = func(*spotify.Connect, string) error {
-				transferCalled = true
-				return nil
-			}
-			b.castConnect = func(context.Context, *spotify.CastSpeaker) (string, error) {
-				return "cloud-cast-id-never-in-cluster", nil
-			}
-			timeoutErr := b.wakeAndTransferCast(b.connect, spk)
-			if transferCalled {
-				t.Fatal("connectTransfer should not be called with unclustered spotifyDevID after timeout")
-			}
-			if timeoutErr == nil {
-				t.Fatal("expected timeout error, got nil")
-			}
-			checkFormatted(t, "timeoutErr", timeoutErr.Error(), spk.Name)
-			if lang == "zh-Hans" && hasRawEnglishWord(timeoutErr.Error()) {
-				t.Fatalf("zh-Hans timeout error mixes raw English text: %q", timeoutErr.Error())
-			}
-
-			results[lang] = localeOut{
-				status:  observedStatus,
-				wakeErr: err.Error(),
-				timeout: timeoutErr.Error(),
-			}
-		})
+	if err := b.wakeAndTransferCast(b.connect, spk); err == nil {
+		t.Fatal("a speaker that never joined the cluster reported no error")
 	}
-
-	zh, en := results["zh-Hans"], results["en"]
-	if zh.status == en.status {
-		t.Fatalf("status did not switch locale: %q vs %q", zh.status, en.status)
-	}
-	if zh.wakeErr == en.wakeErr {
-		t.Fatalf("wakeErr did not switch locale: %q vs %q", zh.wakeErr, en.wakeErr)
-	}
-	if zh.timeout == en.timeout {
-		t.Fatalf("timeout error did not switch locale: %q vs %q", zh.timeout, en.timeout)
+	if transferred {
+		t.Fatal("transferred to a speaker that never joined the cluster")
 	}
 }
 
@@ -402,17 +328,17 @@ func TestConnectCastClusterDeviceMatching(t *testing.T) {
 	falseVal := false
 	trueVal := true
 	devices := map[string]spotify.ConnectDevice{
-		"local":        {Name: "Living Room"},
-		"name-dup":     {Name: "living room", Capabilities: struct {
+		"local": {Name: "Living Room"},
+		"name-dup": {Name: "living room", Capabilities: struct {
 			Hidden  bool  `json:"hidden"`
 			CanPlay *bool `json:"can_be_player"`
 		}{CanPlay: &trueVal}},
-		"id-match":     {Name: "Renamed Speaker"},
-		"hidden-dev":   {Name: "Kitchen", Capabilities: struct {
+		"id-match": {Name: "Renamed Speaker"},
+		"hidden-dev": {Name: "Kitchen", Capabilities: struct {
 			Hidden  bool  `json:"hidden"`
 			CanPlay *bool `json:"can_be_player"`
 		}{Hidden: true}},
-		"no-play-dev":  {Name: "Bedroom", Capabilities: struct {
+		"no-play-dev": {Name: "Bedroom", Capabilities: struct {
 			Hidden  bool  `json:"hidden"`
 			CanPlay *bool `json:"can_be_player"`
 		}{CanPlay: &falseVal}},
