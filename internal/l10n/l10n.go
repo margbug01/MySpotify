@@ -32,8 +32,14 @@ func English() bool { return i18n.Base(i18n.Locale()) == "en" }
 
 // Language is also used for Spotify's localized headings.
 func Language() string {
-	if English() {
+	switch i18n.Base(i18n.Locale()) {
+	case "en":
 		return "en"
+	case "it":
+		return "it"
 	}
 	return "zh-CN"
 }
+
+// Chinese reports whether the selected interface is Chinese.
+func Chinese() bool { return Language() == "zh-CN" }

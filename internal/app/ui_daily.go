@@ -287,7 +287,7 @@ func dailyArtists(songs []spotify.Track) string {
 		return l10n.Count("todaySongCount", len(songs))
 	}
 	separator := "、"
-	if l10n.English() {
+	if !l10n.Chinese() {
 		separator = ", "
 	}
 	return fmt.Sprintf(l10n.T("%s等%s"), strings.Join(names, separator), l10n.Count("songCount", len(songs)))

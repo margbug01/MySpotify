@@ -13,6 +13,12 @@ import (
 
 // Catalogs must parse and keep every source message and formatting argument.
 func TestCatalogArguments(t *testing.T) {
+	for _, lang := range []string{"en", "it"} {
+		t.Run(lang, func(t *testing.T) { testCatalog(t, lang) })
+	}
+}
+
+func testCatalog(t *testing.T, lang string) {
 	read := func(name string) map[string]string {
 		b, err := files.ReadFile(name + ".json")
 		if err != nil {
@@ -24,7 +30,7 @@ func TestCatalogArguments(t *testing.T) {
 		}
 		return messages
 	}
-	source, english := read("zh-Hans"), read("en")
+	source, english := read("zh-Hans"), read(lang)
 	if len(source) != len(english) {
 		t.Fatalf("catalog lengths differ: %d / %d", len(source), len(english))
 	}
@@ -88,5 +94,11 @@ func TestCountForms(t *testing.T) {
 		if got := catalog.Format("en", tc.key, map[string]any{"count": tc.n}); got != tc.want {
 			t.Errorf("%s(%d) = %q, want %q", tc.key, tc.n, got, tc.want)
 		}
+	}
+	if got := catalog.Format("it", "songCount", map[string]any{"count": 1}); got != "1 brano" {
+		t.Errorf("it songCount(1) = %q", got)
+	}
+	if got := catalog.Format("it", "songCount", map[string]any{"count": 2}); got != "2 brani" {
+		t.Errorf("it songCount(2) = %q", got)
 	}
 }

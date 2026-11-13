@@ -207,8 +207,8 @@ func clock(d time.Duration) string {
 
 // plays formats a count using the interface language's compact units.
 func plays(n float64) string {
-	if l10n.English() {
-		return i18n.FormatNumber("en", n, i18n.NumberOptions{Notation: i18n.CompactShort})
+	if !l10n.Chinese() {
+		return i18n.FormatNumber(l10n.Language(), n, i18n.NumberOptions{Notation: i18n.CompactShort})
 	}
 	switch {
 	case n >= 1e8:
