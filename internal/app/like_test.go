@@ -154,9 +154,9 @@ func TestBackdropFrame(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		art := &artwork{bmp: ui.NewBitmap(img), tint: dominantColor(img)}
-		top, foot := backdropColors(art.tint)
-		t.Logf("tint %v, backdrop %v to %v", art.tint, top, foot)
+		pal := paletteOf(img)
+		art := &artwork{bmp: ui.NewBitmap(img), tint: pal.c1, pal: &pal}
+		t.Logf("palette %+v", pal)
 		a.art.art[spotify.Sized(tr.Album.PicURL, size)] = art
 		if size == 600 {
 			bd := *art
@@ -197,7 +197,8 @@ func TestSmokeFrames(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		art := &artwork{bmp: ui.NewBitmap(img), tint: dominantColor(img)}
+		pal := paletteOf(img)
+		art := &artwork{bmp: ui.NewBitmap(img), tint: pal.c1, pal: &pal}
 		a.art.art[spotify.Sized(tr.Album.PicURL, size)] = art
 		if size == 600 {
 			bd := *art

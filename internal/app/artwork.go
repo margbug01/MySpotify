@@ -25,7 +25,8 @@ import (
 type artwork struct {
 	bmp      *ui.Bitmap
 	backdrop *ui.Bitmap
-	tint     ui.Color // the cover's most vivid color
+	tint     ui.Color      // the cover's most vivid color
+	pal      *coverPalette // its colors, for the backdrop
 	failed   bool
 	used     time.Time // when it was last asked for
 }
@@ -89,9 +90,9 @@ func (c *artCache) get(url string, backdrop bool) *artwork {
 		bmp, img, err := loadArt(c.dir, url)
 		<-c.sem
 		var blurred *image.RGBA
-		var tint ui.Color
+		var pal coverPalette
 		if err == nil {
-			tint = dominantColor(img)
+			pal = paletteOf(img)
 			if backdrop {
 				blurred = blurImage(img)
 			}
@@ -102,7 +103,7 @@ func (c *artCache) get(url string, backdrop bool) *artwork {
 				c.art[key] = &artwork{failed: true, used: c.now()}
 				return
 			}
-			a := &artwork{bmp: bmp, tint: tint, used: c.now()}
+			a := &artwork{bmp: bmp, tint: pal.c1, pal: &pal, used: c.now()}
 			if blurred != nil {
 				a.backdrop = ui.NewBitmap(blurred)
 			}
@@ -287,38 +288,136 @@ func shrink(img image.Image, n int) *image.RGBA {
 	return out
 }
 
-// dominantColor returns the most vivid color that covers much of img: the
-// hue that its saturated pixels share most, at their mean.
-func dominantColor(img image.Image) ui.Color {
-	small := shrink(img, 24)
+// coverPalette is a cover's colors: up to three hues that cover much of
+// it, the first the most, with where the first two sit on it (0 to 1
+// across and down); how much of it is colored at all, from 0 for black,
+// white and gray to 1; and how light it is.
+type coverPalette struct {
+	c1, c2, c3 ui.Color
+	p1, p2     [2]float32
+	vivid      float64
+	lightness  float64
+}
+
+// paletteOf returns img's palette. Black shadows, however warm, count as
+// gray, and faces weigh little, so that a portrait in black on white stays
+// gray rather than turning brown; a cover with little color keeps its own
+// grays, light above and dark below.
+func paletteOf(img image.Image) coverPalette {
+	const n = 28
+	small := shrink(img, n)
+	tot := float64(n * n)
 	const buckets = 18
 	var weight [buckets]float64
-	var sum [buckets][3]float64
-	var gray [3]float64
-	for i := 0; i < len(small.Pix); i += 4 {
-		r, g, b := float64(small.Pix[i])/255, float64(small.Pix[i+1])/255, float64(small.Pix[i+2])/255
-		h, s, v := hsv(r, g, b)
-		gray[0], gray[1], gray[2] = gray[0]+r, gray[1]+g, gray[2]+b
-		w := s * s * v
-		if s < 0.15 || v < 0.15 {
-			continue
+	var sumRGB [buckets][3]float64
+	var sumPos [buckets][2]float64
+	var gray, top, foot [3]float64
+	var light, colored, neutral float64
+	for y := range n {
+		for x := range n {
+			i := (y*n + x) * 4
+			r, g, b := float64(small.Pix[i])/255, float64(small.Pix[i+1])/255, float64(small.Pix[i+2])/255
+			gray[0], gray[1], gray[2] = gray[0]+r, gray[1]+g, gray[2]+b
+			half := &top
+			if y >= n/2 {
+				half = &foot
+			}
+			half[0], half[1], half[2] = half[0]+r, half[1]+g, half[2]+b
+			h, s, v := hsv(r, g, b)
+			light += v
+			// Chroma, not HSV's saturation, which runs high in the dark: a
+			// black suit, RGB(44, 24, 19), has 0.57 of it but 0.1 of chroma.
+			ch := math.Max(r, math.Max(g, b)) - math.Min(r, math.Min(g, b))
+			if ch < 0.085 || v < 0.15 || v < 0.26 && ch < 0.16 && (h < 38 || h > 340) {
+				neutral++
+				continue
+			}
+			w := math.Pow(ch, 0.9) * math.Pow(s, 0.6)
+			if h >= 4 && h <= 34 && ch < 0.36 && s < 0.56 {
+				w *= 0.22 // skin
+			}
+			colored += w
+			k := int(h/360*buckets) % buckets
+			weight[k] += w
+			sumRGB[k][0], sumRGB[k][1], sumRGB[k][2] = sumRGB[k][0]+r*w, sumRGB[k][1]+g*w, sumRGB[k][2]+b*w
+			sumPos[k][0] += (float64(x) + 0.5) / n * w
+			sumPos[k][1] += (float64(y) + 0.5) / n * w
 		}
-		k := int(h/360*buckets) % buckets
-		weight[k] += w
-		sum[k][0], sum[k][1], sum[k][2] = sum[k][0]+r*w, sum[k][1]+g*w, sum[k][2]+b*w
 	}
-	best := 0
-	for k := range weight {
-		if weight[k] > weight[best] {
-			best = k
+	mean := func(c [3]float64, of float64) ui.Color {
+		return ui.RGB(uint8(c[0]/of*255), uint8(c[1]/of*255), uint8(c[2]/of*255))
+	}
+	grayCol := mean(gray, tot)
+	vivid := min(1, max(0, (colored/tot-0.012)/0.025))
+	if neutral/tot > 0.78 && colored/tot < 0.03 {
+		vivid *= 0.25
+	}
+	pal := coverPalette{
+		c1: mean(top, tot/2), c2: mean(foot, tot/2), c3: grayCol,
+		p1: [2]float32{0.3, 0.25}, p2: [2]float32{0.6, 0.75},
+		vivid: vivid, lightness: light / tot,
+	}
+
+	// The hues, each with its neighbors', as far apart as two buckets.
+	var score [buckets]float64
+	for k := range buckets {
+		score[k] = weight[k] + 0.35*(weight[(k+buckets-1)%buckets]+weight[(k+1)%buckets])
+	}
+	var picks []int
+	for range 3 {
+		best := -1
+	bucket:
+		for k := range buckets {
+			for _, p := range picks {
+				if d := (k - p + buckets) % buckets; d < 2 || d > buckets-2 {
+					continue bucket
+				}
+			}
+			if best < 0 || score[k] > score[best] {
+				best = k
+			}
 		}
+		if best < 0 || weight[best] <= 0.15 {
+			break
+		}
+		picks = append(picks, best)
 	}
-	if weight[best] < 2 {
-		n := float64(len(small.Pix) / 4)
-		return ui.RGB(uint8(gray[0]/n*255), uint8(gray[1]/n*255), uint8(gray[2]/n*255))
+	if len(picks) == 0 || vivid <= 0.05 {
+		return pal
 	}
-	w := weight[best]
-	return ui.RGB(uint8(sum[best][0]/w*255), uint8(sum[best][1]/w*255), uint8(sum[best][2]/w*255))
+	// hue is bucket k's color, toward the gray as the cover has less color,
+	// and where it sits.
+	hue := func(k int) (ui.Color, [2]float32) {
+		prev, next := (k+buckets-1)%buckets, (k+1)%buckets
+		w := weight[k] + 0.5*(weight[prev]+weight[next])
+		at := func(s [][2]float64, i int) float64 { return (s[k][i] + 0.5*(s[prev][i]+s[next][i])) / w }
+		var c [3]float64
+		for i := range 3 {
+			m := gray[i] / tot
+			c[i] = m + ((sumRGB[k][i]+0.5*(sumRGB[prev][i]+sumRGB[next][i]))/w-m)*vivid
+		}
+		return ui.RGB(uint8(c[0]*255+0.5), uint8(c[1]*255+0.5), uint8(c[2]*255+0.5)), [2]float32{float32(at(sumPos[:], 0)), float32(at(sumPos[:], 1))}
+	}
+	pal.c1, pal.p1 = hue(picks[0])
+	pal.c2, pal.p2 = pal.c1, [2]float32{1 - pal.p1[0], 1 - pal.p1[1]}
+	if len(picks) >= 2 && score[picks[1]] >= score[picks[0]]*0.18 {
+		pal.c2, pal.p2 = hue(picks[1])
+	}
+	pal.c3 = pal.c1.Mix(pal.c2, 0.5)
+	if len(picks) >= 3 && score[picks[2]] >= score[picks[0]]*0.15 {
+		pal.c3, _ = hue(picks[2])
+	}
+	return pal
+}
+
+// tintPalette is the palette of a cover of one color, tint.
+func tintPalette(tint ui.Color) coverPalette {
+	_, s, v := hsv(float64(tint.R)/255, float64(tint.G)/255, float64(tint.B)/255)
+	vivid := 0.0
+	if s > 0.12 {
+		vivid = 1
+	}
+	return coverPalette{c1: tint, c2: tint, c3: tint, p1: [2]float32{0.3, 0.25}, p2: [2]float32{0.6, 0.75}, vivid: vivid, lightness: v}
 }
 
 func hsv(r, g, b float64) (h, s, v float64) {
