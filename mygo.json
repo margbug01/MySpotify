@@ -2,14 +2,14 @@
   "name": "MySpotify",
   "identifier": "dev.margbug.vinyl",
   "slug": "vinyl",
-  "version": "0.4.22",
+  "version": "0.4.23",
   "out": "build.noindex",
   "resources": ["LICENSE", "licenses", "scripts/install-linux-webview.sh"],
   "macos": {
     "icon": "AppIcon.icon",
     "infoPlist": {
       "CFBundleDevelopmentRegion": "zh_CN",
-      "CFBundleLocalizations": ["zh-Hans", "en"]
+      "CFBundleLocalizations": ["zh-Hans", "en", "it"]
     }
   },
   "linux": {

@@ -24,7 +24,7 @@ Experimental Linux `.deb` / `.tar.gz` builds are available. On amd64, Qt WebEngi
 > MySpotify is a personal project. It has no connection to Spotify and isn't endorsed by it. It uses the internal interfaces of Spotify's web player rather than a public API, and Spotify can change them at any time. Using Spotify this way likely goes against its terms of use and could get your account restricted. Use only your own account, at your own risk. See [Risks and limits](#risks-and-limits).
 
 > [!NOTE]
-> From v0.4.17, the interface supports Simplified Chinese and English. Choose System, 简体中文 or English under Settings → Appearance → Language; the choice is saved and applies immediately. Song titles, artist names and lyrics keep their original content.
+> From v0.4.17, the interface supports Simplified Chinese and English, and from v0.4.23 Italian. Choose System, 简体中文, English or Italiano under Settings → Appearance → Language; the choice is saved and applies immediately. Song titles, artist names and lyrics keep their original content.
 
 ## Why use it
 

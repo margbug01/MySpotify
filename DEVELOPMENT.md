@@ -18,9 +18,9 @@ MySpotify 的实现细节、构建、发版和调试。普通使用看 [README](
 
 ## 界面语言
 
-文案在 `internal/l10n/zh-Hans.json` 和 `en.json`，通过 MyGo 的 `i18n.Catalog` 读取；应用自己写的文案用 `l10n.T`，带数量的消息用 `l10n.Count` 的 ICU 单复数。歌曲名、用户歌单名等内容不要送进翻译。语言选择保存在设置中，交给 `mygo.App.SetLocale` 应用；`MYGO_LOCALE=en` 可临时预览英文，不改保存的语言。
+文案在 `internal/l10n/zh-Hans.json`、`en.json` 和 `it.json`，通过 MyGo 的 `i18n.Catalog` 读取；应用自己写的文案用 `l10n.T`，带数量的消息用 `l10n.Count` 的 ICU 单复数。歌曲名、用户歌单名等内容不要送进翻译。语言选择保存在设置中，交给 `mygo.App.SetLocale` 应用；`MYGO_LOCALE=en` 可临时预览英文，不改保存的语言。
 
-新增或修改文案时同步两个目录并保留格式参数。`go test ./internal/l10n` 检查参数和数量格式，`go test ./internal/app -run TestLanguageSelection -count=5` 验证语言选择；`NM_FRAMES=<目录> go test ./internal/app -run TestEnglishFrames` 保存普通与最窄窗口的实际渲染。
+新增或修改文案时同步所有目录并保留格式参数；加新语言时还要加进设置里的语言选项、`settings.go` 的校验和 `mygo.json` 的 `CFBundleLocalizations`。`go test ./internal/l10n` 检查参数和数量格式，`go test ./internal/app -run TestLanguageSelection -count=5` 验证语言选择；`NM_FRAMES=<目录> go test ./internal/app -run TestEnglishFrames` 保存普通与最窄窗口的实际渲染。
 
 ## 从源码构建
 
@@ -40,7 +40,7 @@ go tool mygo build
 图标都由 `tools/icons.py` 画（Windows，要 Pillow，用 Edge 无头模式渲染 SVG）：`resources/icon.svg`/`icon.png` 是程序图标，`icon-small.svg` 是 16–24 像素用的简化版（两道纹、更粗），`icon.ico` 把两者按尺寸合在一起；`internal/app/tray.png` 是托盘和 Mac 菜单栏的模板图标（只有黑色和透明，Windows 深色任务栏上自动画成白色，macOS 自己染色）；`AppIcon.icon` 是 Mac Dock 用的 Icon Composer 文档（浅色/深色两种底，`mygo.json` 的 `macos.icon`，要在装了 Xcode 26 的 Mac 上 `mygo build` 才会编进去，否则退回 `icon.png` 生成的 `.icns`）。改了图标或版本号，先跑 `python tools/icons.py`，再重新生成图标、版本信息和 manifest 所在的 `rsrc_windows_amd64.syso`（版本号同时改 `mygo.json`）：
 
 ```
-go run github.com/tc-hib/go-winres@v0.3.3 simply --icon resources/icon.ico --manifest gui --product-name MySpotify --file-description MySpotify --product-version 0.4.22 --file-version 0.4.22 --original-filename MySpotify.exe --arch amd64 --out rsrc
+go run github.com/tc-hib/go-winres@v0.3.3 simply --icon resources/icon.ico --manifest gui --product-name MySpotify --file-description MySpotify --product-version 0.4.23 --file-version 0.4.23 --original-filename MySpotify.exe --arch amd64 --out rsrc
 ```
 
 ### 发版
