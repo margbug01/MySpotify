@@ -35,7 +35,16 @@ type Connect struct {
 	mu     sync.Mutex
 	wg     sync.WaitGroup
 	seq    int64
-	host   string
+	host             string
+	initialVolume    int
+	hasInitialVolume bool
+}
+
+func (c *Connect) SetInitialVolume(v int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.initialVolume = min(max(v, 0), 65535)
+	c.hasInitialVolume = true
 }
 
 func NewConnect(id, name string, emit func(ConnectEvent)) *Connect {
@@ -280,10 +289,14 @@ func decodeConnectPayload(raw json.RawMessage) (json.RawMessage, error) {
 func (c *Connect) registerReceiver(ctx context.Context, connection string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	vol := 52428
+	if c.hasInitialVolume {
+		vol = c.initialVolume
+	}
 	body := map[string]any{
 		"device": map[string]any{"brand": "spotify", "device_id": c.ID, "device_type": "computer", "model": "web_player", "name": c.Name, "metadata": map[string]any{}, "is_group": false, "platform_identifier": "web_player windows 10;chrome 141.0.0.0;desktop",
 			"capabilities": map[string]any{"change_volume": true, "enable_play_token": true, "supports_file_media_type": true, "play_token_lost_behavior": "pause", "disable_connect": false, "audio_podcasts": true, "video_playback": false, "manifest_formats": []string{"file_ids_mp4", "file_ids_mp4_dual"}}},
-		"outro_endcontent_snooping": false, "connection_id": connection, "client_version": "harmony:4.62.0", "volume": 52428,
+		"outro_endcontent_snooping": false, "connection_id": connection, "client_version": "harmony:4.62.0", "volume": vol,
 	}
 	raw, err := c.request(ctx, http.MethodPost, "/track-playback/v1/devices", "", body)
 	if err != nil {
@@ -299,9 +312,44 @@ func (c *Connect) registerReceiver(ctx context.Context, connection string) error
 	return nil
 }
 
+var (
+	transferMaxRetries  = 5
+	transferBackoffBase = 250 * time.Millisecond
+	transferBackoffMax  = 2 * time.Second
+)
+
 func (c *Connect) Transfer(target string) error {
-	_, err := c.request(c.ctx, http.MethodPost, "/connect-state/v1/connect/transfer/from/"+c.ID+"-observer/to/"+url.PathEscape(target), "", map[string]any{"transfer_options": map[string]string{"restore_paused": "restore"}})
-	return err
+	path := "/connect-state/v1/connect/transfer/from/" + c.ID + "-observer/to/" + url.PathEscape(target)
+	body := map[string]any{"transfer_options": map[string]string{"restore_paused": "restore"}}
+	delay := max(transferBackoffBase, 0)
+	for attempt := 0; ; attempt++ {
+		if err := c.ctx.Err(); err != nil {
+			return err
+		}
+		_, err := c.request(c.ctx, http.MethodPost, path, "", body)
+		if err == nil {
+			return nil
+		}
+		var ce *ConnectError
+		if !errors.As(err, &ce) || ce.Status != http.StatusConflict || attempt >= transferMaxRetries {
+			return err
+		}
+		wait := delay
+		if transferBackoffMax > 0 {
+			wait = min(wait, transferBackoffMax)
+		}
+		timer := time.NewTimer(wait)
+		select {
+		case <-c.ctx.Done():
+			timer.Stop()
+			return c.ctx.Err()
+		case <-timer.C:
+		}
+		delay = wait * 2
+		if transferBackoffMax > 0 {
+			delay = min(delay, transferBackoffMax)
+		}
+	}
 }
 
 func (c *Connect) Command(target, endpoint string, extra map[string]any) error {

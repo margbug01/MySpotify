@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"io"
 	"log"
 	"net/http"
@@ -64,7 +65,10 @@ type app struct {
 	// in the history twice comes back where it was last left.
 	spots map[route]pageSpot
 
-	connect     *connectState
+	connect      *connectState
+	castRegistry *spotify.SpeakerRegistry
+	castWakeup   *spotify.CastWakeupClient
+	castConnect  func(context.Context, *spotify.CastSpeaker) (string, error)
 	mineLoading bool
 	mineAgain   bool
 	mineGen     int
@@ -156,9 +160,11 @@ type app struct {
 
 	scrub      float64
 	scrubbing  bool
-	volume     float64
-	volumeOpen bool // the volume popover of the player bar shows
-	mutedFrom  float64
+	volume         float64
+	localVolume    float64
+	hasLocalVolume bool
+	volumeOpen     bool // the volume popover of the player bar shows
+	mutedFrom      float64
 
 	rowBars barState
 	// underTop and underBottom say whether the page has content under its
@@ -254,6 +260,50 @@ func (a *app) showMain() {
 // appName is the name the app shows.
 const appName = "MySpotify"
 
+func (a *app) isRemote() bool {
+	if state := a.connect; state != nil && state.isRemoteActive() {
+		return true
+	}
+	return a.pl != nil && a.pl.IsRemote()
+}
+
+func (a *app) restoreLocalVolume() {
+	if a.hasLocalVolume || a.localVolume > 0 {
+		a.volume = a.localVolume
+	} else {
+		a.volume = a.settings.Volume
+		a.localVolume = a.volume
+	}
+	if a.connect != nil {
+		a.connect.volLocal = time.Time{}
+	}
+	if a.pl != nil && !a.isRemote() {
+		a.here(func() { a.pl.SetVolume(a.volume) })
+	}
+}
+
+func (a *app) syncLocalVolume(v float64) {
+	a.localVolume = v
+	a.hasLocalVolume = true
+	a.settings.Volume = v
+}
+
+func (a *app) setVolume(v float64) {
+	a.volume = v
+	if !a.isRemote() {
+		a.syncLocalVolume(v)
+	}
+	a.pl.SetVolume(v)
+}
+
+func (a *app) syncVolumeBeforeQuit() {
+	if !a.isRemote() {
+		a.settings.Volume = a.volume
+	} else if a.hasLocalVolume || a.localVolume > 0 {
+		a.settings.Volume = a.localVolume
+	}
+}
+
 func Run() error {
 	a := &app{
 		playlists:  map[string]*spotify.Playlist{},
@@ -267,6 +317,8 @@ func Run() error {
 		cacheUsed:  -1,
 		queueAt:    -1,
 	}
+	a.speakersRegistry().Start()
+	defer a.closeCastResources()
 	// Its data, the web player's sign-in among it, lives under this name,
 	// whatever the executable is called.
 	// Vinyl names where the app keeps its data (settings, the log, the
@@ -335,6 +387,7 @@ func Run() error {
 		a.applyHotkeys()
 		a.played, a.playedFrom = loadPlayed()
 		a.volume = a.settings.Volume
+			a.syncLocalVolume(a.volume)
 		a.pl.SetVolume(a.volume)
 		a.win = mygo.NewWindow(mygo.WindowOptions{
 			Title:         appName,
@@ -420,7 +473,7 @@ func Run() error {
 		if a.mineTimer != nil {
 			a.mineTimer.Stop()
 		}
-		a.settings.Volume = a.volume
+		a.syncVolumeBeforeQuit()
 		a.settings.save()
 		a.saveSession()
 		if a.pl != nil {

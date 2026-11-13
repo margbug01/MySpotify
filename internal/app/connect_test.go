@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"vinyl/internal/l10n"
 	"vinyl/internal/player"
 	"vinyl/internal/spotify"
 )
@@ -18,8 +19,13 @@ import (
 func testConnectApp(t *testing.T) *app {
 	t.Helper()
 	a := newTestApp()
+	a.castRegistry = spotify.NewSpeakerRegistry(spotify.WithNoopDiscovery())
 	a.connect = &connectState{client: spotify.NewConnect("local", "Vinyl", nil), observer: true, receiver: true, jobs: make(chan func() error, 32), done: make(chan struct{})}
-	t.Cleanup(a.connect.client.Close)
+	client := a.connect.client
+	t.Cleanup(func() {
+		a.closeCastResources()
+		client.Close()
+	})
 	a.pl.Control = a.connectControl
 	a.pl.Cue([]spotify.Track{{ID: "one", Name: "One", Duration: 200000}})
 	return a
@@ -108,7 +114,7 @@ func TestConnectDeviceMenu(t *testing.T) {
 	a.connect.cluster = cluster
 	tt := ui.NewTester(a.view, 1200, 800)
 	tt.Frame()
-	if err := tt.Click("播放设备"); err != nil {
+	if err := tt.Click(l10n.T("播放设备")); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()
@@ -123,7 +129,7 @@ func TestConnectDeviceMenu(t *testing.T) {
 		}
 		file.Close()
 	}
-	if err := tt.Click("此电脑 · " + appName); err != nil {
+	if err := tt.Click(l10n.T("此电脑 · ") + appName); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()
@@ -354,5 +360,35 @@ func TestConnectQueueWhileReconnectingSaysSo(t *testing.T) {
 	}
 	if len(a.connect.jobs) != 0 || len(a.pl.Queue()) != 1 {
 		t.Fatal("queued while Connect reconnects")
+
+	}
+}
+
+// Discovered Cast speakers keep a stable order across frames and when joining the Connect cluster.
+func TestConnectCastDevicesMenuOrderAndTransfer(t *testing.T) {
+	a := testConnectApp(t)
+	a.speakersRegistry().Seed(
+		&spotify.CastSpeaker{ID: "id-bedroom", Name: "Bedroom", Model: "Google Home Mini", IP: "192.0.2.10", Port: 8009, ExpiresAt: time.Now().Add(time.Minute)},
+		&spotify.CastSpeaker{ID: "id-group", Name: "Home Group", Model: "Google Cast Group", IP: "192.0.2.10", Port: 32072, ExpiresAt: time.Now().Add(time.Minute)},
+		&spotify.CastSpeaker{ID: "id-kitchen", Name: "Kitchen", Model: "Google Nest Mini", IP: "192.0.2.11", Port: 8009, ExpiresAt: time.Now().Add(time.Minute)},
+	)
+	tt := ui.NewTester(a.view, 1200, 800)
+	tt.Frame()
+	if err := tt.Click(l10n.T("播放设备")); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 15; i++ {
+		tt.Frame()
+		got := a.speakersRegistry().Speakers()
+		if len(got) != 3 || got[0].Name != "Bedroom" || got[1].Name != "Home Group" || got[2].Name != "Kitchen" {
+			t.Fatalf("frame %d: unexpected speaker order: %+v", i, got)
+		}
+	}
+	if err := tt.Click("Home Group · Google Cast Group"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if len(a.connect.jobs) != 1 || a.connect.open {
+		t.Fatal("clicking Cast speaker did not queue wakeAndTransferCast job and close menu")
 	}
 }

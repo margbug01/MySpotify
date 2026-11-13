@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -9,11 +10,9 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"sort"
+	"strings"
 	"sync"
 	"time"
-
-	"github.com/egoist/mygo/ui"
 
 	"vinyl/internal/l10n"
 	"vinyl/internal/player"
@@ -23,6 +22,7 @@ import (
 type connectState struct {
 	user                         string
 	client                       *spotify.Connect
+	mu                           sync.RWMutex
 	cluster                      spotify.ConnectCluster
 	machine                      spotify.ConnectMachine
 	ref                          *spotify.ConnectRef
@@ -34,9 +34,11 @@ type connectState struct {
 	open       bool
 	known      map[string]spotify.Track // what Decorate named, by URI
 	decorating bool
+	castUnsub  func()
 	timer      *time.Timer
 	jobs       chan func() error
 	done       chan struct{}
+	stopOnce   sync.Once
 	// The volume asked of a device, sent once the request before it is
 	// done: a drag turns it a percent at a time, which one by one would
 	// walk the device there long after the drag.
@@ -52,6 +54,20 @@ type connectState struct {
 	options spotify.ConnectOptions
 	shuffle held[bool]
 	repeat  held[player.RepeatMode]
+}
+
+func (s *connectState) isRemoteActive() bool {
+	if s == nil {
+		return false
+	}
+	s.mu.RLock()
+	active := s.cluster.Active
+	s.mu.RUnlock()
+	var clientID string
+	if s.client != nil {
+		clientID = s.client.ID
+	}
+	return active != "" && active != clientID
 }
 
 // held is a setting changed here, shown as changed while what Spotify says
@@ -139,21 +155,118 @@ var connectCommand = (*spotify.Connect).Command
 // connectReport is (*spotify.Connect).Report; tests swap it.
 var connectReport = (*spotify.Connect).Report
 
+// connectTransfer is (*spotify.Connect).Transfer; tests swap it.
+var connectTransfer = (*spotify.Connect).Transfer
+
+// connectPost is (*app).post; tests swap it.
+var connectPost = (*app).post
+
+var (
+	castWakeTimeout  = 7 * time.Second
+	castPollInterval = 250 * time.Millisecond
+	castStateMu      sync.Mutex
+)
+
+func (a *app) speakersRegistry() *spotify.SpeakerRegistry {
+	castStateMu.Lock()
+	defer castStateMu.Unlock()
+	if a.castRegistry == nil {
+		a.castRegistry = spotify.NewSpeakerRegistry()
+	}
+	return a.castRegistry
+}
+
+func (a *app) castWakeupClient() *spotify.CastWakeupClient {
+	castStateMu.Lock()
+	defer castStateMu.Unlock()
+	if a.castWakeup == nil {
+		a.castWakeup = spotify.NewCastWakeupClient()
+	}
+	return a.castWakeup
+}
+
+func (a *app) closeCastResources() {
+	castStateMu.Lock()
+	reg := a.castRegistry
+	wu := a.castWakeup
+	a.castWakeup = nil
+	castStateMu.Unlock()
+	if reg != nil {
+		reg.Stop()
+	}
+	if wu != nil {
+		wu.Close()
+	}
+}
+
+func (a *app) connectToCastSpeaker(ctx context.Context, spk *spotify.CastSpeaker) (string, error) {
+	var (
+		spotifyDevID string
+		err          error
+	)
+	if a.castConnect != nil {
+		spotifyDevID, err = a.castConnect(ctx, spk)
+	} else {
+		spotifyDevID, err = a.castWakeupClient().ConnectSpeaker(ctx, spk)
+	}
+	if err == nil && spotifyDevID != "" && spk != nil {
+		a.speakersRegistry().SetSpotifyDeviceID(spk.ID, spotifyDevID)
+	}
+	return spotifyDevID, err
+}
+
+func connectDoneContext(done <-chan struct{}) (context.Context, context.CancelFunc) {
+	ctx, cancel := context.WithCancel(context.Background())
+	if done == nil {
+		return ctx, cancel
+	}
+	go func() {
+		select {
+		case <-done:
+			cancel()
+		case <-ctx.Done():
+		}
+	}()
+	return ctx, cancel
+}
+
 func (a *app) stopConnect() {
 	state := a.connect
-	a.connect = nil
 	if state == nil {
 		return
 	}
-	if state.timer != nil {
-		state.timer.Stop()
-	}
-	close(state.done)
-	go state.client.Close()
-	a.pl.Control = nil
-	if a.pl.IsRemote() {
-		a.pl.StopConnect()
-	}
+	state.stopOnce.Do(func() {
+		if state.castUnsub != nil {
+			state.castUnsub()
+			state.castUnsub = nil
+		}
+		if state.timer != nil {
+			state.timer.Stop()
+			state.timer = nil
+		}
+		if state.done != nil {
+			close(state.done)
+		}
+		if state.client != nil {
+			go state.client.Close()
+		}
+		if a.pl != nil {
+			a.pl.Control = nil
+		}
+		if a.isRemote() {
+			if a.pl != nil {
+				a.pl.StopConnect()
+			}
+			state.mu.Lock()
+			state.cluster.Active = ""
+			state.mu.Unlock()
+			a.restoreLocalVolume()
+		}
+		a.closeCastResources()
+		if a.connect == state {
+			a.connect = nil
+		}
+	})
 }
 
 func (a *app) startConnect() {
@@ -174,6 +287,7 @@ func (a *app) startConnect() {
 			}
 		})
 	})
+	state.client.SetInitialVolume(int(min(max(a.volume, 0), 1) * 65535))
 	a.connect = state
 	a.pl.Control = a.connectControl
 	go func() {
@@ -200,6 +314,10 @@ func (a *app) startConnect() {
 		}
 	}()
 	state.client.Start()
+	state.castUnsub = a.speakersRegistry().Subscribe(func() {
+		a.post(func() {})
+	})
+	a.speakersRegistry().Start()
 	a.connectTick(state)
 }
 
@@ -339,10 +457,17 @@ func (a *app) connectEvent(event spotify.ConnectEvent) {
 		if err != nil {
 			return
 		}
+		state.mu.Lock()
 		if cluster.Timestamp > 0 && cluster.Timestamp < state.cluster.Timestamp {
+			state.mu.Unlock()
 			return
 		}
+		oldActive := state.cluster.Active
 		state.cluster = cluster
+		state.mu.Unlock()
+		if cluster.Active != "" && cluster.Active != oldActive {
+			state.err = ""
+		}
 		// Playing here, shuffle and repeat are those of the state Spotify
 		// gave this device: the cluster's are what it reported, a step
 		// behind, and set the buttons back after the state had moved on.
@@ -350,6 +475,18 @@ func (a *app) connectEvent(event spotify.ConnectEvent) {
 			a.connectOptions(cluster.Player.Options)
 		}
 		if cluster.Active != "" && cluster.Active != state.client.ID {
+			if oldActive == state.client.ID || oldActive == "" {
+				a.localVolume = a.volume
+			}
+			if dev, ok := cluster.Devices[cluster.Active]; ok {
+				remoteVol := float64(min(max(int(dev.Volume), 0), 65535)) / 65535
+				if cluster.Active != oldActive || time.Since(state.volLocal) > 2*time.Second {
+					a.volume = remoteVol
+					if cluster.Active != oldActive {
+						state.volLocal = time.Time{}
+					}
+				}
+			}
 			state.ref, state.lost = nil, false
 			track := cluster.Track()
 			if track.ID != "" {
@@ -364,8 +501,17 @@ func (a *app) connectEvent(event spotify.ConnectEvent) {
 			} else {
 				a.pl.StopConnect()
 			}
-		} else if cluster.Active == state.client.ID && state.ref != nil {
-			a.connectQueue(state.ref.Index)
+		} else if cluster.Active == state.client.ID || cluster.Active == "" {
+				wasRemote := a.isRemote() || (oldActive != "" && oldActive != state.client.ID)
+				if a.pl.IsRemote() {
+					a.pl.StopConnect()
+				}
+				if wasRemote {
+				a.restoreLocalVolume()
+			}
+			if cluster.Active == state.client.ID && state.ref != nil {
+				a.connectQueue(state.ref.Index)
+			}
 		}
 	case "report":
 		if state.ref == nil {
@@ -431,10 +577,12 @@ func (a *app) connectEvent(event spotify.ConnectEvent) {
 			state.machine = command.Machine
 			a.applyConnect(command.Ref, command.Seek)
 		case "set_volume":
-			if command.Volume != nil && time.Since(state.volLocal) > 2*time.Second {
+			if command.Volume != nil && !a.isRemote() && time.Since(state.volLocal) > 2*time.Second {
 				state.applying = true
-				a.volume = float64(min(max(*command.Volume, 0), 65535)) / 65535
-				a.pl.SetVolume(a.volume)
+				v := float64(min(max(*command.Volume, 0), 65535)) / 65535
+				a.volume = v
+					a.syncLocalVolume(v)
+				a.pl.SetVolume(v)
 				state.applying = false
 			}
 		case "log_out":
@@ -456,9 +604,13 @@ func (a *app) applyConnect(ref *spotify.ConnectRef, seek *int64) {
 		a.pl.StopConnect()
 		return
 	}
+	state.err = ""
 	copyRef := *ref
 	state.ref, state.lost = &copyRef, false
+	wasRemote := a.isRemote()
+	state.mu.Lock()
 	state.cluster.Active = state.client.ID
+	state.mu.Unlock()
 	position := time.Duration(-1)
 	if seek != nil {
 		position = time.Duration(max(0, *seek)) * time.Millisecond
@@ -468,6 +620,9 @@ func (a *app) applyConnect(ref *spotify.ConnectRef, seek *int64) {
 	a.pl.ApplyConnect(track, position, ref.Paused)
 	a.connectQueue(ref.Index)
 	state.applying = false
+	if wasRemote {
+		a.restoreLocalVolume()
+	}
 	a.reportConnect()
 }
 
@@ -480,7 +635,9 @@ func (a *app) connectQueue(index int) {
 	if err != nil {
 		return
 	}
+	state.mu.RLock()
 	queue := state.cluster.Queue()
+	state.mu.RUnlock()
 	for i := range queue {
 		if queue[i].URI() == track.URI() {
 			track.UID = queue[i].UID
@@ -558,7 +715,9 @@ func (a *app) connectControl(action string, value any) bool {
 		}
 		return false
 	}
+	state.mu.RLock()
 	target := state.cluster.Active
+	state.mu.RUnlock()
 	if target == "" {
 		target = state.client.ID
 	}
@@ -644,9 +803,13 @@ func (a *app) connectControl(action string, value any) bool {
 		return true
 	case "volume":
 		volume := value.(float64)
-		if target == state.client.ID && !a.pl.IsRemote() {
+		if target == state.client.ID && !a.isRemote() {
 			// Playing here: heard at once, not when Spotify sends it back.
 			a.here(func() { a.pl.SetVolume(volume) })
+			state.volLocal = time.Now()
+				a.volume = volume
+				a.syncLocalVolume(volume)
+		} else {
 			state.volLocal = time.Now()
 		}
 		a.sendVolume(state, target, volume)
@@ -705,69 +868,118 @@ func connectPlayBody(request player.QueueRequest) map[string]any {
 	return map[string]any{"context": map[string]any{"uri": "", "url": "", "metadata": map[string]any{}, "pages": []any{map[string]any{"tracks": tracks}}}, "play_origin": map[string]any{}, "options": map[string]any{"license": "on-demand", "skip_to": map[string]any{"track_index": request.Start}}}
 }
 
-// connectButton is the monitor speaker standing for the device the music
-// plays on, which opens the picker of the devices in a panel below it; the
-// popover, not the bar, is where the device playing names itself. The
-// speaker wears the accent while the music plays somewhere other than here.
-func (a *app) connectButton(c *ui.Context) {
-	state := a.connect
-	if state == nil {
-		return
+func isPlayableClusterDevice(id, clientID string, dev spotify.ConnectDevice) bool {
+	if id == clientID {
+		return false
 	}
-	color := a.pal.muted
-	if state.cluster.Active != "" && state.cluster.Active != state.client.ID {
-		color = a.pal.accent
+	if dev.Capabilities.Hidden || (dev.Capabilities.CanPlay != nil && !*dev.Capabilities.CanPlay) {
+		return false
 	}
-	button := iconButton(c.Key("connect"), iconDevice, 16, color, l10n.T("播放设备"))
-	if button.Clicked() {
-		state.open = !state.open
+	return true
+}
+
+func matchCastClusterDevice(devices map[string]spotify.ConnectDevice, spotifyDevID, clientID, spkName string, playableOnly bool) string {
+	eligible := func(id string, dev spotify.ConnectDevice) bool {
+		if playableOnly {
+			return isPlayableClusterDevice(id, clientID, dev)
+		}
+		return id != clientID
 	}
-	ui.PopoverBase(c.Key("connect-menu"), button, &state.open, func(panel ui.Element) {
-		pop := popoverColors(a.pal.dark)
-		panel.AttachTo(button, ui.AnchorTop, ui.AnchorBottom).Margin(0, 0, 8, 0).Width(270).Padding(12).Radius(10).Background(pop.fill).Border(0.5, pop.edge).Shadow(0, 8, 24, -4, ui.RGBA(0, 0, 0, 0.2))
-		panel.Children(func() {
-			ui.Column(c).Gap(8).Children(func() {
-				ui.Text(c, l10n.T("选择播放设备")).FontSize(15).FontWeight(600)
-				if state.err != "" {
-					ui.Text(c, state.err).FontSize(12).TextColor(a.pal.muted)
-				}
-				if !state.receiver || !state.observer {
-					ui.Text(c, l10n.T("正在连接 Spotify…")).FontSize(12)
-					return
-				}
-				ids := []string{state.client.ID}
-				for id, device := range state.cluster.Devices {
-					if id != state.client.ID && !device.Capabilities.Hidden && (device.Capabilities.CanPlay == nil || *device.Capabilities.CanPlay) {
-						ids = append(ids, id)
-					}
-				}
-				sort.Strings(ids[1:])
-				for _, id := range ids {
-					name := state.cluster.Devices[id].Name
-					if id == state.client.ID {
-						name = l10n.T("此电脑 · ") + appName
-					}
-					if name == "" {
-						name = l10n.T("Spotify 设备")
-					}
-					if id == state.cluster.Active {
-						name = "✓ " + name
-					}
-					row := ui.ButtonBase(c.Key(id)).Label(name).Padding(8, 6).Radius(6)
-					if row.Hovered() {
-						row.Background(a.pal.hover)
-					}
-					row.Children(func() { ui.Text(c, name).FontSize(13).SingleLine() })
-					if row.Clicked() {
-						target := id
-						a.connectJob(func() error { return state.client.Transfer(target) })
-						state.open = false
-					}
-				}
-				if len(ids) == 1 {
-					ui.Text(c, l10n.T("在同账号的手机或网页打开 Spotify")).FontSize(12).TextColor(a.pal.muted)
-				}
-			})
-		})
+	if spotifyDevID != "" {
+		if dev, ok := devices[spotifyDevID]; ok && eligible(spotifyDevID, dev) {
+			return spotifyDevID
+		}
+	}
+	matchedID := ""
+	for id, dev := range devices {
+		if !eligible(id, dev) {
+			continue
+		}
+		if strings.EqualFold(dev.Name, spkName) && (matchedID == "" || id < matchedID) {
+			matchedID = id
+		}
+	}
+	return matchedID
+}
+
+func (s *connectState) matchCastDevice(spotifyDevID, clientID, spkName string) string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return matchCastClusterDevice(s.cluster.Devices, spotifyDevID, clientID, spkName, false)
+}
+
+func (a *app) transferToDevice(state *connectState, targetID string) error {
+	if err := connectTransfer(state.client, targetID); err != nil {
+		return err
+	}
+	connectPost(a, func() {
+		if a.connect == state {
+			state.err = ""
+		}
 	})
+	return nil
+}
+
+func (a *app) wakeAndTransferCast(state *connectState, spk *spotify.CastSpeaker) error {
+	if state == nil || spk == nil {
+		return nil
+	}
+	select {
+	case <-state.done:
+		return nil
+	default:
+	}
+	var clientID string
+	if state.client != nil {
+		clientID = state.client.ID
+	}
+	connectPost(a, func() {
+		if a.connect == state {
+			state.err = fmt.Sprintf(l10n.T("正在唤醒 %s…"), spk.Name)
+		}
+	})
+	ctx, cancel := connectDoneContext(state.done)
+	defer cancel()
+	spotifyDevID, err := a.connectToCastSpeaker(ctx, spk)
+	if err != nil {
+		select {
+		case <-state.done:
+			return nil
+		default:
+		}
+		return fmt.Errorf(l10n.T("唤醒 %s 失败: %w"), spk.Name, err)
+	}
+
+	targetID := state.matchCastDevice(spotifyDevID, clientID, spk.Name)
+	if targetID == "" {
+		deadline := time.NewTimer(castWakeTimeout)
+		defer deadline.Stop()
+		ticker := time.NewTicker(castPollInterval)
+		defer ticker.Stop()
+	wait:
+		for {
+			select {
+			case <-state.done:
+				return nil
+			case <-deadline.C:
+				break wait
+			case <-ticker.C:
+				if id := state.matchCastDevice(spotifyDevID, clientID, spk.Name); id != "" {
+					targetID = id
+					break wait
+				}
+			}
+		}
+	}
+
+	select {
+	case <-state.done:
+		return nil
+	default:
+	}
+	if targetID == "" {
+		return fmt.Errorf(l10n.T("已唤醒 %s，等待 Spotify 连接超时"), spk.Name)
+	}
+
+	return a.transferToDevice(state, targetID)
 }

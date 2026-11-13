@@ -632,6 +632,9 @@ func (p *Player) Err() string { return l10n.T(p.err) }
 func (p *Player) Shuffle() bool      { return p.shuffle }
 func (p *Player) Repeat() RepeatMode { return p.repeat }
 
+// Volume returns the player's current local volume, in [0, 1].
+func (p *Player) Volume() float64 { return p.volume }
+
 // Lyrics returns the current track's lyrics, and whether they have loaded.
 func (p *Player) Lyrics() ([]lyrics.Line, bool) { return p.lyrics, p.lyricsLoaded }
 

@@ -59,3 +59,11 @@ func (p *Player) ShowVideo(view *mygo.WebView) {
 	p.out = &webOut{w: p.Video, dur: 3 * time.Minute, video: true}
 	p.video, p.showsVideo, p.playing = true, true, true
 }
+
+// SetLyricsFetcherForTest swaps the lyrics lookup function used by Player and
+// returns a restore function.
+func SetLyricsFetcherForTest(fn func(spotify.Track) []lyrics.Line) func() {
+	old := lyricsOf
+	lyricsOf = fn
+	return func() { lyricsOf = old }
+}
