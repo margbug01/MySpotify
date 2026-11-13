@@ -40,7 +40,7 @@ go tool mygo build
 The icons are all drawn by `tools/icons.py` (on Windows, with Pillow, using headless Edge to render the SVGs). `resources/icon.svg`/`icon.png` is the program's icon; `icon-small.svg` is a simplified version for 16–24 pixels (two grooves, thicker); `icon.ico` combines the two by size. `internal/app/tray.png` is the template icon for the tray and the Mac menu bar (only black and transparent: drawn white automatically on a dark Windows taskbar, tinted by macOS itself). `AppIcon.icon` is the Icon Composer document for the Mac Dock (light and dark backgrounds, `macos.icon` in `mygo.json`; it's compiled in only when `mygo build` runs on a Mac with Xcode 26, otherwise falling back to an `.icns` made from `icon.png`). After changing the icon or version, run `python tools/icons.py` first, then regenerate `rsrc_windows_amd64.syso`, which holds the icon, version information and manifest (also change the version in `mygo.json`):
 
 ```
-go run github.com/tc-hib/go-winres@v0.3.3 simply --icon resources/icon.ico --manifest gui --product-name MySpotify --file-description MySpotify --product-version 0.4.23 --file-version 0.4.23 --original-filename MySpotify.exe --arch amd64 --out rsrc
+go run github.com/tc-hib/go-winres@v0.3.3 simply --icon resources/icon.ico --manifest gui --product-name MySpotify --file-description MySpotify --product-version 0.4.24 --file-version 0.4.24 --original-filename MySpotify.exe --arch amd64 --out rsrc
 ```
 
 ### Releasing

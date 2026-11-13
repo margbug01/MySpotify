@@ -119,6 +119,7 @@ Under 设置 › 全局快捷键 (Settings › Global shortcuts) you can also gi
 
 - **Move playback to the computer**: choose "MySpotify · your computer's name" in the device list of Spotify on your phone or the web. The computer's queue is the same one the phone shows, and clicking a song in it jumps there in the original playlist (Spotify occasionally refuses this, see below).
 - **Control the phone from the computer**: 设备 (Devices), beside the volume at the bottom, lists the phones, web players and this computer online on your account. While another device plays, the computer shows its song and progress, and play/pause, previous/next, seeking, volume, shuffle and repeat all go to that device.
+- **Google Cast speakers**: Google Cast and Nest speakers on the same network (multi-room groups too) also show under 设备 (Devices), even when Spotify isn't open on them; clicking one wakes it and moves playback there. The first time you open Devices, macOS asks whether the app may use the local network; allow it.
 - Only one device makes sound at a time. If playback moves away or the connection drops, the computer stops, so the two never play together.
 
 This part is still experimental. Registering and handing off work in testing on a free account; staying connected for a long time and every combination of devices haven't been fully tested. Now and then it may say Spotify didn't accept an action. Spotify's reason goes into the log, `vinyl.log` (search for `connect:`), and that line is welcome in an issue.
