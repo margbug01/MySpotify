@@ -104,3 +104,29 @@ func TestCacheKeepsOnlyWholeParts(t *testing.T) {
 		t.Error("kept a part cut short")
 	}
 }
+
+// Moved to a folder the listener chose, the cache drops the parts it kept
+// where it was, and nothing else there, then keeps new ones in the folder.
+func TestCacheMove(t *testing.T) {
+	old, chosen := t.TempDir(), t.TempDir()
+	c := NewCache(old, 1<<20)
+	keepPart(t, c, "https://cdn.test/audio/a", "bytes=0-99", 100, time.Now())
+	mine := old + "/notes.txt"
+	if err := os.WriteFile(mine, []byte("mine"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	c.Move(chosen)
+	if _, err := os.Stat(mine); err != nil {
+		t.Fatalf("a file not the cache's went: %v", err)
+	}
+	if n := len(c.parts()); n != 0 {
+		t.Fatalf("%d parts in the new folder; want none yet", n)
+	}
+	if entries, _ := os.ReadDir(old); len(entries) != 1 {
+		t.Fatalf("%d files left where it was; want only notes.txt", len(entries))
+	}
+	keepPart(t, c, "https://cdn.test/audio/a", "bytes=0-99", 100, time.Now())
+	if c.Dir() != chosen || len(c.parts()) != 1 {
+		t.Fatalf("dir %s, %d parts; want one in the folder chosen", c.Dir(), len(c.parts()))
+	}
+}

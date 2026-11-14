@@ -13,6 +13,7 @@ import (
 	"slices"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -23,7 +24,7 @@ import (
 // URL's signature, in its query, changes from day to day. Once they take
 // more than the limit, those used longest ago go first.
 type Cache struct {
-	dir string
+	dir atomic.Pointer[string] // the listener may move it as parts pass
 
 	mu    sync.Mutex
 	limit int64 // in bytes; 0 keeps nothing
@@ -32,7 +33,24 @@ type Cache struct {
 
 // NewCache returns a cache in dir of limit bytes.
 func NewCache(dir string, limit int64) *Cache {
-	return &Cache{dir: dir, limit: limit, used: -1}
+	c := &Cache{limit: limit, used: -1}
+	c.dir.Store(&dir)
+	return c
+}
+
+// Dir returns where the parts are kept.
+func (c *Cache) Dir() string { return *c.dir.Load() }
+
+// Move keeps the parts in dir from now on, and drops those kept where
+// they were: only the parts, dir being a folder the listener chose.
+func (c *Cache) Move(dir string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for _, p := range c.parts() {
+		os.Remove(p.path)
+	}
+	c.dir.Store(&dir)
+	c.used = -1
 }
 
 // SetLimit changes how much the cache may take, and drops what is over.
@@ -57,7 +75,7 @@ func (c *Cache) file(source, rg string) string {
 		path = u.Path
 	}
 	h := sha256.Sum256([]byte(path + "\n" + rg))
-	return filepath.Join(c.dir, hex.EncodeToString(h[:16])+".part")
+	return filepath.Join(c.Dir(), hex.EncodeToString(h[:16])+".part")
 }
 
 // serve answers with the part of source rg asks for, if kept, and reports
@@ -117,10 +135,11 @@ func (c *Cache) keep(source, rg string, res *http.Response) *keeping {
 	limit := c.limit
 	c.mu.Unlock()
 	// A part of more than a sixteenth of it would push out too many.
-	if res.ContentLength > limit/16 || os.MkdirAll(c.dir, 0o700) != nil {
+	dir := c.Dir()
+	if res.ContentLength > limit/16 || os.MkdirAll(dir, 0o700) != nil {
 		return nil
 	}
-	f, err := os.CreateTemp(c.dir, "*.tmp")
+	f, err := os.CreateTemp(dir, "*.tmp")
 	if err != nil {
 		return nil
 	}
@@ -179,14 +198,15 @@ type cachedPart struct {
 }
 
 func (c *Cache) parts() []cachedPart {
-	entries, _ := os.ReadDir(c.dir)
+	dir := c.Dir()
+	entries, _ := os.ReadDir(dir)
 	var out []cachedPart
 	for _, e := range entries {
 		info, err := e.Info()
 		if err != nil {
 			continue
 		}
-		path := filepath.Join(c.dir, e.Name())
+		path := filepath.Join(dir, e.Name())
 		switch filepath.Ext(e.Name()) {
 		case ".part":
 			out = append(out, cachedPart{path, info.Size(), info.ModTime()})

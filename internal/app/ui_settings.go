@@ -214,6 +214,16 @@ func (a *app) settingsPage(c *ui.Context) {
 					a.applyCacheLimit()
 				}
 			})
+			if cache := a.partCache(); cache != nil {
+				row(l10n.T("缓存位置"), cmp.Or(a.cacheDirErr, cache.Dir()), func() {
+					if s.CacheDir != "" && ui.Button(c.Key("cache-dir-default"), l10n.T("恢复默认")).Clicked() {
+						a.moveCache("")
+					}
+					if ui.Button(c.Key("cache-dir"), l10n.T("更改…")).Clicked() {
+						a.chooseCacheDir()
+					}
+				})
+			}
 			row(l10n.T("清除缓存"), l10n.T("删除保存在本机的全部歌曲"), func() {
 				if ui.Button(c.Key("clear-cache"), l10n.T("清除")).Disabled(a.cacheUsed <= 0).Clicked() {
 					a.clearCache()

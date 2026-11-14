@@ -196,6 +196,7 @@ type app struct {
 	recFocused  bool            // and its button has had the focus since
 	hotkeyErr   map[string]bool // the actions whose shortcut the system would not take
 	cacheUsed   int64           // the bytes the cache of tracks takes, -1 until measured
+	cacheDirErr string          // why the folder chosen for it was not taken
 	upd         updates         // a newer version, looked for and installed
 
 	restored     bool   // playback picked up where it was left
@@ -372,7 +373,7 @@ func Run() error {
 		player.SimplifyLyrics = !readsTraditional(mygo.App.PreferredLanguages())
 		a.pl = player.New(a.post)
 		a.pl.Leads = a.mvLead
-		a.pl.Cache = newPartCache(a.settings.CacheMB)
+		a.pl.Cache = newPartCache(a.settings.CacheMB, a.settings.CacheDir)
 		a.pl.NewWeb = func() (*player.Web, error) {
 			web, err := player.NewWeb()
 			if err == nil {

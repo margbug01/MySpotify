@@ -58,6 +58,9 @@ type settings struct {
 	// CacheMB is how many megabytes the parts of tracks kept on disk may
 	// take; 0 keeps none.
 	CacheMB int `json:"cacheMB"`
+	// CacheDir is the folder the listener chose for them, empty for the
+	// app's cache directory.
+	CacheDir string `json:"cacheDir,omitempty"`
 
 	// AutoUpdate looks for a new version on opening and twice a day.
 	AutoUpdate bool `json:"autoUpdate"`
