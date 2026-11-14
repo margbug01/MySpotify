@@ -373,6 +373,7 @@
   "播放没能开始，这台电脑可能解不开加密音频（DRM），点击播放重试": "Playback didn't start. This computer may not be able to decrypt the audio (DRM). Press Play to retry.",
   "这首歌暂时无法播放": "This song is currently unavailable",
   "网络已断开，恢复后接着播放": "You are offline. Playback will resume when connected.",
+  "网络不稳定，正在重试": "The connection is unstable. Trying again…",
   "Spotify 暂时限流，稍后重试": "Spotify is rate limiting requests. Please try again shortly.",
   "连续三首无法播放，已停止自动切歌": "Stopped after three consecutive songs could not play",
   "电台暂时没有更多歌曲": "No more songs available for this radio",

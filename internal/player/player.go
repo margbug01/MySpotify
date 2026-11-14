@@ -2,9 +2,11 @@ package player
 
 import (
 	"errors"
+	"io"
 	"log"
 	"math"
 	"math/rand/v2"
+	"net"
 	"net/http"
 	"slices"
 	"strings"
@@ -105,6 +107,7 @@ type Player struct {
 	waiting   bool
 	throttles int // the times in a row, to wait longer each
 	offline   int // the times in a row the network was down, likewise
+	flaky     int // the times this track failed on the network, Spotify answering
 
 	lyrics       []lyrics.Line
 	lyricsLoaded bool
@@ -252,14 +255,14 @@ func (p *Player) ended() {
 				p.sync()
 				return
 			}
-			p.failed(licence, wait)
+			p.failed(msg, licence, wait)
 			return
 		}
 	}
 	if p.control("advance", nil) {
 		return
 	}
-	p.throttles = 0
+	p.throttles, p.flaky = 0, 0
 	if p.repeat == RepeatOne {
 		p.out.Seek(0)
 		p.out.Play()
@@ -277,16 +280,17 @@ func (p *Player) ended() {
 	p.Next()
 }
 
-// failed goes on from a track the page could not play: licence is how the
-// licence service last answered for it, wait how long it asked to wait.
-func (p *Player) failed(licence int, wait time.Duration) {
+// failed goes on from a track the page could not play, for msg: licence is
+// how the licence service last answered for it, wait how long it asked to
+// wait.
+func (p *Player) failed(msg string, licence int, wait time.Duration) {
 	switch licence {
 	case http.StatusTooManyRequests:
 		p.throttled(wait)
 	case http.StatusUnauthorized, http.StatusForbidden:
 		// Turned down: the rest of the queue would be too, one after
 		// another. Or offline, the identity could not be renewed.
-		p.unlessOffline(func() {
+		p.unlessOffline(false, func() {
 			p.err = "这首歌暂时无法播放"
 			p.playing = false
 			p.sync()
@@ -294,7 +298,7 @@ func (p *Player) failed(licence int, wait time.Duration) {
 	default:
 		// The page tried again, and could not: on to the next.
 		at, skipped := p.at, p.skipped
-		p.unlessOffline(func() {
+		p.unlessOffline(pageNetFault(msg, licence), func() {
 			p.err = "这首歌暂时无法播放"
 			p.skip(at, skipped)
 		})
@@ -304,8 +308,12 @@ func (p *Player) failed(licence int, wait time.Duration) {
 // unlessOffline does then with the track that could not load or play, but
 // not with the network down, which no track would play without: the queue
 // skipped through all of them and stopped. The track waits for the network
-// then, and loads again from where it was.
-func (p *Player) unlessOffline(then func()) {
+// then, and loads again from where it was. flaky says the network failed it,
+// as a timeout or a connection cut: then it is tried again where it was a
+// few times even with Spotify answering, as a link or a proxy that drops
+// connections now and then answers between its drops; on it went, three
+// tracks failed as the identity could not be renewed, and it stopped.
+func (p *Player) unlessOffline(flaky bool, then func()) {
 	from := p.Position()
 	p.stop()
 	p.pending, p.loading = from, true
@@ -317,6 +325,12 @@ func (p *Player) unlessOffline(then func()) {
 				return
 			}
 			p.loading = false
+			if ok && flaky && p.flaky < flakyTries {
+				p.flaky++
+				log.Printf("player: network failed the track, again (%d)", p.flaky)
+				p.again(2*time.Second<<(p.flaky-1), "网络不稳定，正在重试")
+				return
+			}
 			if ok {
 				then()
 				return
@@ -332,6 +346,25 @@ func (p *Player) unlessOffline(then func()) {
 
 // online reports whether Spotify can be reached; tests swap it.
 var online = spotify.Reachable
+
+// flakyTries is how many times a track the network failed is tried again,
+// Spotify answering, before it is passed over: after 2, 4 and 8 seconds.
+const flakyTries = 3
+
+// netFault reports whether err is the network's, as a timeout or a
+// connection cut, rather than an answer of Spotify's.
+func netFault(err error) bool {
+	var ne net.Error
+	return errors.As(err, &ne) || errors.Is(err, io.ErrUnexpectedEOF)
+}
+
+// pageNetFault reports whether the page could not play the track for the
+// network: hls.js's network errors, the media element's, or a licence or
+// certificate request no answer came back for (licence 0, or 5xx).
+func pageNetFault(msg string, licence int) bool {
+	return strings.HasPrefix(msg, "networkError ") || strings.HasPrefix(msg, "media 2 ") ||
+		strings.HasPrefix(msg, "keySystemError ") && (licence == 0 || licence >= 500)
+}
 
 // throttled waits as Spotify asked, wait, or longer each time if it did not
 // say, then loads the track again from where it was.
@@ -1000,7 +1033,7 @@ func (p *Player) loadSkipping(at, skipped int, play bool, from time.Duration) {
 					return
 				}
 				if !errors.Is(err, spotify.ErrNoAudioHere) {
-					p.unlessOffline(func() {
+					p.unlessOffline(netFault(err), func() {
 						p.err = "这首歌暂时无法播放"
 						p.skip(at, skipped)
 					})
@@ -1184,6 +1217,9 @@ func (p *Player) cue(at int, play bool, from time.Duration) (int, spotify.Track)
 	gen := p.gen
 	p.at = at
 	t := p.queue[p.order[at]]
+	if p.track == nil || p.track.ID != t.ID {
+		p.flaky = 0
+	}
 	p.track = &t
 	p.loading, p.playing, p.err = false, play, ""
 	p.media = nil

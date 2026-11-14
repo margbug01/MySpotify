@@ -508,8 +508,14 @@ func (w *Web) forward(rw http.ResponseWriter, r *http.Request, method, target st
 		}
 		if err != nil {
 			log.Printf("player: %s: %v", r.URL.Path, err)
-			o.answered(http.StatusUnauthorized, 0)
-			http.Error(rw, err.Error(), http.StatusUnauthorized)
+			// An identity the network kept from being renewed was not
+			// turned down: the track is tried again, not stopped at.
+			status := http.StatusUnauthorized
+			if netFault(err) {
+				status = http.StatusBadGateway
+			}
+			o.answered(status, 0)
+			http.Error(rw, err.Error(), status)
 			return
 		}
 		req, _ := http.NewRequestWithContext(r.Context(), method, target, bytes.NewReader(body))
@@ -521,6 +527,8 @@ func (w *Web) forward(rw http.ResponseWriter, r *http.Request, method, target st
 			req.Header.Set("Content-Type", "application/octet-stream")
 		}
 		if res, err = spotify.Client.Do(req); err != nil {
+			log.Printf("player: %s: %v", r.URL.Path, err)
+			o.answered(http.StatusBadGateway, 0)
 			http.Error(rw, err.Error(), http.StatusBadGateway)
 			return
 		}
