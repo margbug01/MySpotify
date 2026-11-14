@@ -447,10 +447,13 @@ func (a *app) connectEvent(event spotify.ConnectEvent) {
 		state.observer = false
 	case "receiver_offline":
 		state.receiver = false
-		if state.ref != nil {
-			state.ref = nil
-			a.pl.StopConnect()
-		}
+		// Not Spotify taking the music away, as a replace_state with no ref
+		// is: the dealer dropped, as a link or a proxy drops it now and then.
+		// Stopped then, the song went silent where it was with nothing in
+		// the log (at 3:54 of one, 2026-11-10). It plays on here, as one
+		// whose state Spotify turned down does; the cluster, once back, says
+		// if another device took it meanwhile.
+		state.ref = nil
 	case "cluster":
 		cluster, err := spotify.ParseConnectCluster(event.Data)
 		if err != nil {
