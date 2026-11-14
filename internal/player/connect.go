@@ -68,6 +68,11 @@ func (p *Player) ApplyConnect(track spotify.Track, position time.Duration, pause
 		}
 		if p.playing == paused {
 			p.TogglePlay()
+		} else if !paused && p.out != nil && !p.seeking && !p.out.Playing() {
+			// Ended, and Spotify's next state is the same track, as it is
+			// repeating it: still playing as far as Vinyl knows, it plays
+			// again from where the seek put it.
+			p.out.Play()
 		}
 		return
 	}

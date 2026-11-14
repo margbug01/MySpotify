@@ -11,7 +11,7 @@ type connectTestOutput struct {
 	paused bool
 }
 
-func (o *connectTestOutput) Play()                   {}
+func (o *connectTestOutput) Play()                   { o.paused = false }
 func (o *connectTestOutput) Pause()                  { o.paused = true }
 func (o *connectTestOutput) Playing() bool           { return !o.paused }
 func (o *connectTestOutput) Seek(time.Duration)      {}
@@ -47,6 +47,22 @@ func TestConnectMirrorStopsLocalAudio(t *testing.T) {
 	p.StopConnect()
 	if p.out != nil || p.Playing() {
 		t.Fatal("stop retained remote output")
+	}
+}
+
+// Spotify's next state being the same track, as when it repeats one, plays
+// it again once it has ended: it went back to 0 and stayed there (#24).
+func TestConnectSameTrackAfterEndPlaysAgain(t *testing.T) {
+	p := New(func(func()) {})
+	track := spotify.Track{ID: "song", Name: "Song", Duration: 60000}
+	p.Cue([]spotify.Track{track})
+	output := &connectTestOutput{closed: make(chan struct{}), paused: true}
+	p.out = output
+	p.fade.attach(output, 1)
+	p.playing = true
+	p.ApplyConnect(track, 0, false)
+	if output.paused || !p.Playing() {
+		t.Fatal("the repeated track did not play again")
 	}
 }
 
