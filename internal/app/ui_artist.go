@@ -187,7 +187,7 @@ func (a *app) artistHeader(c *ui.Context, pg *spotify.ArtistPage) {
 				if !a.pl.Shuffle() {
 					a.pl.ToggleShuffle()
 				}
-				a.playFrom(spotify.HomeItem{Artist: &pg.ArtistCard}, pg.TopTracks, firstPlayable(pg.TopTracks))
+				a.playFrom(spotify.HomeItem{Artist: &pg.ArtistCard}, pg.TopTracks, randomPlayable(pg.TopTracks))
 			}
 			label := l10n.T("电台")
 			if a.radioStarting == radioName(pg.ID, pg.Name) {

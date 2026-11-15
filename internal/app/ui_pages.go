@@ -269,7 +269,7 @@ func (a *app) playlistHeader(c *ui.Context, pl *spotify.Playlist) {
 					if !a.pl.Shuffle() {
 						a.pl.ToggleShuffle()
 					}
-					a.playFrom(spotify.HomeItem{List: pl}, pl.Tracks, firstPlayable(pl.Tracks))
+					a.playFrom(spotify.HomeItem{List: pl}, pl.Tracks, randomPlayable(pl.Tracks))
 				}
 				if a.profile != nil && !pl.Liked() && a.editable(pl.ID) == nil {
 					icon, label := iconPlus, l10n.T("收藏")

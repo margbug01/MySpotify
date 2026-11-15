@@ -203,7 +203,22 @@ type app struct {
 	accountGen   int    // signed in or out how many times: a sign-in asked before is no one's
 	savedSession string // the session as last kept
 	sessionDue   bool   // a save of the session is due
+	sessionTrack string // the track the session was last kept of
 	homeFile     string // where what the home page shows is kept, "" to keep none
+}
+
+// playbackChanged follows what the player did to what plays.
+func (a *app) playbackChanged() {
+	a.notePlayed()
+	// The app may be killed before any timer comes due: the track playing
+	// is kept as it changes, so that a start made after finds it; the
+	// position is kept every little while instead.
+	if cur := a.pl.Current(); cur != nil && cur.ID != a.sessionTrack {
+		a.sessionTrack = cur.ID
+		a.saveSession()
+	}
+	a.keepSession()
+	a.reportConnect()
 }
 
 // post runs fn on the main thread and redraws both windows. Without a
@@ -381,11 +396,7 @@ func Run() error {
 			}
 			return web, err
 		}
-		a.pl.Changed = func() {
-			a.notePlayed()
-			a.keepSession()
-			a.reportConnect()
-		}
+		a.pl.Changed = a.playbackChanged
 		a.applyHotkeys()
 		a.played, a.playedFrom = loadPlayed()
 		a.volume = a.settings.Volume

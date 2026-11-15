@@ -518,7 +518,7 @@ func (a *app) dailyPage(c *ui.Context) {
 						if !a.pl.Shuffle() {
 							a.pl.ToggleShuffle()
 						}
-						a.playQueue(songs, firstPlayable(songs))
+						a.playQueue(songs, randomPlayable(songs))
 					}
 				})
 			})
