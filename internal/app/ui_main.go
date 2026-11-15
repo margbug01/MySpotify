@@ -2,6 +2,7 @@ package app
 
 import (
 	"log"
+	"math/rand"
 	"runtime"
 	"strings"
 	"sync"
@@ -545,6 +546,25 @@ func firstPlayable(tracks []spotify.Track) int {
 		}
 	}
 	return 0
+}
+
+// randomPick chooses an index below n; a variable, so tests can fix it.
+var randomPick = rand.Intn
+
+// randomPlayable picks a playable track to start a shuffled queue from, 0
+// if none of them plays. First, where nothing is shuffled from, would play
+// the list's first track every time.
+func randomPlayable(tracks []spotify.Track) int {
+	var playable []int
+	for i := range tracks {
+		if tracks[i].Playable() {
+			playable = append(playable, i)
+		}
+	}
+	if len(playable) == 0 {
+		return 0
+	}
+	return playable[randomPick(len(playable))]
 }
 
 func (a *app) search(q string) {
