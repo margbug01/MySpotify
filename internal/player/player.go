@@ -8,6 +8,7 @@ import (
 	"math/rand/v2"
 	"net"
 	"net/http"
+	"runtime"
 	"slices"
 	"strings"
 	"time"
@@ -127,6 +128,9 @@ type Player struct {
 		at time.Time
 	}
 	cover []byte // the cover the system shows of the track, once loaded
+	// pageShown is whether the page shows the system what plays, rather
+	// than the app (see announce).
+	pageShown bool
 
 	// pending holds a seek asked for while the track loads.
 	pending time.Duration
@@ -168,11 +172,32 @@ func (p *Player) sync() {
 		mygo.NowPlaying.Clear()
 		return
 	}
+	// The page took the track, or let it go: the other shows it now.
+	if (p.pageOut() != nil) != p.pageShown {
+		p.announce(p.track, p.cover)
+		return
+	}
+	if p.pageShown {
+		return // WebKit follows the page itself
+	}
 	state := mygo.PlaybackPaused
 	if p.playing {
 		state = mygo.PlaybackPlaying
 	}
 	mygo.NowPlaying.SetPlayback(state, p.Position())
+}
+
+// pageNowPlaying is whether the system shows a page playing as a media
+// session of its own: WebKit's does, on macOS, which no setting turns off;
+// WebView2's is turned off (see app.go).
+var pageNowPlaying = runtime.GOOS == "darwin"
+
+// pageOut is the page playing the track, if the system shows it.
+func (p *Player) pageOut() *webOut {
+	if o, ok := p.out.(*webOut); ok && pageNowPlaying && o.w != nil {
+		return o
+	}
+	return nil
 }
 
 // system follows what the system did to what plays rather than Vinyl.
@@ -201,8 +226,18 @@ func (p *Player) system(cmd string) {
 	}
 }
 
-// announce shows the system the track, and its cover once loaded.
+// announce shows the system the track, and its cover once loaded. Where
+// the system shows the page playing it (pageOut), the page shows it, and
+// the app nothing beside it: the app showed it too, as a second session
+// beside the page's, titled Vinyl and naming no song (#27).
 func (p *Player) announce(t *spotify.Track, artwork []byte) {
+	if o := p.pageOut(); o != nil {
+		o.w.nowPlaying(t, artwork)
+		mygo.NowPlaying.Clear()
+		p.pageShown = true
+		return
+	}
+	p.pageShown = false
 	state := mygo.PlaybackPaused
 	if p.playing {
 		state = mygo.PlaybackPlaying

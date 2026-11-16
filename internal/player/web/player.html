@@ -262,6 +262,15 @@ window.vinyl = {
     volume = Math.max(0, Math.min(1, v));
     if (cur) cur.a.volume = volume;
   },
+  // meta names what plays to the system, which WebKit shows it the page
+  // as: titled Vinyl, naming no song, without it.
+  meta(m) {
+    if (typeof MediaMetadata === 'undefined') return;
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: m.title, artist: m.artist, album: m.album,
+      artwork: m.artwork ? [{ src: m.artwork }] : [],
+    });
+  },
   // rate is how fast the track plays, its pitch kept: the default too, which
   // a load, as hls.js recovering, puts it back to.
   rate(gen, r) {

@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/subtle"
 	"embed"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -196,7 +197,7 @@ func (w *Web) eval(js string) {
 		page = w.view.Page
 	}
 	if _, err := page().EvalContext(ctx, js); err != nil {
-		log.Printf("player: %s: %v", js, err)
+		log.Printf("player: %.200s: %v", js, err) // a cover in it runs to 100 KB
 	}
 }
 
@@ -209,8 +210,19 @@ func (w *Web) send(js string) {
 	select {
 	case w.cmds <- js:
 	default:
-		log.Printf("player: dropped %s", js)
+		log.Printf("player: dropped %.200s", js)
 	}
+}
+
+// nowPlaying has the page show the system t, with its cover if loaded.
+func (w *Web) nowPlaying(t *spotify.Track, cover []byte) {
+	artwork := ""
+	if len(cover) > 0 {
+		artwork = "data:" + http.DetectContentType(cover) + ";base64," + base64.StdEncoding.EncodeToString(cover)
+	}
+	// JSON escapes what would end the script, as U+2028.
+	b, _ := json.Marshal(map[string]string{"title": t.Name, "artist": t.ArtistNames(), "album": t.Album.Name, "artwork": artwork})
+	w.send("vinyl.meta(" + string(b) + ")")
 }
 
 func (w *Web) setVolume(v float64) {

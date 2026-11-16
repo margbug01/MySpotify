@@ -3,8 +3,13 @@ package player
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/egoist/mygo"
+
+	"vinyl/internal/spotify"
 )
 
 // systemEvent reports, as the page does, what the system did to out.
@@ -100,5 +105,31 @@ func TestSystemSkips(t *testing.T) {
 	}
 	if p.at != 0 {
 		t.Fatalf("previous: at %d", p.at)
+	}
+}
+
+// WebKit shows the system the page playing as a media session of its own,
+// which the app's stood beside, titled Vinyl and naming no song (#27): the
+// page names the track while it plays it and the app shows nothing, till
+// the page is let go and the app shows it again.
+func TestPageShowsWhatPlays(t *testing.T) {
+	defer func(was bool) { pageNowPlaying = was }(pageNowPlaying)
+	pageNowPlaying = true
+	ch, p, _ := licensed(t, func(http.ResponseWriter, *http.Request) {})
+	p.PlayQueue([]spotify.Track{{ID: "1", Name: "曲终人散", Artists: []spotify.Artist{{Name: "张宇"}}}}, 0)
+	next(t, ch)
+	named := false
+	for len(p.Web.cmds) > 0 {
+		cmd := <-p.Web.cmds
+		named = named || strings.HasPrefix(cmd, "vinyl.meta(") && strings.Contains(cmd, `"title":"曲终人散"`) && strings.Contains(cmd, `"artist":"张宇"`)
+	}
+	if _, shown := mygo.NowPlaying.Info(); shown || !named {
+		t.Fatalf("while the page plays: app shows it %v, page names it %v", shown, named)
+	}
+	// Paused five minutes, the page is let go (releaseIdle).
+	p.CloseWeb()
+	p.sync()
+	if info, shown := mygo.NowPlaying.Info(); !shown || info.Title != "曲终人散" {
+		t.Fatalf("once the page is let go: app shows %q (%v)", info.Title, shown)
 	}
 }
