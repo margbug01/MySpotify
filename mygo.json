@@ -11,7 +11,9 @@
       "CFBundleDevelopmentRegion": "zh_CN",
       "CFBundleLocalizations": ["zh-Hans", "en", "it"],
       "NSLocalNetworkUsageDescription": "在「播放设备」里找到同一网络中的 Google Cast 音箱。",
-      "NSBonjourServices": ["_googlecast._tcp"]
+      "NSBonjourServices": ["_googlecast._tcp"],
+      "NSAppleScriptEnabled": true,
+      "OSAScriptingDefinition": "MySpotify.sdef"
     }
   },
   "linux": {

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE dictionary SYSTEM "file://localhost/System/Library/DTDs/sdef.dtd">
+<!-- What MySpotify plays, for scripts to read (#28): internal/app/script_darwin.go
+     answers the keys. Its codes are Music's where Music has the same property.
+     Only get, of the standard suite: the others, as save, MySpotify has nothing for. -->
+<dictionary title="MySpotify Terminology">
+	<suite name="MySpotify Suite" code="MySp" description="What MySpotify plays.">
+		<command name="get" code="coregetd" description="Get the data for an object.">
+			<cocoa class="NSGetCommand"/>
+			<direct-parameter type="specifier" description="the object for the command"/>
+			<result type="any" description="the reply for the command"/>
+		</command>
+		<class name="application" code="capp" description="MySpotify.">
+			<cocoa class="NSApplication"/>
+			<property name="player state" code="pPlS" type="player state" access="r" description="Whether it plays: stopped while nothing is loaded.">
+				<cocoa key="scriptPlayerState"/>
+			</property>
+			<property name="player position" code="pPos" type="real" access="r" description="Where the current track is, in seconds; missing value while nothing is loaded.">
+				<cocoa key="scriptPlayerPosition"/>
+			</property>
+			<property name="player rate" code="pRte" type="real" access="r" description="How fast it plays: an episode at the speed chosen for podcasts, a song at 1.">
+				<cocoa key="scriptPlayerRate"/>
+			</property>
+			<property name="current track" code="pTrk" type="track info" access="r" description="The current track or episode; missing value while nothing is loaded.">
+				<cocoa key="scriptCurrentTrack"/>
+			</property>
+		</class>
+		<enumeration name="player state" code="ePlS">
+			<enumerator name="stopped" code="kPSS"/>
+			<enumerator name="playing" code="kPSP"/>
+			<enumerator name="paused" code="kPSp"/>
+		</enumeration>
+		<record-type name="track info" code="MStI" description="A track or an episode.">
+			<property name="id" code="ID  " type="text" description="Its Spotify URI, as spotify:track:… or spotify:episode:…">
+				<cocoa key="id"/>
+			</property>
+			<property name="name" code="pnam" type="text">
+				<cocoa key="name"/>
+			</property>
+			<property name="artist" code="pArt" type="text" description="Its artists, or who publishes an episode.">
+				<cocoa key="artist"/>
+			</property>
+			<property name="album" code="pAlb" type="text" description="Its album, or an episode's podcast.">
+				<cocoa key="album"/>
+			</property>
+			<property name="duration" code="pDur" type="real" description="How long it is, in seconds.">
+				<cocoa key="duration"/>
+			</property>
+			<property name="kind" code="pKnd" type="text" description="song or episode">
+				<cocoa key="kind"/>
+			</property>
+		</record-type>
+	</suite>
+</dictionary>

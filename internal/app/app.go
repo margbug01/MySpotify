@@ -397,6 +397,7 @@ func Run() error {
 			return web, err
 		}
 		a.pl.Changed = a.playbackChanged
+		a.serveScripts()
 		a.applyHotkeys()
 		a.played, a.playedFrom = loadPlayed()
 		a.volume = a.settings.Volume

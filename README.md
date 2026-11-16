@@ -114,6 +114,23 @@ Intel 版已通过交叉编译和安装包检查，尚未在 Intel 真机验证�
 
 「设置 › 全局快捷键」还可以给播放/暂停、下一首、上一首各设一个组合键，切到别的应用也能用。
 
+### 用 AppleScript 读正在放的（macOS）
+
+脚本可以只读地查到正在放什么，写法和「音乐」App 差不多：
+
+```applescript
+tell application "MySpotify"
+	set {state, pos, rate, t} to {player state, player position, player rate, current track}
+end tell
+if t is not missing value then return name of t & " - " & artist of t & " (" & kind of t & ")"
+```
+
+- `player state`：`playing`、`paused`，什么都没加载时是 `stopped`
+- `player position`：进度（秒）；`player rate`：播放速率，播客是选好的倍速，歌曲是 1
+- `current track`：一个记录，含 `id`（Spotify URI，如 `spotify:track:…`）、`name`、`artist`、`album`、`duration`（秒）、`kind`（`song` 或 `episode`）。什么都没加载时，它和 `player position` 都是 `missing value`。它是记录不是对象，取单个字段要写 `name of (get current track)`，或者像上面那样先存进变量
+
+第一次从别的应用（「脚本编辑器」、终端里的 `osascript`）查询时，macOS 会问是否允许它控制 MySpotify，选允许即可。
+
 ## 手机和电脑接力（实验性）
 
 - **转到电脑放**：手机或网页 Spotify 的设备列表里选「MySpotify · 电脑名」。电脑的待播清单和手机上看到的是同一份，点其中一首会在原来的歌单里跳过去（这一步偶尔会被 Spotify 拒绝，见下）。

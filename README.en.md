@@ -115,6 +115,23 @@ On both: click 登录 Spotify (Sign in) and sign in on the Spotify page that ope
 
 Under 设置 › 全局快捷键 (Settings › Global shortcuts) you can also give play/pause, next and previous a key combination each that works from any app.
 
+### Read what plays with AppleScript (macOS)
+
+Scripts can read, not change, what plays, much as they read Music:
+
+```applescript
+tell application "MySpotify"
+	set {state, pos, rate, t} to {player state, player position, player rate, current track}
+end tell
+if t is not missing value then return name of t & " - " & artist of t & " (" & kind of t & ")"
+```
+
+- `player state`: `playing` or `paused`, `stopped` while nothing is loaded
+- `player position`: where it is, in seconds; `player rate`: how fast it plays, an episode at the speed chosen for podcasts, a song at 1
+- `current track`: a record of `id` (the Spotify URI, as `spotify:track:…`), `name`, `artist`, `album`, `duration` (seconds) and `kind` (`song` or `episode`). While nothing is loaded it is `missing value`, as `player position` is. Being a record, not an object, one field is `name of (get current track)`, or as above, taken from a variable
+
+The first time another app (Script Editor, `osascript` in Terminal) asks, macOS asks whether to let it control MySpotify: allow it.
+
 ## Hand off between phone and computer (experimental)
 
 - **Move playback to the computer**: choose "MySpotify · your computer's name" in the device list of Spotify on your phone or the web. The computer's queue is the same one the phone shows, and clicking a song in it jumps there in the original playlist (Spotify occasionally refuses this, see below).
