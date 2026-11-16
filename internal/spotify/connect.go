@@ -384,14 +384,13 @@ func (e *ConnectError) Error() string {
 	return s
 }
 
-func (c *Connect) Report(ref any, position, duration int64, paused bool) error {
+// Report tells Spotify where this device plays: at position of duration
+// ms, moving at speed (0 paused, else how fast it plays), which the other
+// devices showing it move their progress by.
+func (c *Connect) Report(ref any, position, duration int64, speed float64) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.seq++
-	speed := 1
-	if paused {
-		speed = 0
-	}
 	body := map[string]any{"seq_num": c.seq, "state_ref": ref, "sub_state": map[string]any{"position": position, "duration": duration, "playback_speed": speed, "media_type": "AUDIO"}, "debug_source": "vinyl"}
 	raw, err := c.request(c.ctx, http.MethodPut, "/track-playback/v1/devices/"+c.ID+"/state", "", body)
 	if err == nil && len(raw) > 0 {
@@ -400,17 +399,13 @@ func (c *Connect) Report(ref any, position, duration int64, paused bool) error {
 	return err
 }
 
-func (c *Connect) Reject(machine ConnectMachine, ref *ConnectRef, current any, position, duration int64, paused bool) error {
+func (c *Connect) Reject(machine ConnectMachine, ref *ConnectRef, current any, position, duration int64, speed float64) error {
 	if ref == nil || ref.Index < 0 || ref.Index >= len(machine.States) {
 		return errors.New(l10n.T("Connect: 无效冲突状态"))
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.seq++
-	speed := 1
-	if paused {
-		speed = 0
-	}
 	body := map[string]any{"seq_nums": []int64{c.seq}, "state_ref": current, "sub_state": map[string]any{"position": position, "duration": duration, "playback_speed": speed, "media_type": "AUDIO"}, "rejected_state_refs": []any{map[string]any{"state_machine_id": machine.ID, "state_id": machine.States[ref.Index].ID, "paused": ref.Paused}}, "debug_source": "state_conflict"}
 	raw, err := c.request(c.ctx, http.MethodPost, "/track-playback/v1/devices/"+c.ID+"/state_conflict", "", body)
 	if err != nil {

@@ -238,7 +238,7 @@ func TestConnectReportAnsweredAfterTheSongEnded(t *testing.T) {
 	}
 
 	var reported any
-	connectReport = func(_ *spotify.Connect, ref any, _, _ int64, _ bool) error {
+	connectReport = func(_ *spotify.Connect, ref any, _, _ int64, _ float64) error {
 		reported = ref
 		return nil
 	}
@@ -260,7 +260,7 @@ func TestConnectReportTurnedDown(t *testing.T) {
 	json.Unmarshal([]byte(`{"state_machine_id":"m","states":[{"state_id":"s1","track":0}],"tracks":[{"metadata":{"uri":"spotify:track:one"}}]}`), &a.connect.machine)
 	a.connect.ref = &spotify.ConnectRef{Index: 0}
 
-	connectReport = func(*spotify.Connect, any, int64, int64, bool) error {
+	connectReport = func(*spotify.Connect, any, int64, int64, float64) error {
 		return &spotify.ConnectError{Status: http.StatusBadRequest}
 	}
 	defer func() { connectReport = (*spotify.Connect).Report }()
@@ -405,5 +405,41 @@ func TestConnectCastDevicesMenuOrderAndTransfer(t *testing.T) {
 	tt.Frame()
 	if len(a.connect.jobs) != 1 || a.connect.open {
 		t.Fatal("clicking Cast speaker did not queue wakeAndTransferCast job and close menu")
+	}
+}
+
+// Connect is told how fast an episode plays here: the devices showing this
+// one moved its progress at 1× between reports, an episode at 1.5× drifting
+// behind by seconds each time. Paused it moves at 0, a song at its own pace.
+func TestConnectReportsTheSpeed(t *testing.T) {
+	a := testConnectApp(t)
+	json.Unmarshal([]byte(`{"state_machine_id":"m","states":[{"state_id":"s1","track":0}],"tracks":[{"metadata":{"uri":"spotify:episode:ep"}}]}`), &a.connect.machine)
+	a.connect.ref = &spotify.ConnectRef{Index: 0}
+	var speed float64
+	connectReport = func(_ *spotify.Connect, _ any, _, _ int64, s float64) error {
+		speed = s
+		return nil
+	}
+	defer func() { connectReport = (*spotify.Connect).Report }()
+	report := func() float64 {
+		t.Helper()
+		a.reportConnect()
+		if err := (<-a.connect.jobs)(); err != nil {
+			t.Fatal(err)
+		}
+		return speed
+	}
+	a.pl.Cue([]spotify.Track{{ID: "ep", Name: "Episode", Episode: true, Duration: 3600 * 1000}})
+	a.pl.SetRate(1.5)
+	if got := report(); got != 0 {
+		t.Fatalf("paused: reported %v", got)
+	}
+	a.pl.Hold(time.Minute)
+	if got := report(); got != 1.5 {
+		t.Fatalf("episode at 1.5×: reported %v", got)
+	}
+	a.pl.Cue([]spotify.Track{{ID: "song", Name: "Song", Duration: 200000}})
+	if got := report(); got != 1 {
+		t.Fatalf("song: reported %v", got)
 	}
 }

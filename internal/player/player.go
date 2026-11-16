@@ -848,6 +848,9 @@ func (p *Player) SetRate(r float64) {
 	}
 	if p.track != nil {
 		p.announce(p.track, p.cover)
+		// Changed tells Spotify Connect at once, whose other devices move
+		// this one's progress at the speed it last reported.
+		p.sync()
 	}
 }
 

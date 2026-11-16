@@ -381,6 +381,14 @@ func (a *app) connectTick(state *connectState) {
 	})
 }
 
+// connectSpeed is how fast what plays here moves, for Connect: 0 paused.
+func (a *app) connectSpeed() float64 {
+	if !a.pl.Playing() {
+		return 0
+	}
+	return a.pl.Rate()
+}
+
 func (a *app) reportConnect() {
 	state := a.connect
 	if state == nil || state.applying || !state.receiver || state.ref == nil || a.pl.IsRemote() || a.pl.Loading() {
@@ -399,10 +407,11 @@ func (a *app) reportConnect() {
 		// The page's clock runs a little past the end of the song.
 		pos = min(pos, duration)
 	}
+	speed := a.connectSpeed()
 	a.connectJob(func() error {
 		// Nothing the listener did: what goes wrong goes to the log, not to a
 		// toast that would come back every five seconds.
-		err := connectReport(state.client, ref, pos, duration, paused)
+		err := connectReport(state.client, ref, pos, duration, speed)
 		if err != nil {
 			log.Printf("connect: %v (state %s, %d of %d ms)", err, sent, pos, duration)
 		}
@@ -557,7 +566,7 @@ func (a *app) connectEvent(event spotify.ConnectEvent) {
 				if !a.pl.IsRemote() {
 					a.pl.StopConnect()
 				}
-				a.connectJob(func() error { return state.client.Report(nil, 0, 0, true) })
+				a.connectJob(func() error { return state.client.Report(nil, 0, 0, 0) })
 				return
 			}
 			if len(command.Previous) > 0 && string(command.Previous) != "null" && state.ref != nil {
@@ -569,9 +578,9 @@ func (a *app) connectEvent(event spotify.ConnectEvent) {
 				if json.Unmarshal(command.Previous, &previous) == nil && (previous.Machine != state.machine.ID || previous.State != state.machine.States[state.ref.Index].ID || previous.Paused != state.ref.Paused) {
 					state.err = l10n.T("Connect 状态冲突，正在重新同步")
 					current := map[string]any{"state_machine_id": state.machine.ID, "state_id": state.machine.States[state.ref.Index].ID, "paused": state.ref.Paused}
-					position, duration, paused := a.pl.Position().Milliseconds(), a.pl.Duration().Milliseconds(), !a.pl.Playing()
+					position, duration, speed := a.pl.Position().Milliseconds(), a.pl.Duration().Milliseconds(), a.connectSpeed()
 					a.connectJob(func() error {
-						return state.client.Reject(command.Machine, command.Ref, current, position, duration, paused)
+						return state.client.Reject(command.Machine, command.Ref, current, position, duration, speed)
 					})
 					return
 				}

@@ -60,3 +60,16 @@ func TestPositionMovesAtTheRate(t *testing.T) {
 		t.Fatalf("unset: %v", got)
 	}
 }
+
+// A speed chosen while an episode plays is told at once (Changed), for
+// Spotify Connect, whose other devices move its progress at that speed.
+func TestChangingTheRateTells(t *testing.T) {
+	p := New(func(func()) {})
+	p.Cue([]spotify.Track{{ID: "e", Episode: true}})
+	told := 0
+	p.Changed = func() { told++ }
+	p.SetRate(2)
+	if told == 0 {
+		t.Fatal("Changed not called")
+	}
+}
