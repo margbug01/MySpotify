@@ -77,6 +77,7 @@ type Player struct {
 	shuffle bool
 	repeat  RepeatMode
 	volume  float64
+	rate    float64 // how fast episodes play, 0 as 1; songs play at their own pace
 
 	// A radio goes on with the tracks its feed gives, as the queue nears
 	// its end, for as long as nothing else is played.
@@ -206,6 +207,10 @@ func (p *Player) announce(t *spotify.Track, artwork []byte) {
 	if p.playing {
 		state = mygo.PlaybackPlaying
 	}
+	rate := 1.0
+	if t.Episode && p.rate > 0 {
+		rate = p.rate
+	}
 	mygo.NowPlaying.Set(mygo.NowPlayingInfo{
 		Title:    t.Name,
 		Artist:   t.ArtistNames(),
@@ -213,6 +218,7 @@ func (p *Player) announce(t *spotify.Track, artwork []byte) {
 		Artwork:  artwork,
 		Duration: t.Length(),
 		Position: p.SongPosition(),
+		Rate:     rate,
 		State:    state,
 		Commands: mygo.MediaPlay | mygo.MediaPause | mygo.MediaNext | mygo.MediaPrevious | mygo.MediaSeek,
 	})
@@ -831,6 +837,29 @@ func (p *Player) SetVolume(v float64) {
 	p.applyGain()
 }
 
+// rated is an Output that plays faster or slower, as the web player's.
+type rated interface{ SetRate(float64) }
+
+// SetRate has episodes play at r times their pace, their pitch kept.
+func (p *Player) SetRate(r float64) {
+	p.rate = r
+	if out, ok := p.out.(rated); ok {
+		out.SetRate(p.Rate())
+	}
+	if p.track != nil {
+		p.announce(p.track, p.cover)
+	}
+}
+
+// Rate is how fast what plays plays: an episode at the rate set, a song at
+// its own pace, 1.
+func (p *Player) Rate() float64 {
+	if p.track != nil && p.track.Episode && p.rate > 0 {
+		return p.rate
+	}
+	return 1
+}
+
 // applyGain sets the volume of what plays: the listener's, which the ear
 // hears in powers.
 func (p *Player) applyGain() {
@@ -1096,6 +1125,9 @@ func (p *Player) open(gen int, m *spotify.Media, v *spotify.Video) {
 	}
 	p.fade.attach(p.out, level)
 	p.applyGain()
+	if out, ok := p.out.(rated); ok && p.Rate() != 1 {
+		out.SetRate(p.Rate())
+	}
 	p.out.OnEnd(func() {
 		p.post(func() {
 			if gen == p.gen {

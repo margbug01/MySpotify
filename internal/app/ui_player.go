@@ -2,6 +2,7 @@ package app
 
 import (
 	"math"
+	"strconv"
 	"time"
 
 	"github.com/egoist/mygo/plugins/glass"
@@ -119,7 +120,7 @@ func (a *app) scrubber(c *ui.Context, st *scrubState, track, fill ui.Color, heig
 		case pl.Playing() && !st.active && dur > 0:
 			// Again when the fill has moved a pixel of the screen, which
 			// takes a good part of a second, rather than every frame.
-			perPixel := dur / float64(r.W*p.Scale())
+			perPixel := dur / float64(r.W*p.Scale()) / pl.Rate()
 			p.After(max(16*time.Millisecond, secs(perPixel)))
 		}
 	})
@@ -166,7 +167,7 @@ func drawSmoke(p *ui.Painter, x, y float32, now time.Time, loud float32, color u
 func (a *app) tickTimes(c *ui.Context) {
 	if a.pl.Playing() && a.pl.Ready() {
 		pos := a.pl.Position()
-		c.After(time.Second - pos%time.Second + 10*time.Millisecond)
+		c.After(time.Duration(float64(time.Second-pos%time.Second)/a.pl.Rate()) + 10*time.Millisecond)
 	}
 }
 
@@ -307,15 +308,21 @@ func (a *app) volumeSlider(c *ui.Context, color, track ui.Color, width float32) 
 }
 
 // transport is the row of controls: shuffle, previous, play, next, repeat.
+// An episode playing here has its speed where shuffle goes, as podcasts
+// are listened to in order.
 func (a *app) transport(c *ui.Context, color, dim, on ui.Color, size float32) {
 	pl := a.pl
 	ui.Row(c).Gap(size * 0.5).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
-		shuffle := dim
-		if pl.Shuffle() {
-			shuffle = on
-		}
-		if iconButton(c.Key("shuffle"), iconShuffle, size*0.62, shuffle, l10n.T("随机播放")).Clicked() {
-			pl.ToggleShuffle()
+		if tr := pl.Current(); tr != nil && tr.Episode && !a.isRemote() {
+			a.rateButton(c.Key("rate"), dim, on, size)
+		} else {
+			shuffle := dim
+			if pl.Shuffle() {
+				shuffle = on
+			}
+			if iconButton(c.Key("shuffle"), iconShuffle, size*0.62, shuffle, l10n.T("随机播放")).Clicked() {
+				pl.ToggleShuffle()
+			}
 		}
 		if iconButton(c.Key("prev"), iconPrev, size*0.85, color, l10n.T("上一首")).Clicked() {
 			pl.Prev()
@@ -337,6 +344,46 @@ func (a *app) transport(c *ui.Context, color, dim, on ui.Color, size float32) {
 			pl.CycleRepeat()
 		}
 	})
+}
+
+// speeds are the rates an episode plays at, in the rate button's menu.
+var speeds = []float64{0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3}
+
+func speedLabel(r float64) string { return strconv.FormatFloat(r, 'f', -1, 64) + "×" }
+
+// rateButton shows how fast the episode plays, in the color on unless at
+// its own pace, and opens a menu of speeds that sets it.
+func (a *app) rateButton(c *ui.Context, dim, on ui.Color, size float32) {
+	rate := a.pl.Rate()
+	color := dim
+	if rate != 1 {
+		color = on
+	}
+	side := size*0.62 + 16 // shuffle's, whose place it takes
+	b := ui.ButtonBase(c).Height(side).MinWidth(side).PaddingX(4).Shrink(0).Center().Radius(999).
+		Label(l10n.T("播放速度")).TextColor(color)
+	bg := ui.Transparent
+	if b.Hovered() {
+		bg = ui.RGBA(128, 128, 128, 0.14)
+	}
+	b.Background(b.AnimateColor("bg", bg, ui.Animation{Duration: 120 * time.Millisecond}))
+	b.Children(func() {
+		ui.Text(c, speedLabel(rate)).FontSize(max(10, size*0.5)).FontWeight(600).FontFeatures("tnum").SingleLine()
+	})
+	b.Menu(func(m *ui.Menu) {
+		for _, r := range speeds {
+			if m.Item(speedLabel(r)).Radio(r == rate).Chosen() {
+				a.setRate(r)
+			}
+		}
+	})
+}
+
+// setRate has episodes play at r from now on.
+func (a *app) setRate(r float64) {
+	a.pl.SetRate(r)
+	a.settings.PodcastRate = r
+	a.settings.save()
 }
 
 // playerBar runs along the foot of the content: what plays, its controls

@@ -402,6 +402,7 @@ func Run() error {
 		a.volume = a.settings.Volume
 		a.syncLocalVolume(a.volume)
 		a.pl.SetVolume(a.volume)
+		a.pl.SetRate(a.settings.PodcastRate)
 		a.win = mygo.NewWindow(mygo.WindowOptions{
 			Title:         appName,
 			Width:         1180,

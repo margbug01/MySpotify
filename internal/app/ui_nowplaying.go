@@ -334,7 +334,7 @@ func (a *app) lyricsPane(c *ui.Context, tr *spotify.Track, h float32) {
 	cur := lyrics.Index(lines, pos)
 	// Redraw as the next line begins.
 	if pl.Playing() && cur+1 < len(lines) {
-		c.After(lines[cur+1].At - pos + 20*time.Millisecond)
+		c.After(time.Duration(float64(lines[cur+1].At-pos)/pl.Rate()) + 20*time.Millisecond)
 	}
 	if a.lyricTrack != tr.ID {
 		a.lyricTrack, a.lyricAt = tr.ID, -2

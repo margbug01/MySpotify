@@ -429,5 +429,6 @@
   "音响拒绝启动 Spotify 应用": "Speaker refused to launch the Spotify app",
   "音响拒绝了 Spotify 认证": "Speaker rejected Spotify authentication",
   "音响未返回有效的设备信息": "Speaker did not return valid device info",
-  "Cast 握手超时": "Cast handshake timed out"
+  "Cast 握手超时": "Cast handshake timed out",
+  "播放速度": "Playback speed"
 }

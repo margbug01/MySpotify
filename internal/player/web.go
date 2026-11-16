@@ -570,6 +570,7 @@ type webOut struct {
 	mu      sync.Mutex
 	pos     time.Duration // where it was at at
 	at      time.Time
+	rate    float64 // how fast it plays, its time moving rate seconds a second; 0 is 1
 	running bool // the page plays it: its time moves
 	playing bool // it was asked to play, and has not ended
 	asked   int  // how many times Vinyl asked the page to play or pause
@@ -676,6 +677,15 @@ func (o *webOut) Seek(t time.Duration) {
 	o.w.send(fmt.Sprintf("vinyl.seek(%d,%.3f)", o.gen, t.Seconds()))
 }
 
+// SetRate has the track play at rate r, its pitch kept.
+func (o *webOut) SetRate(r float64) {
+	o.mu.Lock()
+	now := time.Now()
+	o.pos, o.at, o.rate = o.position(now), now, r
+	o.mu.Unlock()
+	o.w.send(fmt.Sprintf("vinyl.rate(%d,%g)", o.gen, r))
+}
+
 func (o *webOut) Position() time.Duration {
 	o.mu.Lock()
 	defer o.mu.Unlock()
@@ -685,7 +695,11 @@ func (o *webOut) Position() time.Duration {
 func (o *webOut) position(now time.Time) time.Duration {
 	p := o.pos
 	if o.running {
-		p += now.Sub(o.at)
+		d := now.Sub(o.at)
+		if o.rate > 0 {
+			d = time.Duration(float64(d) * o.rate)
+		}
+		p += d
 	}
 	return min(max(p, 0), o.dur)
 }

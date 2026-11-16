@@ -262,6 +262,13 @@ window.vinyl = {
     volume = Math.max(0, Math.min(1, v));
     if (cur) cur.a.volume = volume;
   },
+  // rate is how fast the track plays, its pitch kept: the default too, which
+  // a load, as hls.js recovering, puts it back to.
+  rate(gen, r) {
+    if (!cur || cur.gen !== gen) return;
+    cur.a.defaultPlaybackRate = r;
+    cur.a.playbackRate = r;
+  },
   unload(gen) {
     if (!cur || cur.gen !== gen) return;
     clearTimeout(cur.pauseTimer);

@@ -429,5 +429,6 @@
   "音响拒绝启动 Spotify 应用": "L'altoparlante ha rifiutato l'avvio dell'app Spotify",
   "音响拒绝了 Spotify 认证": "L'altoparlante ha rifiutato l'autenticazione Spotify",
   "音响未返回有效的设备信息": "L'altoparlante non ha restituito informazioni valide sul dispositivo",
-  "Cast 握手超时": "Timeout dell'handshake Cast"
+  "Cast 握手超时": "Timeout dell'handshake Cast",
+  "播放速度": "Velocità di riproduzione"
 }

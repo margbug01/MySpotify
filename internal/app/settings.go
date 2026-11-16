@@ -38,6 +38,8 @@ type settings struct {
 	LyricsStage bool `json:"lyricsStage"`
 	// Volume is where the volume was left, from 0 to 1.
 	Volume float64 `json:"volume"`
+	// PodcastRate is how fast episodes play, 0 at their own pace.
+	PodcastRate float64 `json:"podcastRate,omitempty"`
 	// Fog fills Now Playing's backdrop with fog of the cover's color,
 	// rising and swelling with the bass: an experiment the listener turns
 	// on.
