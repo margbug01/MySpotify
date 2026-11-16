@@ -571,9 +571,9 @@ type webOut struct {
 	pos     time.Duration // where it was at at
 	at      time.Time
 	rate    float64 // how fast it plays, its time moving rate seconds a second; 0 is 1
-	running bool // the page plays it: its time moves
-	playing bool // it was asked to play, and has not ended
-	asked   int  // how many times Vinyl asked the page to play or pause
+	running bool    // the page plays it: its time moves
+	playing bool    // it was asked to play, and has not ended
+	asked   int     // how many times Vinyl asked the page to play or pause
 	onEnd   func()
 	// onSystem hears what the system did to the page rather than Vinyl.
 	onSystem func(string)
