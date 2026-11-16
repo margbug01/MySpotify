@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/egoist/mygo/ui"
 
@@ -217,10 +218,22 @@ func (a *app) playlistPage(c *ui.Context) {
 		a.trackSkeleton(c, s, false, func(c *ui.Context) { a.playlistHeaderSkeleton(c, s) })
 		return
 	}
-	a.trackRows(c, pl.Tracks, false, func(c *ui.Context) { a.playlistHeader(c, pl) }, nil)
+	// The filter's matches as the indexes in the playlist they sit at, so
+	// that the rows keep the positions they have there; nil leaves the
+	// playlist whole, as when the filter holds nothing.
+	orig := filterTracks(pl.Tracks, a.plFilter)
+	var footer func(c *ui.Context)
+	if orig != nil && len(orig) == 0 {
+		footer = func(c *ui.Context) {
+			ui.Column(c).Padding(20, 12, 0, 12).Children(func() {
+				ui.Text(c, l10n.T("没有匹配的歌曲")).TextColor(a.pal.muted).FontSize(13)
+			})
+		}
+	}
+	a.trackRows(c, pl.Tracks, false, func(c *ui.Context) { a.playlistHeader(c, pl, orig) }, footer, orig)
 }
 
-func (a *app) playlistHeader(c *ui.Context, pl *spotify.Playlist) {
+func (a *app) playlistHeader(c *ui.Context, pl *spotify.Playlist, orig []int) {
 	p := a.pal
 	ui.Row(c).Gap(28).AlignItems(ui.End).Padding(0, 0, 26, 0).Children(func() {
 		ui.Box(c).Size(212, 212).Radius(14).Shadow(0, 18, 40, -10, p.cardShade).Children(func() {
@@ -258,44 +271,81 @@ func (a *app) playlistHeader(c *ui.Context, pl *spotify.Playlist) {
 			if d := strings.TrimSpace(pl.Description); d != "" {
 				ui.Text(c, strings.ReplaceAll(d, "\n", " ")).FontSize(12.5).TextColor(p.muted).MaxLines(2).LineHeight(1.45).Margin(2, 0, 0, 0)
 			}
-			ui.Row(c).Gap(10).Margin(10, 0, 0, 0).Children(func() {
-				if pillButton(c.Key("play"), iconPlay, l10n.T("播放"), p.accent, p.onAccent).Clicked() {
-					if a.pl.Shuffle() {
-						a.pl.ToggleShuffle()
+			ui.Row(c).Gap(10).Margin(10, 0, 0, 0).AlignItems(ui.Center).Justify(ui.SpaceBetween).Children(func() {
+				// The pills play the playlist, or the matches of a filter,
+				// in the order the playlist has them.
+				ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
+					list := pl.Tracks
+					if orig != nil {
+						list = tracksAt(pl.Tracks, orig)
 					}
-					a.playFrom(spotify.HomeItem{List: pl}, pl.Tracks, firstPlayable(pl.Tracks))
-				}
-				if pillButton(c.Key("shuffle"), iconShuffle, l10n.T("随机播放"), p.hover.Over(p.bg), p.text).Clicked() {
-					if !a.pl.Shuffle() {
-						a.pl.ToggleShuffle()
-					}
-					a.playFrom(spotify.HomeItem{List: pl}, pl.Tracks, randomPlayable(pl.Tracks))
-				}
-				if a.profile != nil && !pl.Liked() && a.editable(pl.ID) == nil {
-					icon, label := iconPlus, l10n.T("收藏")
-					if a.isSaved(pl.ID) {
-						icon, label = iconCheck, l10n.T("已收藏")
-					}
-					if pillButton(c.Key("save"), icon, label, p.hover.Over(p.bg), p.text).Clicked() {
-						a.toggleSaved(pl)
-					}
-				}
-				if mine := a.editable(pl.ID); mine != nil {
-					more := iconButton(c.Key("more"), iconMore, 18, p.muted, l10n.T("更多"))
-					more.Menu(func(m *ui.Menu) {
-						if m.Item(l10n.T("重命名…")).Chosen() {
-							a.startRename(mine)
+					if pillButton(c.Key("play"), iconPlay, l10n.T("播放"), p.accent, p.onAccent).Clicked() {
+						if a.pl.Shuffle() {
+							a.pl.ToggleShuffle()
 						}
-						m.Separator()
-						if m.Item(l10n.T("删除歌单…")).Chosen() {
-							a.confirmDelete(mine)
+						a.playFrom(spotify.HomeItem{List: pl}, list, firstPlayable(list))
+					}
+					if pillButton(c.Key("shuffle"), iconShuffle, l10n.T("随机播放"), p.hover.Over(p.bg), p.text).Clicked() {
+						if !a.pl.Shuffle() {
+							a.pl.ToggleShuffle()
 						}
-					})
+						a.playFrom(spotify.HomeItem{List: pl}, list, randomPlayable(list))
+					}
+					if a.profile != nil && !pl.Liked() && a.editable(pl.ID) == nil {
+						icon, label := iconPlus, l10n.T("收藏")
+						if a.isSaved(pl.ID) {
+							icon, label = iconCheck, l10n.T("已收藏")
+						}
+						if pillButton(c.Key("save"), icon, label, p.hover.Over(p.bg), p.text).Clicked() {
+							a.toggleSaved(pl)
+						}
+					}
+					if mine := a.editable(pl.ID); mine != nil {
+						more := iconButton(c.Key("more"), iconMore, 18, p.muted, l10n.T("更多"))
+						more.Menu(func(m *ui.Menu) {
+							if m.Item(l10n.T("重命名…")).Chosen() {
+								a.startRename(mine)
+							}
+							m.Separator()
+							if m.Item(l10n.T("删除歌单…")).Chosen() {
+								a.confirmDelete(mine)
+							}
+						})
+					}
+				})
+				// The filter is the row's last: a quiet icon as high as the
+				// pills beside it, which opens its field in place. Left
+				// empty, the field closes as the focus leaves it, the row
+				// going back to its icon.
+				if a.filterable(pl) {
+					if a.filterOpen {
+						if c.FocusWithin(a.filterBox) {
+							a.filterHadFocus = true
+						} else if a.filterHadFocus && a.plFilter == "" {
+							a.filterOpen, a.filterHadFocus = false, false
+						}
+					}
+					if !a.filterOpen {
+						if iconButton(c.Key("filter"), iconSearch, 18, p.muted, l10n.T("筛选")).Clicked() {
+							a.filterOpen = true
+							a.filterBox.Focus(c)
+						}
+					} else {
+						ui.SearchField(c.Key("filterbox"), &a.plFilter).
+							Label(l10n.T("筛选")).
+							Placeholder(l10n.T("筛选")).Bind(&a.filterBox).
+							Radius(999).Height(32).Padding(6, 14, 6, 14).
+							Width(200).Shrink(1).MinWidth(86)
+					}
 				}
 			})
 		})
 	})
 }
+
+// filterMinTracks is the length from which a list is worth filtering: a
+// screenful and more, where finding a song by name pays.
+const filterMinTracks = 12
 
 func (a *app) searchPage(c *ui.Context) {
 	if len(a.results) == 0 && a.searching {
@@ -348,12 +398,14 @@ func (a *app) searchPage(c *ui.Context) {
 			}
 			ui.Text(c, l10n.T("歌曲")).FontSize(19).FontWeight(700).LetterSpacing(-0.3).Margin(4, 0, 6, 0)
 		})
-	}, nil)
+	}, nil, nil)
 }
 
 // trackRows lists tracks under a header, and over a footer if any, which
-// scroll with them; a click plays the list from the track clicked.
-func (a *app) trackRows(c *ui.Context, tracks []spotify.Track, covers bool, header, footer func(c *ui.Context)) {
+// scroll with them; a click plays the list from the track clicked. A filter
+// passes orig, the indexes of its matches: the rows show those tracks only,
+// numbered by where they sit in the list, and a click plays the track alone.
+func (a *app) trackRows(c *ui.Context, tracks []spotify.Track, covers bool, header, footer func(c *ui.Context), orig []int) {
 	p := a.pal
 	cur := a.pl.Current()
 	w, _ := c.Size()
@@ -373,7 +425,12 @@ func (a *app) trackRows(c *ui.Context, tracks []spotify.Track, covers bool, head
 	if isShow {
 		timeWidth = 148
 	}
-	n := len(tracks) + 1
+	// The header, footer and end mark follow the rows the filter leaves.
+	rows := len(tracks)
+	if orig != nil {
+		rows = len(orig)
+	}
+	n := rows + 1
 	if footer != nil {
 		n++
 	}
@@ -385,18 +442,25 @@ func (a *app) trackRows(c *ui.Context, tracks []spotify.Track, covers bool, head
 			})
 			return
 		}
-		if i == len(tracks)+1 {
+		if i == rows+1 {
 			ui.Column(c).Children(func() {
 				footer(c)
 				a.endMark(c)
 			})
 			return
 		}
-		if i == len(tracks) && footer == nil {
+		if i == rows && footer == nil {
 			defer a.endMark(c)
 		}
 		i--
-		tr := &tracks[i]
+		// Filtered, the row shows the track sitting where orig says, which
+		// its number keeps: it reads as where it is in the list, however
+		// few the matches are.
+		at := i
+		if orig != nil {
+			at = orig[i]
+		}
+		tr := &tracks[at]
 		playing := cur != nil && cur.ID == tr.ID
 		row := ui.ButtonBase(c.Key(tr.ID)).Height(54).PaddingX(12).Gap(14).Radius(10).AlignItems(ui.Center).FocusRing(false).Label(tr.Name).
 			ContextMenu(a.songItems(tr, pid))
@@ -420,7 +484,7 @@ func (a *app) trackRows(c *ui.Context, tracks []spotify.Track, covers bool, head
 				case hovered && tr.Playable():
 					ui.Icon(c, iconPlay).Size(13, 13).TextColor(p.text)
 				default:
-					ui.Textf(c, "%d", i+1).FontSize(13).FontFeatures("tnum").TextColor(p.faint)
+					ui.Textf(c, "%d", at+1).FontSize(13).FontFeatures("tnum").TextColor(p.faint)
 				}
 			})
 			if covers {
@@ -436,7 +500,11 @@ func (a *app) trackRows(c *ui.Context, tracks []spotify.Track, covers bool, head
 					if !tr.Playable() {
 						ui.Text(c, l10n.T("不可播放")).FontSize(9).FontWeight(800).TextColor(p.accent).Padding(0, 4).Radius(3).Border(1, p.accent.Alpha(0.6))
 					} else if tr.Video && a.mvTag(c.Key("mv"), tr).Clicked() {
-						a.playMV(a.routeItem(), tracks, i)
+						if orig != nil {
+							a.playMV(a.routeItem(), tracks[at:at+1], 0)
+						} else {
+							a.playMV(a.routeItem(), tracks, i)
+						}
 					}
 					a.artistLinks(c.Key("by"), tr.Artists, 12.5, p.muted, p.text)
 				})
@@ -467,9 +535,80 @@ func (a *app) trackRows(c *ui.Context, tracks []spotify.Track, covers bool, head
 			})
 		})
 		if row.Clicked() && tr.Playable() {
-			a.playFrom(a.routeItem(), tracks, i)
+			if orig != nil {
+				// Filtered, the track alone is the queue, which the filter
+				// holds nothing else of.
+				a.playFrom(a.routeItem(), tracks[at:at+1], 0)
+			} else {
+				a.playFrom(a.routeItem(), tracks, i)
+			}
 		}
 	}).Grow(1).Padding(top+pageGap, pagePad-12, bottom+32, pagePad-12).ScrollbarInsets(top, 0, bottom, 0)
+}
+
+// filterTracks returns the indexes of the tracks the query's words all
+// match, a word matching a track's name, an artist or its album as a run of
+// characters appearing there in order, however far apart. Empty of words,
+// it leaves the playlist whole, as nil; a query with no matches keeps an
+// empty but non-nil set, so the two never read as one another.
+func filterTracks(tracks []spotify.Track, query string) []int {
+	words := strings.Fields(query)
+	if len(words) == 0 {
+		return nil
+	}
+	// The words fold once here, and the tracks fold as their runes pass,
+	// so the filter, which runs every frame, allocates nothing per track.
+	terms := make([][]rune, len(words))
+	for i, w := range words {
+		terms[i] = []rune(strings.ToLower(w))
+	}
+	out := make([]int, 0)
+	for i := range tracks {
+		tr := &tracks[i]
+		matched := true
+		for _, t := range terms {
+			hit := matchSubseq(t, tr.Name) || matchSubseq(t, tr.Album.Name)
+			for j := 0; j < len(tr.Artists) && !hit; j++ {
+				hit = matchSubseq(t, tr.Artists[j].Name)
+			}
+			if !hit {
+				matched = false
+				break
+			}
+		}
+		if matched {
+			out = append(out, i)
+		}
+	}
+	return out
+}
+
+// matchSubseq reports whether term shows in s as its characters in order,
+// case letting nothing differ: a subsequence, as a fuzzy finder reads it.
+// s is not lowered; its runes fold as they pass, which reads the same as
+// strings.ToLower would, without a copy of s. Term is never empty, the
+// words of a query being all that Fields lets through.
+func matchSubseq(term []rune, s string) bool {
+	j := 0
+	for _, r := range s {
+		if unicode.ToLower(r) == term[j] {
+			j++
+			if j == len(term) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// tracksAt gathers the tracks sitting at the indexes orig keeps, in the
+// order they are listed in, which the filter's matches keep of the playlist.
+func tracksAt(tracks []spotify.Track, orig []int) []spotify.Track {
+	out := make([]spotify.Track, len(orig))
+	for j, i := range orig {
+		out[j] = tracks[i]
+	}
+	return out
 }
 
 // nowPlayingBars dance in the row of the track playing.

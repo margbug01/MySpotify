@@ -124,7 +124,7 @@ func (a *app) artistPage(c *ui.Context) {
 	}
 	a.trackRows(c, pg.TopTracks, true,
 		func(c *ui.Context) { a.artistHeader(c, pg) },
-		func(c *ui.Context) { a.artistFooter(c, pg) })
+		func(c *ui.Context) { a.artistFooter(c, pg) }, nil)
 }
 
 // artistHeader is the top of an artist's page: their banner, if they have
