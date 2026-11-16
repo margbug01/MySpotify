@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"runtime/pprof"
+	"strconv"
 	"time"
 
 	"github.com/egoist/mygo"
@@ -334,6 +335,10 @@ func init() {
 					tracks := a.playlists[list].Tracks
 					a.volume = 0
 					a.pl.SetVolume(0)
+					// NM_RATE=1.5: episodes at that speed.
+					if r, err := strconv.ParseFloat(os.Getenv("NM_RATE"), 64); err == nil {
+						a.pl.SetRate(r)
+					}
 					// NM_VIDEO=1: the video of one that has one, in Now
 					// Playing.
 					if os.Getenv("NM_VIDEO") != "" {

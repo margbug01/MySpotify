@@ -40,7 +40,7 @@ go tool mygo build
 The icons are all drawn by `tools/icons.py` (on Windows, with Pillow, using headless Edge to render the SVGs). `resources/icon.svg`/`icon.png` is the program's icon; `icon-small.svg` is a simplified version for 16–24 pixels (two grooves, thicker); `icon.ico` combines the two by size. `internal/app/tray.png` is the template icon for the tray and the Mac menu bar (only black and transparent: drawn white automatically on a dark Windows taskbar, tinted by macOS itself). `AppIcon.icon` is the Icon Composer document for the Mac Dock (light and dark backgrounds, `macos.icon` in `mygo.json`; it's compiled in only when `mygo build` runs on a Mac with Xcode 26, otherwise falling back to an `.icns` made from `icon.png`). After changing the icon or version, run `python tools/icons.py` first, then regenerate `rsrc_windows_amd64.syso`, which holds the icon, version information and manifest (also change the version in `mygo.json`):
 
 ```
-go run github.com/tc-hib/go-winres@v0.3.3 simply --icon resources/icon.ico --manifest gui --product-name MySpotify --file-description MySpotify --product-version 0.4.27 --file-version 0.4.27 --original-filename MySpotify.exe --arch amd64 --out rsrc
+go run github.com/tc-hib/go-winres@v0.3.3 simply --icon resources/icon.ico --manifest gui --product-name MySpotify --file-description MySpotify --product-version 0.4.28 --file-version 0.4.28 --original-filename MySpotify.exe --arch amd64 --out rsrc
 ```
 
 ### Releasing
@@ -73,7 +73,7 @@ Logs (including stack traces from crashes) go to `vinyl.log` in the settings fol
 ### Debugging
 
 - `NM_SHOTS=<dir>`: walks through the home page, charts, a playlist, Now Playing, the queue and search, taking a screenshot at each step (muted).
-- `NM_SHOTS=<dir> NM_SCENE=once`: silently plays a song from the charts for 10 seconds (`NM_PLAY=<playlist/album/podcast URI>` plays the first of that list instead), asking for only one license, and prints the playback state and cache size. Use this first to verify real playback. Add `NM_VIDEO=1` to play the video of a song that has one (music videos, video podcasts), stopping on Now Playing.
+- `NM_SHOTS=<dir> NM_SCENE=once`: silently plays a song from the charts for 10 seconds (`NM_PLAY=<playlist/album/podcast URI>` plays the first of that list instead), asking for only one license, and prints the playback state and cache size. Use this first to verify real playback. Add `NM_VIDEO=1` to play the video of a song that has one (music videos, video podcasts), stopping on Now Playing. Add `NM_RATE=2` to play episodes at that speed (one hosted outside Spotify plays here, as `spotify:show:2MAi0BvDc6GTFvKFPXnkCL`).
 - `NM_SHOTS=<dir> NM_SCENE=play`: verifies playback in full (starting, seeking to the end into the next song, pause and resume, next). It takes several licenses, so don't run it repeatedly.
 - `NM_SHOTS=<dir> NM_SCENE=readme`: takes the README's screenshots with real data, the account's name shown as Alex (in the home page's titles too), without playing. Then run `python tools/readme_shots.py <dir> docs/screenshots` for the WebPs with rounded corners and a shadow. This scene writes settings and the playback session on exit; to keep yours untouched, point `APPDATA` elsewhere when running it.
 - `NM_SHOTS=<dir> NM_SCENE=connect`: a probe for Connect registration that plays no audio and unregisters the test device at the end.
