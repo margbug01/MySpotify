@@ -234,7 +234,7 @@ func (d *desk) lyrics(c *ui.Context) {
 			if wait := lyricChange(lines, lyrics.Index(lines, pos), pos); wait > 0 {
 				c.After(time.Duration(float64(wait)/pl.Rate()) + 20*time.Millisecond)
 				if cur >= 0 && !resting {
-					fade.change = pos + wait
+					fade.change = deskGoes(lines, cur, pos, wait)
 				}
 			}
 		}
@@ -289,6 +289,16 @@ func (d *desk) lyrics(c *ui.Context) {
 	if playing {
 		fade.frames(c)
 	}
+}
+
+// deskGoes returns when line cur, sung at pos, dissolves, the lyrics
+// changing in wait: as another line takes its place. 0 when it stays, as
+// the last line does to the end, dimmed: it dissolved, and came back.
+func deskGoes(lines []lyrics.Line, cur int, pos, wait time.Duration) time.Duration {
+	if next, _ := deskLine(lines, pos+wait+20*time.Millisecond); next == cur {
+		return 0
+	}
+	return pos + wait
 }
 
 // deskFade is where the words of the line shown are in coming in and going,

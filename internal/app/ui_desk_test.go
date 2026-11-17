@@ -303,6 +303,22 @@ func TestDeskFadeGoesWordByWord(t *testing.T) {
 	}
 }
 
+// A line dissolves only as another takes its place: the last, sung, stays
+// dimmed to the end, where it dissolved and came back through the outro.
+func TestDeskLastLineStays(t *testing.T) {
+	a, _, _ := playingApp()
+	lines, _ := a.pl.Lyrics()
+	goes := func(cur int, pos time.Duration) time.Duration {
+		return deskGoes(lines, cur, pos, lyricChange(lines, cur, pos))
+	}
+	if at := goes(1, 12*time.Second); at != 16*time.Second {
+		t.Errorf("a line before a break dissolves at %v, not as the break begins", at)
+	}
+	if at := goes(len(lines)-1, lines[len(lines)-1].At+2*time.Second); at != 0 {
+		t.Errorf("the last line dissolves at %v", at)
+	}
+}
+
 // With NM_FRAMES set, saves a strip of the desktop lyrics, a frame every
 // 100 ms, as a line dissolves and the next comes in word by word: a Chinese
 // line after another, and an English one after it.
