@@ -207,5 +207,5 @@ func (a *app) recentPage(c *ui.Context) {
 		})
 		return
 	}
-	a.trackRows(c, a.played, true, header, nil)
+	a.trackRows(c, a.played, true, header, nil, nil)
 }

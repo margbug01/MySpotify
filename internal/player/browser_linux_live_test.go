@@ -58,7 +58,7 @@ func TestLinuxBrowserLocalAudio(t *testing.T) {
 	out := web.Open(&spotify.Media{File: source.URL, Duration: seconds * time.Second}).(*webOut)
 	defer out.Close()
 	keys := make(chan struct{}, 1)
-	out.OnSystem(func(command string) {
+	out.OnSystem(func(command string, _ time.Duration) {
 		if command == "next" {
 			keys <- struct{}{}
 		}

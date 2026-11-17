@@ -588,7 +588,7 @@ type webOut struct {
 	asked   int     // how many times Vinyl asked the page to play or pause
 	onEnd   func()
 	// onSystem hears what the system did to the page rather than Vinyl.
-	onSystem func(string)
+	onSystem func(cmd string, at time.Duration)
 	endSeq   int
 	err      string
 	licence  int           // how the licence service last answered
@@ -740,8 +740,9 @@ func (o *webOut) OnEnd(fn func()) (off func()) {
 // OnSystem has fn hear what the system did to the page rather than Vinyl:
 // "pause" or "play", which WebKit carries out on the page itself for the
 // media keys, Control Center and apps such as Mami, which pauses what plays
-// while one talks; or "next" or "previous", the skips it passes the page.
-func (o *webOut) OnSystem(fn func(string)) (off func()) {
+// while one talks; "next" or "previous", the skips it passes the page; or
+// "seek", to at, from Control Center's progress bar.
+func (o *webOut) OnSystem(fn func(cmd string, at time.Duration)) (off func()) {
 	o.mu.Lock()
 	o.onSystem = fn
 	o.mu.Unlock()
@@ -796,11 +797,11 @@ func (o *webOut) event(kind string, t time.Duration, msg string, seq int) {
 		system = strings.TrimPrefix(kind, "system-")
 		o.playing = system == "play"
 		o.running = o.running && o.playing
-	case "system-next", "system-previous":
+	case "system-next", "system-previous", "system-seek":
 		fn := o.onSystem
 		o.mu.Unlock()
 		if fn != nil {
-			fn(strings.TrimPrefix(kind, "system-"))
+			fn(strings.TrimPrefix(kind, "system-"), t)
 		}
 		return
 	case "ended":
@@ -852,6 +853,6 @@ func (o *webOut) event(kind string, t time.Duration, msg string, seq int) {
 		end()
 	}
 	if system != "" && fn != nil {
-		fn(system)
+		fn(system, t)
 	}
 }

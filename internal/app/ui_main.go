@@ -42,7 +42,7 @@ func (a *app) view(c *ui.Context) {
 		c.Root().Background(ui.Transparent)
 	}
 	root := ui.Box(c).Fill()
-	if !c.Focused(a.searchBox) {
+	if !c.Focused(a.searchBox) && !c.Focused(a.filterBox) {
 		// Space plays and pauses wherever the focus is, as in Music. On
 		// the container around everything, it comes before a button the
 		// pointer focused, which would take Space as a click; on the
@@ -107,6 +107,11 @@ func (a *app) shortcuts(c *ui.Context) {
 	c.OnShortcut(ui.Cmd, ui.KeyBracketLeft, a.back)
 	c.OnShortcut(ui.Cmd, ui.KeyBracketRight, a.goForward)
 	c.OnShortcut(ui.Cmd, ui.KeyF, func() {
+		if !a.nowPlaying && a.route.page == pagePlaylist && a.filterable(a.playlists[a.route.playlist]) {
+			a.filterOpen = true
+			a.filterBox.Focus(c)
+			return
+		}
 		a.nowPlaying = false
 		a.searchBox.Focus(c)
 	})
@@ -118,6 +123,14 @@ func (a *app) shortcuts(c *ui.Context) {
 			c.OnShortcut(0, ui.KeyBracketRight, func() { a.nudgeLyrics(lyricsNudge) })
 		}
 	}
+}
+
+// filterable reports whether the filter has a place in the playlist: a
+// list long enough to be worth finding a song in, or one a word already
+// narrows. One not yet in, as while its page loads, has nothing to
+// measure.
+func (a *app) filterable(pl *spotify.Playlist) bool {
+	return pl != nil && (len(pl.Tracks) > filterMinTracks || a.plFilter != "")
 }
 
 // go opens a page, remembering the one before for the back button. The
@@ -152,6 +165,11 @@ func (a *app) leave() {
 	}
 	a.spots[a.route] = pageSpot{a.trackList, a.pageScroll}
 	a.trackList, a.pageScroll = ui.ListState{}, ui.ScrollState{}
+	// A page left is found unfiltered, its filter closed, the next time:
+	// the filter was for finding songs there and then, not a habit of
+	// the page.
+	a.plFilter = ""
+	a.filterOpen, a.filterHadFocus = false, false
 }
 
 // showAgain shows the page of r, one of the history, where it was left.

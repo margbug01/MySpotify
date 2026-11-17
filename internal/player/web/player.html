@@ -34,12 +34,19 @@ function wake(t) {
   if (t.stopped) { t.hls.startLoad(t.a.currentTime); t.stopped = false; }
 }
 
-// The media keys' and Control Center's skips come to the page, which WebKit
-// shows the system as what plays: Vinyl skips.
-if (typeof navigator !== 'undefined' && navigator.mediaSession) {
-  for (const [action, type] of [['nexttrack', 'system-next'], ['previoustrack', 'system-previous']]) {
+// The media keys' and Control Center's skips and seeks come to the page,
+// which WebKit shows the system as what plays: Vinyl carries them out.
+// WebKit forgets what the page handles while no element plays, as when the
+// page loads, and offers the system its own commands instead, which skip 15
+// seconds rather than to the next track (#30): each element takes them anew
+// as it plays.
+// What the page handles is all WebKit offers beside play and pause, so
+// seeking is one of them.
+function takeSystemActions() {
+  if (typeof navigator === 'undefined' || !navigator.mediaSession) return;
+  for (const [action, type] of [['nexttrack', 'system-next'], ['previoustrack', 'system-previous'], ['seekto', 'system-seek']]) {
     try {
-      navigator.mediaSession.setActionHandler(action, () => { if (cur) send(cur.gen, type, cur.a.currentTime); });
+      navigator.mediaSession.setActionHandler(action, (d) => { if (cur) send(cur.gen, type, action === 'seekto' ? d.seekTime : cur.a.currentTime); });
     } catch {}
   }
 }
@@ -198,7 +205,7 @@ window.vinyl = {
       fail({ type: d.type === Hls.ErrorTypes.KEY_SYSTEM_ERROR ? 'licence' : d.type, details: d.details, msg });
     });
     for (const n of ['playing', 'pause', 'waiting', 'seeked']) a.addEventListener(n, () => {
-      if (n === 'playing') t.heard = true;
+      if (n === 'playing') { t.heard = true; takeSystemActions(); }
       // WebKit pauses the element itself for the system: the media keys,
       // Control Center, or an app such as Mami pausing what plays while one
       // talks. Vinyl hears it as the system's; a pause it asked for, or the

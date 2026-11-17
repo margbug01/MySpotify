@@ -741,7 +741,7 @@ func (a *app) connectControl(action string, value any) bool {
 		}
 		extra["options"].(map[string]any)["seek_to"] = a.pl.Position().Milliseconds()
 		extra["options"].(map[string]any)["initially_paused"] = a.pl.Playing()
-		a.connectJob(func() error { return state.client.Command(target, "play", extra) })
+		a.connectJob(func() error { return connectCommand(state.client, target, "play", extra) })
 		return true
 	}
 	switch action {
@@ -835,10 +835,10 @@ func (a *app) connectControl(action string, value any) bool {
 		track := map[string]string{"uri": queue[i].URI(), "uid": queue[i].UID}
 		request := player.QueueRequest{Tracks: append([]spotify.Track(nil), queue...), Start: i}
 		a.connectJob(func() error {
-			err := state.client.Command(target, "skip_next", map[string]any{"track": track})
+			err := connectCommand(state.client, target, "skip_next", map[string]any{"track": track})
 			if err != nil {
 				log.Printf("connect: jump: %v; playing the queue from there instead", err)
-				err = state.client.Command(target, "play", connectPlayBody(request))
+				err = connectCommand(state.client, target, "play", connectPlayBody(request))
 			}
 			return err
 		})
@@ -857,7 +857,7 @@ func (a *app) connectControl(action string, value any) bool {
 	default:
 		return false
 	}
-	a.connectJob(func() error { return state.client.Command(target, action, extra) })
+	a.connectJob(func() error { return connectCommand(state.client, target, action, extra) })
 	return true
 }
 

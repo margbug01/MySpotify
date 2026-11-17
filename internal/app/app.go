@@ -144,6 +144,11 @@ type app struct {
 	searchErr string
 	searchBox ui.Handle
 
+	plFilter       string    // the playlist filter as typed in its field
+	filterBox      ui.Handle // the playlist filter's field, for focusing it
+	filterOpen     bool      // the filter shows its field, rather than its icon
+	filterHadFocus bool      // the field has had the focus since it opened
+
 	nowPlaying  bool
 	npOpen      bool      // Now Playing as it last showed: open or not
 	npChangedAt time.Time // when it last opened or closed

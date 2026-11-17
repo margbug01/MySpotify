@@ -108,6 +108,18 @@ func TestSystemSkips(t *testing.T) {
 	}
 }
 
+// Control Center's progress bar, which WebKit passes the page once the page
+// handles seekto (#30), moves Vinyl there, as its own seek bar does.
+func TestSystemSeeks(t *testing.T) {
+	ch, p, _ := licensed(t, func(http.ResponseWriter, *http.Request) {})
+	defer p.CloseWeb()
+	systemEvent(p, p.out.(*webOut), "system-seek", 42.5, 0)
+	next(t, ch)
+	if p.Position() != 42500*time.Millisecond {
+		t.Fatalf("after the system's seek: at %v", p.Position())
+	}
+}
+
 // WebKit shows the system the page playing as a media session of its own,
 // which the app's stood beside, titled Vinyl and naming no song (#27): the
 // page names the track while it plays it and the app shows nothing, till
