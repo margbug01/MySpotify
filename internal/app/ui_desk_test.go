@@ -272,8 +272,39 @@ func TestDeskWordsKeepTheirSpaces(t *testing.T) {
 	}
 }
 
+// A line sung starts to dissolve before the next comes, a word at a time
+// from the left and none before it is sung, the last half gone as the next
+// comes in a word at a time: it went all at once as the next came, a flash.
+func TestDeskFadeGoesWordByWord(t *testing.T) {
+	sec := func(s float64) time.Duration { return time.Duration(s * float64(time.Second)) }
+	f := deskFade{at: sec(10), change: sec(20), enters: true, n: 6}
+	f.pos = sec(19.1)
+	if _, first := f.word(0, sec(14)); first <= 0 {
+		t.Errorf("0.9 s before the next line, the first word not going: %v", first)
+	}
+	if _, last := f.word(5, sec(14)); last != 0 {
+		t.Errorf("the last word going as soon as the first: %v", last)
+	}
+	if _, unsung := f.word(0, sec(19.8)); unsung != 0 {
+		t.Errorf("a word going before it is sung: %v", unsung)
+	}
+	f.pos = sec(20)
+	if _, first := f.word(0, sec(14)); first != 1 {
+		t.Errorf("the first word not gone as the next line comes: %v", first)
+	}
+	if _, last := f.word(5, sec(14)); last <= 0 || last >= 1 {
+		t.Errorf("the last word not on its way as the next line comes: %v", last)
+	}
+	f.pos = sec(10.2)
+	first, _ := f.word(0, 0)
+	last, _ := f.word(5, 0)
+	if first <= 0 || first >= 1 || last >= first {
+		t.Errorf("coming in: first word %v, last %v", first, last)
+	}
+}
+
 // With NM_FRAMES set, saves a strip of the desktop lyrics, a frame every
-// 60 ms, as a line dissolves and the next comes in word by word: a Chinese
+// 100 ms, as a line dissolves and the next comes in word by word: a Chinese
 // line after another, and an English one after it.
 func TestDeskChangeFrames(t *testing.T) {
 	dir := os.Getenv("NM_FRAMES")
@@ -290,18 +321,18 @@ func TestDeskChangeFrames(t *testing.T) {
 	}
 	lines[1].End = lines[2].At
 	for _, at := range []time.Duration{20 * time.Second, 30 * time.Second} {
-		const n = 14
+		const n = 27
 		img := image.NewRGBA(image.Rect(0, 0, deskW, deskH*n))
 		draw.Draw(img, img.Bounds(), image.NewUniform(color.RGBA{28, 34, 48, 255}), image.Point{}, draw.Src)
-		a.pl.Seek(at - 2*time.Second)
+		a.pl.Seek(at - 3*time.Second)
 		tt := ui.NewTester(d.view, deskW, deskH)
 		tt.Frame()
 		tt.Advance(time.Second)
 		tt.Frame()
 		for f := range n {
-			pos := at - 60*time.Millisecond + time.Duration(f)*60*time.Millisecond
+			pos := at - 1500*time.Millisecond + time.Duration(f)*100*time.Millisecond
 			a.pl.Seek(pos)
-			tt.Advance(60 * time.Millisecond)
+			tt.Advance(100 * time.Millisecond)
 			tt.Frame()
 			draw.Draw(img, image.Rect(0, f*deskH, deskW, (f+1)*deskH), tt.Image(), image.Point{}, draw.Over)
 		}
