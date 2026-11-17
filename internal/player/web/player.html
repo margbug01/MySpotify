@@ -324,6 +324,9 @@ window.vinyl = {
     clearTimeout(cur.endTimer);
     clearInterval(cur.watch);
     cur.hls.destroy();
+    // Its source joined to the equalizer's filters would keep the element,
+    // and every track's before it, alive.
+    if (cur.src) cur.src.disconnect();
     cur.a.remove();
     cur = null;
   },
