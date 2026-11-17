@@ -689,6 +689,16 @@ func (o *webOut) Seek(t time.Duration) {
 	o.w.send(fmt.Sprintf("vinyl.seek(%d,%.3f)", o.gen, t.Seconds()))
 }
 
+// SetEqualizer sets the gain of each band in dB, or none for nil.
+func (o *webOut) SetEqualizer(g []float64) {
+	arg := "null"
+	if g != nil {
+		b, _ := json.Marshal(g)
+		arg = string(b)
+	}
+	o.w.send("vinyl.eq(" + arg + ")")
+}
+
 // SetRate has the track play at rate r, its pitch kept.
 func (o *webOut) SetRate(r float64) {
 	o.mu.Lock()

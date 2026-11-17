@@ -128,7 +128,38 @@ function native(a, handlers, close) {
   };
 }
 
+// eq is the equalizer once turned on: one filter a band, between every
+// track and the speakers. Turned off, the filters go flat but stay: an element
+// feeds one source for good.
+const eqHz = [60, 150, 400, 1000, 2400, 15000];
+let eq = null;
+function eqAttach(t) {
+  if (!eq || t.src) return;
+  try {
+    t.src = eq.ctx.createMediaElementSource(t.a);
+    t.src.connect(eq.filters[0]);
+  } catch {}
+}
+
 window.vinyl = {
+  // eq sets the gain of each band in dB, or null for none.
+  eq(gains) {
+    if (!eq) {
+      if (!gains) return;
+      const ctx = new AudioContext();
+      const filters = eqHz.map((f, i) => {
+        const b = ctx.createBiquadFilter();
+        b.type = i === 0 ? 'lowshelf' : i === eqHz.length - 1 ? 'highshelf' : 'peaking';
+        b.frequency.value = f;
+        return b;
+      });
+      filters.forEach((b, i) => b.connect(filters[i + 1] || ctx.destination));
+      eq = { ctx, filters };
+    }
+    eq.filters.forEach((b, i) => { b.gain.value = gains ? gains[i] || 0 : 0; });
+    eq.ctx.resume();
+    if (cur) eqAttach(cur);
+  },
   // kind is 'file' for a file that plays as it is, an episode's where its
   // podcast keeps it: no manifest, no key system.
   load(gen, kind) {
@@ -152,6 +183,7 @@ window.vinyl = {
     // tries counts the recoveries, two at most; want is whether to play;
     // asked is how many times Vinyl had asked to play or pause.
     const t = { gen, a, hls, seek: null, tries: 0, want: false, asked: 0, endSeq: 0, ending: false, lastTime: 0, still: 0, heard: false };
+    eqAttach(t);
     const finish = (reason) => {
       if (cur !== t || t.ending) return;
       t.ending = true;
