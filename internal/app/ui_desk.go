@@ -60,6 +60,7 @@ func newDesk(a *app) *desk {
 		Height:   deskH,
 		Content:  ui.View(d.view),
 	})
+	undecorate(d.win.NativeHandle())
 	// Escape and the like close a panel: this one hides with its setting.
 	d.win.OnClose(func(e *mygo.CloseEvent) {
 		if !a.quitting {
@@ -178,8 +179,9 @@ func (d *desk) view(c *ui.Context) {
 				d.tools(c, pane)
 			}
 			if key > 0.01 && pane <= 0.01 {
-				// On a dark disc, to be found on a light desktop too.
-				if iconButton(c.Key("unlock"), iconUnlock, 16, white, l10n.T("解锁桌面歌词")).Background(ui.RGBA(18, 18, 20, 0.6)).Opacity(key).Clicked() {
+				// On a dark disc, to be found on a light desktop too. The
+				// lock shows how they are: closed, locked.
+				if iconButton(c.Key("unlock"), iconLock, 16, white, l10n.T("解锁桌面歌词")).Background(ui.RGBA(18, 18, 20, 0.6)).Opacity(key).Clicked() {
 					a.setDeskLocked(false)
 				}
 			}
@@ -205,7 +207,7 @@ func (d *desk) tools(c *ui.Context, shown float32) {
 			pl.Next()
 		}
 		ui.Box(c).Size(1, 16).Margin(0, 8).Background(white.Alpha(0.25))
-		if iconButton(c.Key("lock"), iconLock, 16, white, l10n.T("锁定桌面歌词")).Clicked() {
+		if iconButton(c.Key("lock"), iconUnlock, 16, white, l10n.T("锁定桌面歌词")).Clicked() {
 			a.setDeskLocked(true)
 		}
 		if iconButton(c.Key("close"), iconX, 16, white, l10n.T("关闭桌面歌词")).Clicked() {
