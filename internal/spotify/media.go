@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -86,9 +88,36 @@ func (n *looseInt) UnmarshalJSON(b []byte) error {
 	return err
 }
 
-// ResolveMedia returns the manifest of the lowest bitrate of uri, a
-// track's or a podcast episode's: 128k, which a free account is licensed to
-// play; the licence of the 256k one it is refused (403).
+// highQuality has ResolveMedia take the highest bitrate offered, 256k, whose
+// licence Premium accounts get; a free account is refused it (403). denied
+// holds the URIs it was refused for, which play at the lowest bitrate again.
+var (
+	highQuality atomic.Bool
+	denied      sync.Map
+)
+
+// SetHighQuality chooses the highest bitrate where the account is licensed
+// to play it, rather than always the lowest.
+func SetHighQuality(on bool) { highQuality.Store(on) }
+
+// Downgrade is called as the licence of a track playing at bitrate was
+// refused. It reports whether the track can be asked for again at the lowest
+// bitrate, which it then is; not if it played at that already.
+func Downgrade(uri string, bitrate int) bool {
+	if !highQuality.Load() || bitrate <= lowestBitrate {
+		return false
+	}
+	_, had := denied.LoadOrStore(uri, true)
+	return !had
+}
+
+// lowestBitrate is the bitrate a free account plays at.
+const lowestBitrate = 128000
+
+// ResolveMedia returns the manifest of uri, a track's or a podcast
+// episode's, at the lowest bitrate: 128k, which a free account is licensed
+// to play; the licence of the 256k one it is refused (403). With
+// SetHighQuality it is at the highest, unless refused for uri before.
 func ResolveMedia(uri string) (*Media, error) {
 	formats := append([]string{mediaFormat}, mediaFallbacks...)
 	asked := append(slices.Clone(formats), videoFormat)
@@ -140,6 +169,9 @@ func ResolveMedia(uri string) (*Media, error) {
 	}
 	sort.Slice(files, func(i, j int) bool { return files[i].Bitrate < files[j].Bitrate })
 	f := files[0]
+	if _, no := denied.Load(uri); highQuality.Load() && !no {
+		f = files[len(files)-1]
+	}
 	if _, err := hex.DecodeString(f.FileID); err != nil || f.FileID == "" {
 		return nil, fmt.Errorf("track-playback: bad file ID %q", f.FileID)
 	}

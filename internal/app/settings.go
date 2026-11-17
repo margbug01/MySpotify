@@ -47,6 +47,9 @@ type settings struct {
 	// LyricsStage shows lyrics on the stage, Folia's style, in Now
 	// Playing, rather than scrolling.
 	LyricsStage bool `json:"lyricsStage"`
+	// HighQuality plays tracks at the highest bitrate, 256k, where the
+	// account is licensed to: Premium.
+	HighQuality bool `json:"highQuality"`
 	// Volume is where the volume was left, from 0 to 1.
 	Volume float64 `json:"volume"`
 	// PodcastRate is how fast episodes play, 0 at their own pace.

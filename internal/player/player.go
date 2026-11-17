@@ -361,6 +361,14 @@ func (p *Player) ended() {
 // how the licence service last answered for it, wait how long it asked to
 // wait.
 func (p *Player) failed(msg string, licence int, wait time.Duration) {
+	// A licence for more than the lowest bitrate is Premium's: a track
+	// refused it is asked for again at the lowest, where it was.
+	if licence == http.StatusForbidden && p.media != nil && p.track != nil && spotify.Downgrade(p.track.URI(), p.media.Bitrate) {
+		from := p.Position()
+		p.stop()
+		p.loadSkipping(p.at, p.skipped, true, from)
+		return
+	}
 	switch licence {
 	case http.StatusTooManyRequests:
 		p.throttled(wait)

@@ -7,6 +7,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"vinyl/internal/l10n"
+	"vinyl/internal/spotify"
 )
 
 // openSettings goes to the settings page. The main window comes up first,
@@ -196,6 +197,15 @@ func (a *app) settingsPage(c *ui.Context) {
 			})
 			row(l10n.T("烟雾背景"), l10n.T("播放页的背景化作封面色调的烟雾，缓缓升起，随低音起伏；仍在打磨，会多用一些电量"), func() {
 				if ui.Switch(c.Key("fog"), &s.Fog).Label(l10n.T("烟雾背景")).Changed() {
+					a.changed()
+				}
+			})
+		})
+
+		group(l10n.T("音质"), func() {
+			row(l10n.T("高音质 (256k)"), l10n.T("需要 Premium。Spotify 不给某首歌授权时，这首歌自动改用 128k"), func() {
+				if ui.Switch(c.Key("high-quality"), &s.HighQuality).Label(l10n.T("高音质 (256k)")).Changed() {
+					spotify.SetHighQuality(s.HighQuality)
 					a.changed()
 				}
 			})

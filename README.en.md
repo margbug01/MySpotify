@@ -155,7 +155,7 @@ This part is still experimental. Registering and handing off work in testing on 
 
 | Feature | Why |
 | --- | --- |
-| 256k / lossless audio | A free account's license request for 256k is refused (403); lossless is only in the official desktop and phone apps |
+| Lossless audio | Only in the official desktop and phone apps. 256k is for Premium accounts: turn on High quality (256k) under Settings › Audio quality. A free account's license request for 256k is refused (403), and that song plays at 128k instead |
 | Word-by-word lyrics | Spotify gives the web player timing per line only; NetEase's word-by-word lyrics aren't hooked up yet |
 | Offline downloads | Needs Premium and the official client |
 | Jam, DJ | Needs Premium or the phone app |
