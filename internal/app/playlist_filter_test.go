@@ -36,9 +36,9 @@ func filterApp() *app {
 	return a
 }
 
-// filterTracks matches a word wherever it appears in order in a track's
-// name, an artist or the album, letters' case and words' order aside, and
-// keeps only the tracks every word matches. A query with no matches is not
+// filterTracks matches a word wherever it shows whole in a track's name, an
+// artist or the album, letters' case and words' order aside, and keeps only
+// the tracks every word matches. A query with no matches is not
 // the same as no query at all.
 func TestFilterTracksMatching(t *testing.T) {
 	a := filterApp()
@@ -50,7 +50,9 @@ func TestFilterTracksMatching(t *testing.T) {
 	}{
 		{"晴天", []int{0}, false},             // the name itself
 		{"天晴", []int{}, false},              // the characters in order: 晴 before 天
-		{"叶美", []int{0, 2}, false},          // a subsequence skips 惠, by the album
+		{"叶美", []int{}, false},              // 惠 stands between: no run of the album
+		{"叶 美", []int{0, 2}, false},         // two words do what skipping 惠 did
+		{"wthr", []int{}, false},            // a subsequence of Weather matched, as did most of a list
 		{"weather", []int{2}, false},        // letters' case lets nothing differ
 		{"JAY", []int{2}, false},            // an artist's name
 		{"叶 周杰伦", []int{0}, false},          // two words, the album's and the artist's
@@ -221,6 +223,33 @@ func TestPlaylistFilterPlayQueuesMatches(t *testing.T) {
 	}
 	if cur := a.pl.Current(); cur == nil || cur.ID != "1" {
 		t.Errorf("playing started at %v, want the first match", cur)
+	}
+}
+
+// A click on a match plays the matches from it, as the play button plays
+// them all: it queued the song alone, and playing stopped after it.
+func TestPlaylistFilterRowPlaysMatchesFromIt(t *testing.T) {
+	a := filterApp()
+	tt := ui.NewTester(a.view, 1200, 800)
+	tt.Frame()
+	if err := tt.Click("筛选"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	tt.Frame()
+	tt.Frame()
+	tt.Type("叶")
+	tt.Frame()
+	if err := tt.Click("Under the Weather"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	queue := a.pl.Queue()
+	if len(queue) != 2 || queue[0].ID != "1" || queue[1].ID != "3" {
+		t.Fatalf("the click queued %v, want the two matches in the playlist's order", ids(queue))
+	}
+	if cur := a.pl.Current(); cur == nil || cur.ID != "3" {
+		t.Errorf("playing started at %v, want the match clicked", cur)
 	}
 }
 

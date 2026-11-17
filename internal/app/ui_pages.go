@@ -271,7 +271,9 @@ func (a *app) playlistHeader(c *ui.Context, pl *spotify.Playlist, orig []int) {
 			if d := strings.TrimSpace(pl.Description); d != "" {
 				ui.Text(c, strings.ReplaceAll(d, "\n", " ")).FontSize(12.5).TextColor(p.muted).MaxLines(2).LineHeight(1.45).Margin(2, 0, 0, 0)
 			}
-			ui.Row(c).Gap(10).Margin(10, 0, 0, 0).AlignItems(ui.Center).Justify(ui.SpaceBetween).Children(func() {
+			// It wraps where the window is too narrow for the filter's field
+			// beside the pills, which the field covered.
+			ui.Row(c).Wrap().Gap(10).Margin(10, 0, 0, 0).AlignItems(ui.Center).Justify(ui.SpaceBetween).Children(func() {
 				// The pills play the playlist, or the matches of a filter,
 				// in the order the playlist has them.
 				ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
@@ -404,9 +406,16 @@ func (a *app) searchPage(c *ui.Context) {
 // trackRows lists tracks under a header, and over a footer if any, which
 // scroll with them; a click plays the list from the track clicked. A filter
 // passes orig, the indexes of its matches: the rows show those tracks only,
-// numbered by where they sit in the list, and a click plays the track alone.
+// numbered by where they sit in the list, and a click plays the matches from
+// the track clicked, as the playlist's play button plays them all.
 func (a *app) trackRows(c *ui.Context, tracks []spotify.Track, covers bool, header, footer func(c *ui.Context), orig []int) {
 	p := a.pal
+	shown := func() []spotify.Track {
+		if orig == nil {
+			return tracks
+		}
+		return tracksAt(tracks, orig)
+	}
 	cur := a.pl.Current()
 	w, _ := c.Size()
 	wide := w-sidebarWidth > 820
@@ -500,11 +509,7 @@ func (a *app) trackRows(c *ui.Context, tracks []spotify.Track, covers bool, head
 					if !tr.Playable() {
 						ui.Text(c, l10n.T("不可播放")).FontSize(9).FontWeight(800).TextColor(p.accent).Padding(0, 4).Radius(3).Border(1, p.accent.Alpha(0.6))
 					} else if tr.Video && a.mvTag(c.Key("mv"), tr).Clicked() {
-						if orig != nil {
-							a.playMV(a.routeItem(), tracks[at:at+1], 0)
-						} else {
-							a.playMV(a.routeItem(), tracks, i)
-						}
+						a.playMV(a.routeItem(), shown(), i)
 					}
 					a.artistLinks(c.Key("by"), tr.Artists, 12.5, p.muted, p.text)
 				})
@@ -535,20 +540,17 @@ func (a *app) trackRows(c *ui.Context, tracks []spotify.Track, covers bool, head
 			})
 		})
 		if row.Clicked() && tr.Playable() {
-			if orig != nil {
-				// Filtered, the track alone is the queue, which the filter
-				// holds nothing else of.
-				a.playFrom(a.routeItem(), tracks[at:at+1], 0)
-			} else {
-				a.playFrom(a.routeItem(), tracks, i)
-			}
+			a.playFrom(a.routeItem(), shown(), i)
 		}
 	}).Grow(1).Padding(top+pageGap, pagePad-12, bottom+32, pagePad-12).ScrollbarInsets(top, 0, bottom, 0)
 }
 
 // filterTracks returns the indexes of the tracks the query's words all
-// match, a word matching a track's name, an artist or its album as a run of
-// characters appearing there in order, however far apart. Empty of words,
+// match, a word matching a track's name, an artist or its album where it
+// shows there whole, case aside: a subsequence, as a fuzzy finder reads a
+// word, let "love" match "Lose Over Everything", and most of a long list in
+// Latin letters with it. Words of their own do what skipping did: "叶 美"
+// finds 叶惠美. Empty of words,
 // it leaves the playlist whole, as nil; a query with no matches keeps an
 // empty but non-nil set, so the two never read as one another.
 func filterTracks(tracks []spotify.Track, query string) []int {
@@ -560,16 +562,19 @@ func filterTracks(tracks []spotify.Track, query string) []int {
 	// so the filter, which runs every frame, allocates nothing per track.
 	terms := make([][]rune, len(words))
 	for i, w := range words {
-		terms[i] = []rune(strings.ToLower(w))
+		terms[i] = []rune(w)
+		for j, r := range terms[i] {
+			terms[i][j] = unicode.ToLower(r)
+		}
 	}
 	out := make([]int, 0)
 	for i := range tracks {
 		tr := &tracks[i]
 		matched := true
 		for _, t := range terms {
-			hit := matchSubseq(t, tr.Name) || matchSubseq(t, tr.Album.Name)
+			hit := containsFold(tr.Name, t) || containsFold(tr.Album.Name, t)
 			for j := 0; j < len(tr.Artists) && !hit; j++ {
-				hit = matchSubseq(t, tr.Artists[j].Name)
+				hit = containsFold(tr.Artists[j].Name, t)
 			}
 			if !hit {
 				matched = false
@@ -583,17 +588,17 @@ func filterTracks(tracks []spotify.Track, query string) []int {
 	return out
 }
 
-// matchSubseq reports whether term shows in s as its characters in order,
-// case letting nothing differ: a subsequence, as a fuzzy finder reads it.
-// s is not lowered; its runes fold as they pass, which reads the same as
-// strings.ToLower would, without a copy of s. Term is never empty, the
-// words of a query being all that Fields lets through.
-func matchSubseq(term []rune, s string) bool {
-	j := 0
-	for _, r := range s {
-		if unicode.ToLower(r) == term[j] {
-			j++
-			if j == len(term) {
+// containsFold reports whether term, folded, shows in s as a run, case
+// aside. s folds as its runes pass, without a copy of it. Term is never
+// empty, the words of a query being all that Fields lets through.
+func containsFold(s string, term []rune) bool {
+	for start := range s {
+		j := 0
+		for _, r := range s[start:] {
+			if unicode.ToLower(r) != term[j] {
+				break
+			}
+			if j++; j == len(term) {
 				return true
 			}
 		}
