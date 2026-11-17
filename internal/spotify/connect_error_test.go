@@ -25,3 +25,19 @@ func TestConnectErrorSaysWhy(t *testing.T) {
 		t.Fatalf("%#v: %v", turned, err)
 	}
 }
+
+// Spotify answering with server errors is not reachable: its 502s for every
+// track counted as answers, so the player passed three tracks over in three
+// seconds and stopped, rather than waiting for Spotify (issue #32).
+func TestReachableNotOnServerErrors(t *testing.T) {
+	old := Client
+	defer func() { Client = old }()
+	for status, want := range map[int]bool{404: true, 502: false, 503: false} {
+		Client = &http.Client{Transport: lyricsTransport(func(*http.Request) (*http.Response, error) {
+			return &http.Response{StatusCode: status, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(""))}, nil
+		})}
+		if got := Reachable(); got != want {
+			t.Errorf("HTTP %d: reachable %v, want %v", status, got, want)
+		}
+	}
+}

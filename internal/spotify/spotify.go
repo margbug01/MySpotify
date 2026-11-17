@@ -36,8 +36,9 @@ var Client = &http.Client{
 	Transport: &http.Transport{Proxy: Proxy, ForceAttemptHTTP2: true, MaxIdleConnsPerHost: 8, IdleConnTimeout: 90 * time.Second},
 }
 
-// Reachable reports whether Spotify answers at all, whatever it says: not
-// with the network down, or the proxy it goes through.
+// Reachable reports whether Spotify answers, whatever it says short of a
+// server error: not with the network down, the proxy it goes through, or
+// Spotify's own servers failing, as its 502s for every request a while.
 func Reachable() bool {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -47,7 +48,7 @@ func Reachable() bool {
 		return false
 	}
 	res.Body.Close()
-	return true
+	return res.StatusCode < 500
 }
 
 // CaptureJS runs before open.spotify.com's own scripts and notes the
