@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MySpotify — Player desktop per Spotify | Windows/macOS</title>
+<meta name="description" content="Un player desktop non ufficiale per Spotify su Windows e macOS, con interfaccia nativa MyGo, testi sincronizzati e video musicali. Open source, usa il tuo account Spotify.">
+<meta name="theme-color" content="#0d0a09">
+<link rel="canonical" href="https://margbug01.github.io/MySpotify/it.html">
+<link rel="alternate" hreflang="zh-CN" href="https://margbug01.github.io/MySpotify/">
+<link rel="alternate" hreflang="en" href="https://margbug01.github.io/MySpotify/en.html">
+<link rel="alternate" hreflang="it" href="https://margbug01.github.io/MySpotify/it.html">
+<link rel="alternate" hreflang="x-default" href="https://margbug01.github.io/MySpotify/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://margbug01.github.io/MySpotify/it.html">
+<meta property="og:title" content="MySpotify — Player desktop per Spotify | Windows/macOS">
+<meta property="og:description" content="Un player desktop non ufficiale per Spotify su Windows e macOS, con interfaccia nativa MyGo, testi sincronizzati e video musicali. Open source, usa il tuo account Spotify.">
+<meta property="og:image" content="https://margbug01.github.io/MySpotify/screenshots/hero.webp">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="icon.png">
+<link rel="stylesheet" href="style.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"MySpotify","url":"https://margbug01.github.io/MySpotify/it.html","description":"Un player desktop non ufficiale per Spotify su Windows e macOS, con interfaccia nativa MyGo, testi sincronizzati e video musicali. Open source, usa il tuo account Spotify.","operatingSystem":"Windows, macOS","applicationCategory":"MultimediaApplication","downloadUrl":"https://github.com/margbug01/MySpotify/releases/latest","license":"https://github.com/margbug01/MySpotify/blob/main/LICENSE","screenshot":"https://margbug01.github.io/MySpotify/screenshots/hero.webp"}</script>
+<script src="site.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Vai al contenuto</a>
+
+<header class="nav">
+  <a class="brand" href="it.html"><img src="icon.png" alt="" width="28" height="28">MySpotify</a>
+  <nav class="links" aria-label="Navigazione">
+    <a href="#features">Funzioni</a>
+    <a href="#install">Installazione</a>
+    <a href="https://github.com/margbug01/MySpotify">GitHub</a>
+    <span class="langs">
+      <a href="./" hreflang="zh-CN" lang="zh-CN">中文</a>
+      <a href="en.html" hreflang="en" lang="en">EN</a>
+      <a href="it.html" hreflang="it" lang="it" aria-current="page">IT</a>
+    </span>
+  </nav>
+</header>
+
+<main id="main">
+  <div class="hero">
+    <div class="hero-copy">
+      <p class="eyebrow">MYSPOTIFY · NON UFFICIALE · OPEN SOURCE · WINDOWS / MACOS</p>
+      <h1>Spotify, in una vera app desktop</h1>
+      <p class="lead">Interfaccia nativa, testi che scorrono, video musicali e podcast video. Gli account gratuiti riproducono i brani per intero e puoi dare un'occhiata anche senza accedere.</p>
+      <div class="cta">
+        <a class="btn" data-dl="mac" href="https://github.com/margbug01/MySpotify/releases/latest">Scarica per macOS<small data-size="Apple silicon">Apple silicon</small></a>
+        <a class="btn" data-dl="mac-intel" href="https://github.com/margbug01/MySpotify/releases/latest">Scarica per Mac Intel<small data-size="Sperimentale">Sperimentale</small></a>
+        <a class="btn" data-dl="win" href="https://github.com/margbug01/MySpotify/releases/latest">Scarica per Windows<small data-size="Windows 10 / 11">Windows 10 / 11</small></a>
+      </div>
+      <p class="caveat">Un progetto personale, senza legami con Spotify. Usarlo può far limitare il tuo account. <a href="#risk">Leggi prima i rischi</a></p>
+    </div>
+    <div class="disc" aria-hidden="true">
+      <svg viewBox="0 0 1024 1024"><path d="M226.2 677A330 330 0 0 1 512 182" fill="none" stroke="#fff" stroke-width="62" stroke-linecap="round"/><path d="M292.7 409.7A242 242 0 0 1 650.8 313.8" fill="none" stroke="#fff" stroke-width="54" stroke-linecap="round"/><path d="M471.6 361.3A156 156 0 0 1 653.4 446.1" fill="none" stroke="#fff" stroke-width="46" stroke-linecap="round"/><circle cx="512" cy="512" r="44" fill="#fff"/></svg>
+    </div>
+  </div>
+
+  <img class="hero-shot" src="screenshots/hero.webp" width="1480" height="978" alt="La home di MySpotify, metà con il tema chiaro e metà con quello scuro" fetchpriority="high">
+
+  <div class="stats">
+    <div><b>&lt; 10 MB</b><span>da scaricare: decomprimi o trascina in Applicazioni e parte</span></div>
+    <div><b>≈ 190 MB</b><span>in uso mentre navighi, più un processo di decifratura di circa 60 MB durante la riproduzione</span></div>
+    <div><b>1–2 s</b><span>dall'avvio a freddo ai contenuti, senza accedere prima</span></div>
+    <div><b>0</b><span>analisi o tracciamenti: impostazioni e cronologia restano sul tuo computer</span></div>
+  </div>
+
+  <div class="lyrics" id="features">
+    <div class="lyrics-in">
+      <div class="stage">
+        <img class="on" data-shot="artist" src="screenshots/artist.webp" width="1480" height="978" loading="lazy" alt="La pagina di un artista: ritratto, brani popolari e la barra del player sotto">
+        <img data-shot="browse" src="screenshots/browse.webp" width="1480" height="978" loading="lazy" alt="Sfoglia tutto: schede colorate delle categorie">
+        <img data-shot="album" src="screenshots/album.webp" width="1480" height="978" loading="lazy" alt="La pagina di un album: copertina ed elenco dei brani">
+        <img data-shot="playing" src="screenshots/playing.webp" width="1480" height="978" loading="lazy" alt="In riproduzione: copertina e controlli a sinistra, testo che si illumina riga per riga a destra">
+        <img data-shot="podcast" src="screenshots/podcast.webp" width="1480" height="978" loading="lazy" alt="La pagina di un podcast: copertina ed elenco degli episodi">
+      </div>
+      <div class="lines">
+        <article class="line" data-shot="artist" data-glow="#4a2a22">
+          <time>[00:12.40]</time>
+          <h3>Sembra un programma desktop.</h3>
+          <p>L'interfaccia è disegnata in modo nativo da <a href="https://github.com/egoist/mygo">MyGo</a>, non è una pagina web in una cornice. Barra laterale, In riproduzione a tutto schermo, una scena a ritmo di musica, tasti multimediali del sistema, scorciatoie globali, temi chiaro e scuro. Chiudendo la finestra la musica continua dalla barra di sistema.</p>
+        </article>
+        <article class="line" data-shot="browse" data-glow="#3f2147">
+          <time>[00:31.08]</time>
+          <h3>Guarda senza accedere.</h3>
+          <p>Ricerca, home, playlist, album e artisti sono lì appena apri l'app: come il web player, MySpotify si procura un'identità ospite. Accedi quando vuoi ascoltare.</p>
+        </article>
+        <article class="line" data-shot="album" data-glow="#22303f">
+          <time>[00:49.72]</time>
+          <h3>Brani interi con un account gratuito.</h3>
+          <p>Accedi dalla pagina ufficiale di Spotify. L'audio è decifrato dal modulo DRM del componente web del sistema, lo stesso percorso di quando ascolti in un browser, a 128k AAC.</p>
+        </article>
+        <article class="line" data-shot="playing" data-glow="#5a3320">
+          <time>[01:16.25]</time>
+          <h3>Testi per quasi tutto, e scorrono.</h3>
+          <p>Quello che manca a Spotify arriva da NetEase Cloud Music e LRCLIB. Hanno la precedenza i testi sincronizzati, e titolo e durata devono combaciare, così non finisce mai un'altra versione. Per i brani in lingua straniera c'è la traduzione in cinese, quando esiste.</p>
+        </article>
+        <article class="line" data-shot="playing" data-glow="#642a24">
+          <time>[01:42.90]</time>
+          <h3>Anche i video musicali.</h3>
+          <p>I brani con un video hanno una piccola etichetta: clicca per riprodurlo, oppure passa al video in qualsiasi momento dalla barra del player. Lo guardi al posto della copertina, a finestra piena o a schermo intero, con il testo corrente sotto.</p>
+        </article>
+        <article class="line" data-shot="podcast" data-glow="#4a2228">
+          <time>[02:07.33]</time>
+          <h3>Podcast da ascoltare, guardare e leggere.</h3>
+          <p>I podcast video mostrano le immagini con un clic. La trascrizione scorre come un testo, si illumina parola per parola, e un clic su una frase porta lì.</p>
+        </article>
+      </div>
+    </div>
+  </div>
+
+  <section class="section" id="library">
+    <p class="kicker">TRACKLIST</p>
+    <h2>Quasi tutto quello che ha Spotify</h2>
+    <div class="tracks">
+      <div>
+        <h3>Si riproduce</h3>
+        <ol>
+          <li><i>1</i><div><b>Home</b><span>Le sezioni e i titoli di Spotify, filtrabili per musica o podcast</span></div></li>
+          <li><i>2</i><div><b>Mix giornalieri e classifiche</b></div></li>
+          <li><i>3</i><div><b>Sfoglia tutte le categorie</b></div></li>
+          <li><i>4</i><div><b>Playlist e album</b><span>Modifichi le tue playlist; quelle create sul web o sul telefono si sincronizzano da sole</span></div></li>
+          <li><i>5</i><div><b>Pagine di artisti e brani</b><span>Crediti, riproduzioni, brani simili</span></div></li>
+          <li><i>6</i><div><b>Ricerca</b><span>Brani, artisti, album, playlist, podcast</span></div></li>
+          <li><i>7</i><div><b>Mi piace, follow, salvataggi</b></div></li>
+          <li><i>8</i><div><b>Riproduci come prossimo e coda</b></div></li>
+          <li><i>9</i><div><b>Radio</b><span>Da un brano o da un artista</span></div></li>
+          <li><i>10</i><div><b>Ascoltati di recente e profilo</b></div></li>
+        </ol>
+      </div>
+      <div>
+        <h3>Non si riproduce</h3>
+        <ul>
+          <li class="off"><i></i><div><b>Audio a 256k / lossless</b><span>La richiesta di licenza a 256k di un account gratuito viene rifiutata; il lossless c'è solo nelle app ufficiali</span></div></li>
+          <li class="off"><i></i><div><b>Download offline</b><span>Servono Premium e il client ufficiale</span></div></li>
+          <li class="off"><i></i><div><b>Jam, DJ</b><span>Servono Premium o l'app per telefono</span></div></li>
+          <li class="off"><i></i><div><b>Testi parola per parola</b><span>Spotify dà al web player solo la sincronizzazione per riga</span></div></li>
+          <li class="off"><i></i><div><b>Alcuni podcast su macOS</b><span>Gli show ospitati da Spotify con audio cifrato solo Widevine</span></div></li>
+          <li class="off"><i></i><div><b>Supporto stabile per Mac Intel / Linux</b><span>Installer sperimentali; per Intel servono ancora prove su hardware reale</span></div></li>
+          <li class="off"><i></i><div><b>Attività degli amici, file locali, Blend</b><span>Non ancora realizzati</span></div></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="screens">
+    <p class="kicker">SCHERMATE</p>
+    <h2>Ogni pagina, con dati reali</h2>
+    <p class="note">Queste schermate sono in cinese. Dalla v0.4.17 puoi scegliere inglese, cinese semplificato, italiano (dalla v0.4.23) o Sistema in Impostazioni → Aspetto → Lingua.</p>
+    <div class="strip" tabindex="0" role="group" aria-label="Altre schermate">
+    <img src="screenshots/search.webp" width="1480" height="978" loading="lazy" alt="Risultati di ricerca: artisti e album">
+    <img src="screenshots/track.webp" width="1480" height="978" loading="lazy" alt="La pagina di un brano: copertina, riproduzioni e consigli">
+    <img src="screenshots/category.webp" width="1480" height="978" loading="lazy" alt="La pagina di una categoria">
+    <img src="screenshots/profile.webp" width="1480" height="978" loading="lazy" alt="La pagina di un profilo">
+  </div>
+  </section>
+
+  <section class="section" id="details">
+    <p class="kicker">DIETRO LE QUINTE</p>
+    <h2>Le parti che non vedrai</h2>
+    <div class="quiet">
+      <div><h3>Passaggio tra telefono e computer (sperimentale)</h3><p>Il tuo computer compare nell'elenco dispositivi di Spotify sul telefono: toccalo e la musica passa lì. Mentre il telefono riproduce, il computer lo vede e può controllarlo.</p></div>
+      <div><h3>Gli errori non lo bloccano</h3><p>Una licenza scaduta ottiene una nuova identità e un nuovo tentativo. Con il limite di richieste attende il tempo chiesto da Spotify e riprende da dove era. Se cade la rete, riprende quando torna.</p></div>
+      <div><h3>Mai scaricare un brano due volte</h3><p>I brani già ascoltati restano sul computer nei segmenti cifrati in cui sono arrivati, quindi partono prima e non consumano dati. Il limite si sceglie nelle impostazioni, e si possono cancellare tutti.</p></div>
+      <div><h3>I tuoi dati restano sul tuo computer</h3><p>Impostazioni e cronologia sono locali, e i cookie per rinnovare la sessione sono salvati cifrati. Si connette solo a Spotify, Gravatar, NetEase e LRCLIB per i testi, e GitHub per cercare aggiornamenti.</p></div>
+    </div>
+  </section>
+
+  <section class="section" id="risk">
+    <div class="risk">
+      <p class="kicker">LEGGI PRIMA</p>
+      <h2>Prima di usarlo</h2>
+      <ul>
+        <li><h3>Non è un client ufficiale</h3><p>Usa le interfacce interne e non documentate del web player. Quando Spotify le cambia, può smettere di funzionare.</p></li>
+        <li><h3>Il tuo account è a rischio</h3><p>I termini di Spotify non permettono a programmi di terzi di accedere al servizio, quindi il tuo account potrebbe essere limitato o bloccato. Usa solo il tuo e nulla di commerciale.</p></li>
+        <li><h3>Non riproduce pubblicità</h3><p>Il piano gratuito del web player ha gli annunci; MySpotify non li riproduce. A Spotify probabilmente non piace. Se ti crea problemi, usa il client ufficiale o abbonati a Premium.</p></li>
+        <li><h3>Non aggira il DRM</h3><p>La decifratura la fa il modulo Widevine o FairPlay del tuo sistema, e il programma non riceve mai le chiavi né il contenuto decifrato. Ogni riproduzione richiede una licenza, quindi non funziona offline.</p></li>
+      </ul>
+      <p class="more"><a href="https://github.com/margbug01/MySpotify/blob/main/README.it.md#rischi-e-limiti">Tutti i rischi e i limiti</a></p>
+    </div>
+  </section>
+
+  <section class="section" id="install">
+    <p class="kicker">INSTALLAZIONE</p>
+    <h2>Scarica, apri, accedi</h2>
+    <div class="install">
+      <div>
+        <h3>macOS</h3>
+        <p class="req">Apple silicon / Intel (sperimentale, prove su hardware in corso)</p>
+        <ol>
+          <li>Apri il dmg e trascina MySpotify in Applicazioni.</li>
+          <li>L'app non è notarizzata da Apple, quindi il primo avvio viene bloccato: vai in Impostazioni di Sistema › Privacy e sicurezza e clicca Apri comunque in fondo. Oppure esegui <code>xattr -dr com.apple.quarantine /Applications/MySpotify.app</code> nel Terminale.</li>
+          <li>Clicca «Accedi a Spotify» e accedi nella pagina ufficiale di Spotify.</li>
+        </ol>
+        <a class="btn" data-dl="mac" href="https://github.com/margbug01/MySpotify/releases/latest">Scarica il .dmg per Apple silicon</a>
+        <a class="btn" data-dl="mac-intel" href="https://github.com/margbug01/MySpotify/releases/latest">Scarica il .dmg per Intel (sperimentale)</a>
+      </div>
+      <div>
+        <h3>Windows</h3>
+        <p class="req">Windows 10 / 11 con il <a href="https://developer.microsoft.com/microsoft-edge/webview2/">runtime WebView2</a> (incluso in Windows 11)</p>
+        <ol>
+          <li>Decomprimi dove vuoi e fai doppio clic su <code>MySpotify.exe</code>.</li>
+          <li>L'exe non è firmato, quindi può comparire «Windows ha protetto il PC»: clicca Ulteriori informazioni › Esegui comunque.</li>
+          <li>Clicca «Accedi a Spotify» e accedi nella pagina ufficiale di Spotify.</li>
+        </ol>
+        <a class="btn" data-dl="win" href="https://github.com/margbug01/MySpotify/releases/latest">Scarica il .zip</a>
+      </div>
+    </div>
+    <p class="note">Le versioni successive si aggiornano da Impostazioni › Informazioni con un clic. Impostazioni e accesso stanno lontano dai file del programma, quindi non si perde nulla.</p>
+    <div class="keys">
+      <span><kbd>Spazio</kbd> Riproduci / pausa</span>
+      <span><kbd>⌘/Ctrl ← →</kbd> Precedente / successivo</span>
+      <span><kbd>⌘/Ctrl D</kbd> Mi piace</span>
+      <span><kbd>⌘/Ctrl L</kbd> In riproduzione</span>
+      <span><kbd>⌘/Ctrl F</kbd> Cerca</span>
+    </div>
+  </section>
+
+  <section class="section" id="faq">
+    <p class="kicker">FAQ</p>
+    <h2>Domande</h2>
+    <div class="faq">
+      <details><summary>Perché un brano dice che al momento non può essere riprodotto?</summary><p>Non è disponibile nella tua regione, oppure Spotify ha rifiutato la licenza. Se non lo riproduce nemmeno il web player, è una questione di licenze.</p></details>
+      <details><summary>La barra del player dice che Spotify sta limitando le richieste. Cosa faccio?</summary><p>Niente. MySpotify aspetta il tempo chiesto da Spotify e poi riprende da dove era. Il limite scatta se avvii brani di continuo in poco tempo.</p></details>
+      <details><summary>Se i brani sono in cache, perché serve comunque la rete?</summary><p>La cache contiene audio cifrato, e per decifrarlo serve una licenza che Spotify rilascia al momento. La cache fa risparmiare dati e buffering.</p></details>
+      <details><summary>Come imposto un proxy?</summary><p>Per impostazione predefinita segue il proxy di sistema. Puoi anche inserire <code>127.0.0.1:7890</code>, <code>http://…</code>, <code>https://…</code> o <code>socks5://…</code> in Impostazioni › Rete › Proxy.</p></details>
+      <details><summary>Perché la musica continua dopo aver chiuso la finestra, e come esco?</summary><p>Chiudere la finestra la manda solo nella barra di sistema. Per uscire, clic destro sull'icona nella barra di sistema e scegli Esci da MySpotify.</p></details>
+    </div>
+    <p class="note"><a href="https://github.com/margbug01/MySpotify/blob/main/README.it.md#faq">Altre domande</a> · <a href="https://github.com/margbug01/MySpotify/issues">Segnala un problema</a></p>
+  </section>
+</main>
+
+<footer>
+  <p>Altre app MyGo dello stesso autore: <a href="https://margbug01.github.io/mami/">Mami</a> · <a href="https://margbug01.github.io/ShoesGUI/">MyShoes</a> · <a href="https://margbug01.github.io/Candle/">Candle</a></p>
+  <p><a href="https://github.com/margbug01/MySpotify">GitHub</a> · <a href="https://github.com/margbug01/MySpotify/blob/main/LICENSE">AGPL-3.0</a></p>
+  <p>Spotify è un marchio di Spotify AB e MySpotify non ha alcun legame con essa. Copertine e foto negli screenshot appartengono ai rispettivi proprietari.</p>
+</footer>
+
+<aside class="bar" aria-label="Download">
+  <div class="bar-now">
+    <img src="icon.png" alt="" width="40" height="40">
+    <div><b>MySpotify <small data-version></small></b><span data-now>Spotify, in una vera app desktop</span></div>
+  </div>
+  <div class="bar-time" aria-hidden="true"><span data-elapsed>0:00</span><div class="bar-track"><i></i></div><span>4:12</span></div>
+  <a class="btn" href="https://github.com/margbug01/MySpotify/releases/latest">Scarica</a>
+</aside>
+</body>
+</html>
