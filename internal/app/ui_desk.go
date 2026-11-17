@@ -2,6 +2,7 @@ package app
 
 import (
 	"runtime"
+	"slices"
 	"time"
 
 	"github.com/egoist/mygo"
@@ -234,7 +235,7 @@ func (d *desk) lyrics(c *ui.Context) {
 	text, under, size := appName, "", float32(26)
 	switch {
 	case cur >= 0:
-		text, under, size = lines[cur].Text, deskUnder(lines, cur), 36
+		text, under, size = lines[cur].Text, deskUnder(lines, cur, a.settings.DeskUnder), 36
 	case tr != nil:
 		text, under = tr.Name, tr.ArtistNames()
 	}
@@ -246,7 +247,9 @@ func (d *desk) lyrics(c *ui.Context) {
 	}
 	rise = easeOutCubic(rise)
 	w, _ := c.Size()
-	size = fitFont(c, text, size, w-64)
+	scale := a.settings.deskScale()
+	size = fitFont(c, text, size*scale, 800, w-64)
+	underSize := fitFont(c, under, 18*scale, 600, w-64)
 
 	ui.Column(c.Key(cur)).Absolute().Top(deskTop+deskTool).Left(32).Right(32).Bottom(12).Center().Gap(6).
 		Opacity(rise).Translate(0, (1-rise)*10).PassThrough().Children(func() {
@@ -256,18 +259,23 @@ func (d *desk) lyrics(c *ui.Context) {
 			deskShadow(ui.Text(c.Key("line"), text).FontSize(size).FontWeight(800).TextColor(white).SingleLine().PassThrough())
 		}
 		if under != "" {
-			deskShadow(ui.Text(c.Key("under"), under).FontSize(18).FontWeight(600).TextColor(white.Alpha(0.78)).SingleLine().PassThrough())
+			deskShadow(ui.Text(c.Key("under"), under).FontSize(underSize).FontWeight(600).TextColor(white.Alpha(0.78)).SingleLine().PassThrough())
 		}
 	})
 }
 
-// words shows line l with its words sung by pos in the cover's color.
+// words shows line l with its words sung by pos in the color chosen.
 func (d *desk) words(c *ui.Context, l *lyrics.Line, pos time.Duration, size float32, playing bool) {
 	tint := d.tint()
+	// White words sung stand out from those to come only as these dim.
+	ahead := white
+	if tint == white {
+		ahead = white.Alpha(0.5)
+	}
 	ui.RichText(c.Key("words")).FontSize(size).FontWeight(800).SingleLine().PassThrough().Children(func() {
 		for i, wd := range l.Words {
 			lit := clamp01(float32((pos - wd.Start).Seconds() / max(0.05, (wd.End-wd.Start).Seconds())))
-			deskShadow(ui.Text(c.Key(i), wd.Text).TextColor(white.Mix(tint, lit)))
+			deskShadow(ui.Text(c.Key(i), wd.Text).TextColor(ahead.Mix(tint, lit)))
 		}
 	})
 	// Words light up smoothly enough at 25 frames a second; sung, they rest.
@@ -276,10 +284,15 @@ func (d *desk) words(c *ui.Context, l *lyrics.Line, pos time.Duration, size floa
 	}
 }
 
-// tint is the color of words sung: the cover's, light enough to read on
-// any desktop, or the app's own.
+// tint is the color of words sung: the one chosen, or the cover's, light
+// enough to read on any desktop, or the app's own.
 func (d *desk) tint() ui.Color {
 	a := d.a
+	for _, k := range deskColors {
+		if k.id == a.settings.DeskColor {
+			return k.color
+		}
+	}
 	if tr := a.pl.Current(); tr != nil {
 		if art := a.art.get(spotify.Sized(tr.Album.PicURL, 96), false); art != nil && !art.failed {
 			return art.tint.Mix(white, 0.3)
@@ -288,10 +301,111 @@ func (d *desk) tint() ui.Color {
 	return a.pal.accent
 }
 
-// deskUnder is what shows under line cur: its translation, or else the
-// line coming next.
-func deskUnder(lines []lyrics.Line, cur int) string {
-	if t := lines[cur].Translation; t != "" {
+// deskSettings are the desktop lyrics' part of the settings: showing them,
+// their size, the color of words sung and what shows under the line, the
+// lyrics changing as they are chosen.
+func (a *app) deskSettings(c *ui.Context, group func(string, func()), row func(string, string, func())) {
+	p := a.pal
+	s := &a.settings
+	group(l10n.T("桌面歌词"), func() {
+		row(l10n.T("显示桌面歌词"), l10n.T("正在唱的那句浮在所有窗口上面；锁定后鼠标可以直接穿过"), func() {
+			if ui.Switch(c.Key("desk"), &s.DeskLyrics).Label(l10n.T("显示桌面歌词")).Changed() {
+				a.setDesk(s.DeskLyrics)
+			}
+		})
+		row(l10n.T("字号"), "", func() {
+			sizes := []string{"small", "", "large"}
+			i := slices.Index(sizes, s.DeskSize)
+			if i < 0 {
+				i = 1
+			}
+			if segmented(c.Key("desk-size"), &i, l10n.T("小"), l10n.T("中"), l10n.T("大")) {
+				s.DeskSize = sizes[i]
+				s.save()
+				a.redraw()
+			}
+		})
+		row(l10n.T("唱到的字的颜色"), "", func() {
+			ui.Row(c).Gap(4).AlignItems(ui.Center).Children(func() {
+				swatch := func(id, label string, dot func()) {
+					ring := ui.Transparent
+					if s.DeskColor == id {
+						ring = p.accent
+					}
+					b := ui.ButtonBase(c.Key("desk-color-"+id)).Size(28, 28).Radius(999).Center().Border(2, ring).Label(label).Tooltip(label)
+					b.Children(dot)
+					if b.Clicked() {
+						s.DeskColor = id
+						s.save()
+						a.redraw()
+					}
+				}
+				swatch("", l10n.T("跟随封面"), func() {
+					if tr := a.pl.Current(); tr != nil {
+						a.cover(c, tr.Album.PicURL, 96, 20, 10)
+						return
+					}
+					ui.Box(c).Size(20, 20).Radius(999).Background(p.hover).Center().Children(func() {
+						ui.Icon(c, iconNote).Size(11, 11).TextColor(p.muted)
+					})
+				})
+				for _, k := range deskColors {
+					swatch(k.id, l10n.T(k.label), func() {
+						ui.Box(c).Size(20, 20).Radius(999).Background(k.color).Border(1, p.hairline)
+					})
+				}
+			})
+		})
+		under := ""
+		if s.DeskUnder == "" {
+			under = l10n.T("没有翻译的歌，第二行显示下一句")
+		}
+		row(l10n.T("第二行"), under, func() {
+			i := max(0, slices.Index(deskUnders, s.DeskUnder))
+			if segmented(c.Key("desk-under"), &i, l10n.T("翻译"), l10n.T("下一句"), l10n.T("不显示")) {
+				s.DeskUnder = deskUnders[i]
+				s.save()
+				a.redraw()
+			}
+		})
+	})
+}
+
+// deskColors are the colors words sung can take, rather than the cover's.
+var deskColors = []struct {
+	id, label string
+	color     ui.Color
+}{
+	{"white", "白色", white},
+	{"red", "红色", ui.RGB(255, 92, 108)},
+	{"pink", "粉色", ui.RGB(255, 143, 184)},
+	{"gold", "金色", ui.RGB(255, 205, 96)},
+	{"green", "绿色", ui.RGB(110, 226, 158)},
+	{"blue", "蓝色", ui.RGB(116, 184, 255)},
+	{"purple", "紫色", ui.RGB(186, 150, 255)},
+}
+
+// deskScale is how much larger than the middle size the lyrics are.
+func (s settings) deskScale() float32 {
+	switch s.DeskSize {
+	case "small":
+		return 0.8
+	case "large":
+		return 1.25
+	}
+	return 1
+}
+
+// deskUnders are what can show under the line: its translation, or the
+// next line without one; always the next line; nothing.
+var deskUnders = []string{"", "next", "none"}
+
+// deskUnder is what shows under line cur, as mode, one of deskUnders, says.
+func deskUnder(lines []lyrics.Line, cur int, mode string) string {
+	if mode == "none" {
+		return ""
+	}
+	if t := lines[cur].Translation; t != "" && mode == "" {
 		return t
 	}
 	if cur+1 < len(lines) {
@@ -306,9 +420,9 @@ func deskShadow(e ui.Element) ui.Element {
 }
 
 // fitFont returns size, or smaller, down to two thirds of it, for text
-// to fit in width on one line.
-func fitFont(c *ui.Context, text string, size, width float32) float32 {
-	if tw, _ := c.MeasureText(0, ui.Span{Text: text, Size: size, Weight: 800}); tw > width {
+// of weight to fit in width on one line.
+func fitFont(c *ui.Context, text string, size float32, weight int, width float32) float32 {
+	if tw, _ := c.MeasureText(0, ui.Span{Text: text, Size: size, Weight: weight}); tw > width {
 		return max(size*2/3, size*width/tw)
 	}
 	return size

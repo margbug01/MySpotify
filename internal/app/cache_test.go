@@ -13,7 +13,7 @@ func TestCacheSizeChosen(t *testing.T) {
 	a.settings = defaultSettings()
 	a.cacheUsed = 0
 	a.open(route{page: pageSettings})
-	tt := ui.NewTester(a.view, 1200, 1400)
+	tt := ui.NewTester(a.view, 1200, 1800)
 	tt.Frame()
 	if err := tt.Click("1 GB"); err != nil {
 		t.Fatal(err)

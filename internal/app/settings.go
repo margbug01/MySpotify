@@ -29,6 +29,13 @@ type settings struct {
 	// lets clicks through it, but for the key that unlocks it.
 	DeskLyrics bool `json:"deskLyrics"`
 	DeskLocked bool `json:"deskLocked"`
+	// DeskSize is "small" or "large", empty for the middle size; DeskColor
+	// the id of the color words sung take (deskColors), empty for the
+	// cover's; DeskUnder what shows under the line (deskUnders), empty for
+	// its translation, else the next line.
+	DeskSize  string `json:"deskSize,omitempty"`
+	DeskColor string `json:"deskColor,omitempty"`
+	DeskUnder string `json:"deskUnder,omitempty"`
 	// Appearance is light, dark, or system to follow the system.
 	Appearance string `json:"appearance"`
 	// MyPlaylistGrid shows the listener's own and saved playlists in the

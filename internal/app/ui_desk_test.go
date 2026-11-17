@@ -35,6 +35,59 @@ func TestSungLine(t *testing.T) {
 	}
 }
 
+// Under the line shows its translation, or the next line without one, as
+// the listener chose; or always the next line; or nothing.
+func TestDeskUnder(t *testing.T) {
+	lines := []lyrics.Line{{Text: "一", Translation: "one"}, {Text: "二"}}
+	for _, c := range []struct {
+		mode string
+		cur  int
+		want string
+	}{{"", 0, "one"}, {"", 1, ""}, {"next", 0, "二"}, {"none", 0, ""}} {
+		if got := deskUnder(lines, c.cur, c.mode); got != c.want {
+			t.Errorf("%q under line %d: %q, want %q", c.mode, c.cur, got, c.want)
+		}
+	}
+	lines[0].Translation = ""
+	if got := deskUnder(lines, 0, ""); got != "二" {
+		t.Errorf("no translation: %q, want the next line", got)
+	}
+}
+
+// The settings choose the lyrics' size, the color of words sung and what
+// shows under the line, and the lyrics take the color at once.
+func TestDeskSettings(t *testing.T) {
+	if !deskHere {
+		t.Skip("no desktop lyrics here")
+	}
+	a := newTestApp()
+	a.settings = defaultSettings()
+	a.open(route{page: pageSettings})
+	tt := ui.NewTester(a.view, 1200, 2000)
+	tt.Frame()
+	for _, label := range []string{"大", "蓝色", "下一句"} {
+		if err := tt.Click(label); err != nil {
+			t.Fatal(err)
+		}
+		tt.Advance(300 * time.Millisecond)
+		tt.Frame()
+	}
+	s := a.settings
+	if s.DeskSize != "large" || s.DeskColor != "blue" || s.DeskUnder != "next" {
+		t.Fatalf("size %q, color %q, under %q", s.DeskSize, s.DeskColor, s.DeskUnder)
+	}
+	if got := (&desk{a: a}).tint(); got != deskColors[5].color {
+		t.Errorf("words sung in %v, not the blue chosen", got)
+	}
+	if err := tt.Click("跟随封面"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if a.settings.DeskColor != "" {
+		t.Errorf("color %q, not the cover's", a.settings.DeskColor)
+	}
+}
+
 // deskApp is an app playing a song with lyrics and its desktop lyrics, the
 // pointer over them.
 func deskApp(t *testing.T) (*app, *desk, *ui.Tester) {
@@ -154,4 +207,22 @@ func TestDeskFrames(t *testing.T) {
 	save("locked", 12500*time.Millisecond)
 	d.hover = false
 	save("break", 18*time.Second)
+	a.settings.DeskLocked = false
+	a.settings.DeskSize, a.settings.DeskColor = "large", "white"
+	lines[1].Translation = "A translation long enough to have to shrink to fit on its one line, rather than end in dots"
+	save("large-white-long", 12500*time.Millisecond)
+	a.settings.DeskSize, a.settings.DeskColor, a.settings.DeskUnder = "small", "pink", "next"
+	save("small-pink-next", 12500*time.Millisecond)
+
+	a.open(route{page: pageSettings})
+	tt := ui.NewTester(a.view, 1000, 1000)
+	tt.Frame()
+	tt.Advance(time.Second)
+	tt.Frame()
+	f, err := os.Create(filepath.Join(dir, "desk-settings.png"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	png.Encode(f, tt.Image())
+	f.Close()
 }
