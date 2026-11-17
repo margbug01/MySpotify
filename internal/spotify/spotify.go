@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -434,11 +435,25 @@ func queryAs(op, h string, vars map[string]any, out any) error {
 	if err := json.Unmarshal(raw, &res); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
-	if len(res.Errors) > 0 && (len(res.Data) == 0 || string(res.Data) == "null") {
-		if strings.Contains(res.Errors[0].Message, "PersistedQueryNotFound") {
-			return fmt.Errorf("%s: %w", op, errStaleQuery)
+	if len(res.Errors) > 0 {
+		var data map[string]json.RawMessage
+		if len(res.Data) > 0 {
+			if err := json.Unmarshal(res.Data, &data); err != nil {
+				return fmt.Errorf("%s: %w", op, err)
+			}
 		}
-		return fmt.Errorf("%s: %s", op, res.Errors[0].Message)
+		usable := false
+		for _, value := range data {
+			usable = usable || string(value) != "null"
+		}
+		if !usable {
+			if strings.Contains(res.Errors[0].Message, "PersistedQueryNotFound") {
+				return fmt.Errorf("%s: %w", op, errStaleQuery)
+			}
+			return fmt.Errorf("%s: %s", op, res.Errors[0].Message)
+		}
+		// Keep useful partial data, but don't hide why some of it is missing.
+		log.Printf("spotify: %s: partial response: %s", op, res.Errors[0].Message)
 	}
 	return json.Unmarshal(res.Data, out)
 }

@@ -97,6 +97,7 @@ type app struct {
 	foundAlbums, foundLists, foundShows []spotify.Playlist // the albums, playlists and podcasts a search found
 
 	daily       []spotify.Track
+	dailyErr    string
 	dailySpin   spinState // the record on the daily card
 	dailyBars   barState  // the bars on its play button
 	charts      []spotify.Playlist

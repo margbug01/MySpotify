@@ -1,6 +1,7 @@
 package app
 
 import (
+	"cmp"
 	"fmt"
 	"math"
 	"strings"
@@ -485,7 +486,7 @@ func (a *app) dailyPage(c *ui.Context) {
 			a.centered(c, l10n.T("登录后每天都有为你挑的歌"), a.openLogin)
 			return
 		}
-		a.centered(c, l10n.T("暂时没有推荐"), a.loadHome)
+		a.centered(c, cmp.Or(a.dailyErr, l10n.T("暂时没有推荐")), a.loadHome)
 		return
 	}
 	now := c.Now()

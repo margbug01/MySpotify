@@ -259,3 +259,109 @@ func TestHomeFeedFindsTheDailyMixMadeForYou(t *testing.T) {
 		t.Errorf("a chip's home asked %v, %v", asked, err)
 	}
 }
+
+// A failed daily lookup keeps the usable home and reports failure, rather than clearing the cached songs (#42).
+func TestHomeFeedReportsDailyFailure(t *testing.T) {
+	for _, tc := range []struct {
+		name, browse string
+		failed       bool
+	}{
+		{"null with error", `{"data":{"browse":null},"errors":[{"message":"unavailable"}]}`, true},
+		{"missing page", `{"data":{"browse":null}}`, true},
+		{"no mixes", `{"data":{"browse":{"sections":{"items":[]}}}}`, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				var q struct {
+					Op string `json:"operationName"`
+				}
+				json.NewDecoder(r.Body).Decode(&q)
+				if q.Op == "browsePage" {
+					fmt.Fprint(w, tc.browse)
+				} else {
+					fmt.Fprint(w, `{"data":{"home":{"greeting":{"transformedLabel":"hello"},"sectionContainer":{"sections":{"items":[]}}}}}`)
+				}
+			}))
+			defer srv.Close()
+			pf := pathfinderURL
+			pathfinderURL = srv.URL
+			SetIdentity(Identity{Token: "t", Expires: time.Now().Add(time.Hour)})
+			defer func() { pathfinderURL = pf; SetIdentity(Identity{}) }()
+			h, err := HomeFeed("")
+			if (err != nil) != tc.failed || h == nil || h.Greeting != "hello" || h.Daily != "" {
+				t.Fatalf("home = %+v, error = %v, want failed=%v and usable home", h, err, tc.failed)
+			}
+		})
+	}
+}
+
+// Daily Mixes beyond the first page are found, while an explicit last page and broken pagination stop (#42).
+func TestMadeForYouDailyFollowsPagination(t *testing.T) {
+	mix := `{"content":{"data":{"__typename":"Playlist","uri":"spotify:playlist:37i9dQZF1E3later","name":"Daily Mix 1"}}}`
+	for _, tc := range []struct {
+		name               string
+		wantMix, wantError bool
+	}{
+		{"sections", true, false}, {"items", true, false}, {"short item page", true, false}, {"last page", false, false}, {"limit", false, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var offsets [][2]int
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				var q struct {
+					Variables struct {
+						Page struct {
+							Offset int `json:"offset"`
+						} `json:"pagePagination"`
+						Section struct {
+							Offset int `json:"offset"`
+						} `json:"sectionPagination"`
+					} `json:"variables"`
+				}
+				json.NewDecoder(r.Body).Decode(&q)
+				p, s := q.Variables.Page.Offset, q.Variables.Section.Offset
+				offsets = append(offsets, [2]int{p, s})
+				if p == 20 || s == 20 || s == 5 {
+					fmt.Fprintf(w, `{"data":{"browse":{"sections":{"pagingInfo":{"nextOffset":null},"items":[{"sectionItems":{"items":[%s]}}]}}}}`, mix)
+					return
+				}
+				switch tc.name {
+				case "sections":
+					fmt.Fprint(w, `{"data":{"browse":{"sections":{"totalCount":21,"pagingInfo":{"nextOffset":20},"items":[{"sectionItems":{"items":[]}}]}}}}`)
+				case "items":
+					fmt.Fprint(w, `{"data":{"browse":{"sections":{"pagingInfo":{"nextOffset":null},"items":[{"sectionItems":{"totalCount":21,"pagingInfo":{"nextOffset":20},"items":[{}]}}]}}}}`)
+				case "short item page":
+					fmt.Fprint(w, `{"data":{"browse":{"sections":{"items":[{"sectionItems":{"pagingInfo":{"nextOffset":20},"items":[{}]}},{"sectionItems":{"pagingInfo":{"nextOffset":5},"items":[{}]}}]}}}}`)
+				case "limit":
+					fmt.Fprint(w, `{"data":{"browse":{"sections":{"pagingInfo":{"nextOffset":100},"items":[]}}}}`)
+				default:
+					fmt.Fprint(w, `{"data":{"browse":{"sections":{"totalCount":11,"pagingInfo":{"nextOffset":null},"items":[{"sectionItems":{"items":[]}}]}}}}`)
+				}
+			}))
+			defer srv.Close()
+			pf := pathfinderURL
+			pathfinderURL = srv.URL
+			SetIdentity(Identity{Token: "t", Expires: time.Now().Add(time.Hour)})
+			defer func() { pathfinderURL = pf; SetIdentity(Identity{}) }()
+			daily, err := madeForYouDaily()
+			if (err != nil) != tc.wantError || (daily != "") != tc.wantMix {
+				t.Fatalf("daily=%q err=%v offsets=%v", daily, err, offsets)
+			}
+			if tc.wantMix && daily != "spotify:playlist:37i9dQZF1E3later" {
+				t.Fatalf("wrong mix: %s", daily)
+			}
+			want := [][2]int{{0, 0}}
+			if tc.name == "sections" {
+				want = append(want, [2]int{20, 0})
+			}
+			if tc.name == "items" {
+				want = append(want, [2]int{0, 20})
+			}
+			if tc.name == "short item page" {
+				want = append(want, [2]int{0, 5})
+			}
+			if fmt.Sprint(offsets) != fmt.Sprint(want) {
+				t.Fatalf("offsets=%v want=%v", offsets, want)
+			}
+		})
+	}
+}
