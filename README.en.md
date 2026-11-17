@@ -8,7 +8,7 @@
 
 A native interface, lyrics that scroll, music videos and video podcasts. Free accounts play whole songs, and you can look around before signing in.
 
-[简体中文](README.md) · **English**
+[简体中文](README.md) · **English** · [Italiano](README.it.md)
 
 [![Latest release](https://img.shields.io/github/v/release/margbug01/MySpotify?style=flat-square&label=latest&color=ef3b45)](https://github.com/margbug01/MySpotify/releases/latest) ![Windows 10/11](https://img.shields.io/badge/Windows-10%20%7C%2011-3a6ea5?style=flat-square) ![macOS Apple silicon](https://img.shields.io/badge/macOS-Apple%20silicon-555555?style=flat-square) ![AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-c2410c?style=flat-square)
 

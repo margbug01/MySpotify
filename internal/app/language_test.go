@@ -148,25 +148,31 @@ func TestLanguageRefreshKeepsChosenFacet(t *testing.T) {
 	}
 }
 
-// With NM_FRAMES set, save English pages at normal and minimum widths for visual review.
+// With NM_FRAMES set, save English and Italian pages at normal and minimum widths for visual review.
 func TestEnglishFrames(t *testing.T) {
 	dir := os.Getenv("NM_FRAMES")
 	if dir == "" {
 		t.Skip()
 	}
-	testLanguage(t, "en")
+	for _, lang := range []string{"en", "it"} {
+		t.Run(lang, func(t *testing.T) { languageFrames(t, dir, lang) })
+	}
+}
+
+func languageFrames(t *testing.T, dir, lang string) {
+	testLanguage(t, lang)
 	for _, width := range []int{880, 1180} {
 		a := editTestApp()
 		a.profile.Nickname = "Alex"
 		a.settings = defaultSettings()
-		a.settings.Language = "en"
+		a.settings.Language = lang
 		tt := ui.NewTester(a.view, width, 780)
 		save := func(name string) {
 			t.Helper()
 			tt.Frame()
 			tt.Advance(time.Second)
 			tt.Frame()
-			file, err := os.Create(filepath.Join(dir, fmt.Sprintf("english-%s-%d.png", name, width)))
+			file, err := os.Create(filepath.Join(dir, fmt.Sprintf("%s-%s-%d.png", lang, name, width)))
 			if err != nil {
 				t.Fatal(err)
 			}

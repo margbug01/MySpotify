@@ -8,7 +8,7 @@
 
 原生界面，会滚动的歌词，MV 和视频播客。免费账号也能整首播放，不登录也能先逛。
 
-**简体中文** · [English](README.en.md)
+**简体中文** · [English](README.en.md) · [Italiano](README.it.md)
 
 [![最新版本](https://img.shields.io/github/v/release/margbug01/MySpotify?style=flat-square&label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC&color=ef3b45)](https://github.com/margbug01/MySpotify/releases/latest) ![Windows 10/11](https://img.shields.io/badge/Windows-10%20%7C%2011-3a6ea5?style=flat-square) ![macOS Apple 芯片](https://img.shields.io/badge/macOS-Apple%20%E8%8A%AF%E7%89%87-555555?style=flat-square) ![AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-c2410c?style=flat-square)
 
