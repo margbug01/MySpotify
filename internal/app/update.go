@@ -113,9 +113,18 @@ func (a *app) installUpdate() {
 		return
 	}
 	u.stage, u.progress, u.err, u.detail = updateDownloading, 0, "", ""
+	check := u.check
 	u.spawn(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
 		defer cancel()
+		// What was found may be hours old, with a later version out since:
+		// asking again installs the latest at once, not one to update from.
+		cctx, ccancel := context.WithTimeout(ctx, 30*time.Second)
+		if latest, err := check(cctx); err == nil && latest != nil {
+			found = latest
+			u.post(func() { u.found = latest })
+		}
+		ccancel()
 		shown := -1
 		err := found.install(ctx, func(done, total int64) {
 			if total <= 0 {
