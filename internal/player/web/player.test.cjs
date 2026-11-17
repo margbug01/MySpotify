@@ -23,6 +23,7 @@ class Hls {
 const session = { handlers: {}, setActionHandler(action, fn) { this.handlers[action] = fn; this.made = elements.length; } };
 const context = vm.createContext({
   Hls, window: {}, navigator: { mediaSession: session },
+  MediaMetadata: class { constructor(info) { Object.assign(this, info); } },
   AbortSignal,
   fetch: (url, options) => {
     const event = JSON.parse(options.body);
@@ -51,6 +52,14 @@ const source = fs.readFileSync(__dirname + '/player.html', 'utf8').match(/<scrip
 vm.runInContext(source, context);
 context.vinyl = context.window.vinyl;
 const player = context.vinyl;
+// The system receives the track and its cover as metadata; replacing it
+// keeps next/previous/seek actions available on the current page.
+player.meta({ title: 'Song', artist: 'Singer', album: 'Album', artwork: 'data:image/png;base64,aA==' });
+assert.equal(session.metadata.title, 'Song');
+assert.equal(session.metadata.artist, 'Singer');
+assert.equal(session.metadata.artwork[0].src, 'data:image/png;base64,aA==');
+assert.equal(typeof session.handlers.nexttrack, 'function');
+assert.equal(typeof session.handlers.seekto, 'function');
 // A short pause reuses the pipeline; a longer one stops loading and resumes at its position.
 player.load(1);
 const first = instances[0];
