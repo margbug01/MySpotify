@@ -128,9 +128,11 @@ type Player struct {
 		at time.Time
 	}
 	cover []byte // the cover the system shows of the track, once loaded
-	// pageShown is whether the page shows the system what plays, rather
-	// than the app (see announce).
-	pageShown bool
+	// Only an actual remote output or an explicitly released idle page
+	// needs the native session on macOS. Loading local audio never does.
+	nativeShown bool
+	idleNative  bool
+	pageNamed   *Web // the page last given the current track's metadata
 
 	// pending holds a seek asked for while the track loads.
 	pending time.Duration
@@ -169,16 +171,25 @@ func (p *Player) sync() {
 		defer p.Changed()
 	}
 	if p.track == nil {
-		mygo.NowPlaying.Clear()
+		p.hideNativeNowPlaying()
+		p.pageNamed = nil
 		return
 	}
-	// The page took the track, or let it go: the other shows it now.
-	if (p.pageOut() != nil) != p.pageShown {
+	page := p.pageOut()
+	if page != nil {
+		if page.w != p.pageNamed || p.nativeShown {
+			p.announce(p.track, p.cover)
+		}
+		return // WebKit follows the page itself.
+	}
+	if !p.needsNativeNowPlaying() {
+		p.hideNativeNowPlaying()
+		p.pageNamed = nil
+		return
+	}
+	if !p.nativeShown {
 		p.announce(p.track, p.cover)
 		return
-	}
-	if p.pageShown {
-		return // WebKit follows the page itself
 	}
 	state := mygo.PlaybackPaused
 	if p.playing {
@@ -191,6 +202,18 @@ func (p *Player) sync() {
 // session of its own: WebKit's does, on macOS, which no setting turns off;
 // WebView2's is turned off (see app.go).
 var pageNowPlaying = runtime.GOOS == "darwin"
+
+func (p *Player) needsNativeNowPlaying() bool {
+	return !pageNowPlaying || p.IsRemote() || p.idleNative
+}
+
+func (p *Player) hideNativeNowPlaying() {
+	if p.nativeShown {
+		mygo.NowPlaying.Clear()
+		nativeNowPlayingVisible(false)
+		p.nativeShown = false
+	}
+}
 
 // pageOut is the page playing the track, if the system shows it.
 func (p *Player) pageOut() *webOut {
@@ -236,11 +259,15 @@ func (p *Player) system(cmd string, at time.Duration) {
 func (p *Player) announce(t *spotify.Track, artwork []byte) {
 	if o := p.pageOut(); o != nil {
 		o.w.nowPlaying(t, artwork)
-		mygo.NowPlaying.Clear()
-		p.pageShown = true
+		p.hideNativeNowPlaying()
+		p.pageNamed = o.w
 		return
 	}
-	p.pageShown = false
+	p.pageNamed = nil
+	if !p.needsNativeNowPlaying() {
+		p.hideNativeNowPlaying()
+		return
+	}
 	state := mygo.PlaybackPaused
 	if p.playing {
 		state = mygo.PlaybackPlaying
@@ -260,7 +287,13 @@ func (p *Player) announce(t *spotify.Track, artwork []byte) {
 		State:    state,
 		Commands: mygo.MediaPlay | mygo.MediaPause | mygo.MediaNext | mygo.MediaPrevious | mygo.MediaSeek,
 	})
+	p.nativeShown = true
+	nativeNowPlayingVisible(true)
 }
+
+// nativeNowPlayingVisible also changes the native client's eligibility on
+// macOS: clearing its metadata alone left a stopped card beside WebKit's.
+var nativeNowPlayingVisible = setNativeNowPlayingVisible
 
 func (p *Player) ended() {
 	if f, ok := p.out.(interface {
@@ -1033,10 +1066,12 @@ func (p *Player) releaseIdle(gen int) {
 	}
 	p.pending = p.Position()
 	p.CloseWeb()
+	p.idleNative = true
 	p.sync()
 }
 
 func (p *Player) CloseWeb() {
+	p.idleNative = false
 	if p.idle != nil {
 		p.idle.Stop()
 		p.idle = nil
@@ -1135,6 +1170,7 @@ func (p *Player) loadSkipping(at, skipped int, play bool, from time.Duration) {
 // video v, if there is one to play and somewhere to play it, or else its
 // audio m.
 func (p *Player) open(gen int, m *spotify.Media, v *spotify.Video) {
+	p.idleNative = false
 	if v != nil && p.Video == nil && p.NewVideo != nil {
 		var err error
 		if p.Video, err = p.NewVideo(); err != nil {
@@ -1169,9 +1205,10 @@ func (p *Player) open(gen int, m *spotify.Media, v *spotify.Video) {
 	if out, ok := p.out.(rated); ok && p.Rate() != 1 {
 		out.SetRate(p.Rate())
 	}
+	currentOutput := p.out
 	p.out.OnEnd(func() {
 		p.post(func() {
-			if gen == p.gen {
+			if gen == p.gen && p.out == currentOutput {
 				p.ended()
 			}
 		})
@@ -1179,7 +1216,7 @@ func (p *Player) open(gen int, m *spotify.Media, v *spotify.Video) {
 	if out, ok := p.out.(systemOutput); ok {
 		out.OnSystem(func(cmd string, at time.Duration) {
 			p.post(func() {
-				if gen == p.gen {
+				if gen == p.gen && p.out == currentOutput {
 					p.system(cmd, at)
 				}
 			})
@@ -1286,6 +1323,7 @@ func (p *Player) videoFailed(msg string) {
 // loadSkipping goes on to load. Its generation and track are returned.
 func (p *Player) cue(at int, play bool, from time.Duration) (int, spotify.Track) {
 	p.stop()
+	p.idleNative = false
 	p.gen++
 	gen := p.gen
 	p.at = at

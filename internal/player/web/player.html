@@ -277,6 +277,7 @@ window.vinyl = {
       title: m.title, artist: m.artist, album: m.album,
       artwork: m.artwork ? [{ src: m.artwork }] : [],
     });
+    takeSystemActions();
   },
   // rate is how fast the track plays, its pitch kept: the default too, which
   // a load, as hls.js recovering, puts it back to.
