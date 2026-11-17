@@ -87,8 +87,6 @@ Updating: from 0.4.0 on, click 更新并重启 (Update and restart) under 设置
 
 ### macOS (Apple silicon / Intel)
 
-During local playback, Control Center uses WebKit's track information and artwork, and the old native media card is withdrawn. Spotify Connect remote playback and system controls after a long pause continue to use the native session.
-
 1. For Apple silicon, download `MySpotify-<version>-macos-arm64.dmg`; for Intel, download `MySpotify-<version>-macos-amd64.dmg` (experimental). Open it and drag MySpotify to Applications.
 2. The app isn't notarized by Apple, so the first launch is blocked: go to System Settings › Privacy & Security and click Open Anyway at the bottom. Or run `xattr -dr com.apple.quarantine /Applications/MySpotify.app` in Terminal and open it.
 

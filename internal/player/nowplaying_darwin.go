@@ -1,7 +1,5 @@
 //go:build darwin
 
-// @author denovochen
-
 package player
 
 import (

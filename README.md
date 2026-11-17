@@ -86,8 +86,6 @@ v0.4.17 起支持简体中文和英语，v0.4.23 起加入意大利语：在「�
 
 ### macOS（Apple 芯片 / Intel）
 
-本机播放时，控制中心使用 WebKit 的歌曲信息和封面；切换后会撤下旧的原生媒体卡片。Spotify Connect 远端播放和长暂停后的系统媒体控制继续使用原生会话。
-
 1. Apple 芯片下载 `MySpotify-<版本>-macos-arm64.dmg`；Intel 下载 `MySpotify-<版本>-macos-amd64.dmg`（实验版）。打开后把 MySpotify 拖进「应用程序」。
 2. app 没有经过 Apple 公证，第一次打开会被拦下：到「系统设置 › 隐私与安全性」最下面点「仍要打开」。也可以在终端里执行 `xattr -dr com.apple.quarantine /Applications/MySpotify.app` 再打开。
 
