@@ -210,3 +210,52 @@ func TestLikedSongsKeepTheirNameFromSpotify(t *testing.T) {
 		t.Errorf("liked songs = %+v, %v", pl, ok)
 	}
 }
+
+// A home with no Daily Mix anywhere, as some days, takes the first of the
+// Made For You page's: the daily page said 暂时没有推荐 (#42). A chip's home
+// asks for none.
+func TestHomeFeedFindsTheDailyMixMadeForYou(t *testing.T) {
+	var asked []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var q struct {
+			Op        string         `json:"operationName"`
+			Variables map[string]any `json:"variables"`
+		}
+		json.NewDecoder(r.Body).Decode(&q)
+		asked = append(asked, q.Op)
+		if q.Op == "browsePage" {
+			if q.Variables["uri"] != madeForYouPage {
+				t.Errorf("browsed %v", q.Variables["uri"])
+			}
+			fmt.Fprint(w, `{"data":{"browse":{"sections":{"items":[
+{"uri":"spotify:section:personal","sectionItems":{"items":[{"content":{"data":{"__typename":"Playlist","uri":"spotify:playlist:37i9dQZF1EP6daylist","name":"daylist"}}}]}},
+{"uri":"spotify:section:daily","sectionItems":{"items":[{"content":{"data":{"__typename":"Playlist","uri":"spotify:playlist:37i9dQZF1E36mix","name":"每日推荐 1"}}}]}}
+]}}}}`)
+			return
+		}
+		fmt.Fprint(w, `{"data":{"home":{"sectionContainer":{"sections":{"items":[
+{"uri":"spotify:section:radio","data":{"__typename":"HomeGenericSectionData","title":{"transformedLabel":"推荐电台"}},
+ "sectionItems":{"items":[{"content":{"data":{"__typename":"Playlist","uri":"spotify:playlist:37i9dQZF1E4radio","name":"电台"}}}]}}
+]}}}}}`)
+	}))
+	defer srv.Close()
+	pf := pathfinderURL
+	pathfinderURL = srv.URL
+	SetIdentity(Identity{Token: "t", Expires: time.Now().Add(time.Hour)})
+	defer func() {
+		pathfinderURL = pf
+		SetIdentity(Identity{})
+	}()
+
+	h, err := HomeFeed("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h.Daily != "spotify:playlist:37i9dQZF1E36mix" {
+		t.Errorf("daily = %q", h.Daily)
+	}
+	asked = nil
+	if _, err := HomeFeed("music-chip"); err != nil || fmt.Sprint(asked) != "[home]" {
+		t.Errorf("a chip's home asked %v, %v", asked, err)
+	}
+}

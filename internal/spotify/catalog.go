@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log"
 	"net/http"
 	"sort"
 	"strconv"
@@ -565,6 +566,41 @@ func appendNew(items, more []HomeItem) []HomeItem {
 // The home's section of playlists made for the listener.
 const forYouSection = "spotify:section:0JQ5DAUnp4wcj0bCb3wh3S"
 
+// madeForYouPage is the page of all the listener's mixes, as the web
+// player's Made For You: their Daily Mixes among them, every day.
+const madeForYouPage = "spotify:page:0JQ5DAt0tbjZptfcdMSKl3"
+
+// dailyMix reports whether id is a Daily Mix, 37i9dQZF1E3…; Discover Weekly
+// and radios aren't.
+func dailyMix(id string) bool { return strings.HasPrefix(id, "spotify:playlist:37i9dQZF1E3") }
+
+// madeForYouDaily returns the first of the listener's Daily Mixes on the
+// Made For You page, "" for none.
+func madeForYouDaily() (string, error) {
+	var res struct {
+		Browse struct {
+			Sections gqlSections `json:"sections"`
+		} `json:"browse"`
+	}
+	err := query("browsePage", map[string]any{
+		"uri":                      madeForYouPage,
+		"pagePagination":           map[string]int{"offset": 0, "limit": 20},
+		"sectionPagination":        map[string]int{"offset": 0, "limit": 20},
+		"browseEndUserIntegration": "INTEGRATION_WEB_PLAYER",
+	}, &res)
+	if err != nil {
+		return "", err
+	}
+	for _, s := range res.Browse.Sections.Items {
+		for _, it := range s.SectionItems.Items {
+			if pl, ok := it.Content.Data.playlist(); ok && dailyMix(pl.ID) {
+				return pl.ID, nil
+			}
+		}
+	}
+	return "", nil
+}
+
 // feedTitle names the cards the feed gives one by one without a title.
 const feedTitle = "更多推荐"
 
@@ -616,16 +652,21 @@ func HomeFeed(facet string) (*Home, error) {
 			forYou = items[0].List.ID
 		}
 	}
-	// Daily Mixes are 37i9dQZF1E3…; Discover Weekly and radios aren't. The
-	// feed may have one only in its grid of shortcuts.
+	// The feed may have a Daily Mix only in its grid of shortcuts, or, some
+	// days, nowhere: then the Made For You page has them all (#42).
 	var items []HomeItem
 	for _, s := range h.Sections {
 		items = append(items, s.Items...)
 	}
 	for _, it := range append(items, h.Shortcuts...) {
-		if it.List != nil && strings.HasPrefix(it.List.ID, "spotify:playlist:37i9dQZF1E3") {
+		if it.List != nil && dailyMix(it.List.ID) {
 			h.Daily = it.List.ID
 			break
+		}
+	}
+	if h.Daily == "" && facet == "" {
+		if h.Daily, err = madeForYouDaily(); err != nil {
+			log.Printf("spotify: made for you: %v", err)
 		}
 	}
 	h.Daily = cmp.Or(h.Daily, forYou)

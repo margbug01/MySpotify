@@ -484,8 +484,11 @@ func (a *app) loadHome() {
 			if pl, err := spotify.PlaylistDetail(home.Daily); err == nil {
 				daily = pl.Tracks
 			} else {
+				log.Printf("home: daily %s: %v", home.Daily, err)
 				dailyOK = false
 			}
+		} else if dailyOK {
+			log.Printf("home: no daily mix")
 		}
 		wg.Wait()
 		a.post(func() {
