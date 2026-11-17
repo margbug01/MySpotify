@@ -1257,6 +1257,14 @@ func videoOf(m *spotify.Media, find func(string) (*spotify.Video, error)) *spoti
 // is known: once its media is resolved.
 func (p *Player) HasVideo() bool { return p.media != nil && p.media.Video != "" }
 
+// Bitrate is the bits per second of the file playing, 0 before it is known.
+func (p *Player) Bitrate() int {
+	if p.media == nil {
+		return 0
+	}
+	return p.media.Bitrate
+}
+
 // VideoOn reports whether music videos play, for the tracks that have one.
 func (p *Player) VideoOn() bool { return p.video }
 

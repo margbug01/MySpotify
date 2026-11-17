@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"math"
+	"strconv"
 	"time"
 	"unicode"
 
@@ -169,6 +170,7 @@ func (a *app) nowPlayingBody(c *ui.Context, tr *spotify.Track, art *artwork, acc
 						// The album is in the song's menu: here it took the artists' room.
 						a.artistLinks(c.Key("by"), tr.Artists, 15, white.Alpha(0.6), white)
 					})
+					a.qualityBadge(c, white.Alpha(0.12), white.Alpha(0.7))
 					if pl.HasVideo() {
 						a.mvButton(c)
 					}
@@ -662,4 +664,15 @@ func (a *app) queuePane(c *ui.Context) {
 			pl.Jump(i)
 		}
 	}).Grow(1).Padding(8, 14, 40, 0).Gap(2) // the right, the scrollbar's: it does not cover the rows
+}
+
+// qualityBadge is the bitrate of the file playing, as "256k", once known.
+func (a *app) qualityBadge(c *ui.Context, bg, fg ui.Color) {
+	b := a.pl.Bitrate()
+	if b <= 0 {
+		return
+	}
+	ui.Row(c.Key("quality")).Padding(2, 7, 2, 7).Radius(999).Background(bg).Shrink(0).Children(func() {
+		ui.Text(c, strconv.Itoa(b/1000)+"k").FontSize(10.5).FontWeight(700).FontFeatures("tnum").TextColor(fg).SingleLine()
+	})
 }
