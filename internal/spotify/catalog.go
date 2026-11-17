@@ -616,12 +616,16 @@ func HomeFeed(facet string) (*Home, error) {
 			forYou = items[0].List.ID
 		}
 	}
-	// Daily Mixes are 37i9dQZF1E3…; Discover Weekly and radios aren't.
+	// Daily Mixes are 37i9dQZF1E3…; Discover Weekly and radios aren't. The
+	// feed may have one only in its grid of shortcuts.
+	var items []HomeItem
 	for _, s := range h.Sections {
-		for _, it := range s.Items {
-			if h.Daily == "" && it.List != nil && strings.HasPrefix(it.List.ID, "spotify:playlist:37i9dQZF1E3") {
-				h.Daily = it.List.ID
-			}
+		items = append(items, s.Items...)
+	}
+	for _, it := range append(items, h.Shortcuts...) {
+		if it.List != nil && strings.HasPrefix(it.List.ID, "spotify:playlist:37i9dQZF1E3") {
+			h.Daily = it.List.ID
+			break
 		}
 	}
 	h.Daily = cmp.Or(h.Daily, forYou)

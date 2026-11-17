@@ -100,6 +100,35 @@ func TestHomeFeedKeepsSpotifysSections(t *testing.T) {
 	}
 }
 
+// A Daily Mix only in the grid of shortcuts is still the day's songs: with
+// none in the sections, the daily page said 暂时没有推荐.
+func TestHomeFeedFindsTheDailyMixInTheShortcuts(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `{"data":{"home":{"sectionContainer":{"sections":{"items":[
+{"uri":"spotify:section:shorts","data":{"__typename":"HomeShortsSectionData"},
+ "sectionItems":{"items":[{"content":{"data":{"__typename":"Playlist","uri":"spotify:playlist:37i9dQZF1E35mix","name":"每日推荐 2"}}}]}},
+{"uri":"spotify:section:radio","data":{"__typename":"HomeGenericSectionData","title":{"transformedLabel":"推荐电台"}},
+ "sectionItems":{"items":[{"content":{"data":{"__typename":"Playlist","uri":"spotify:playlist:37i9dQZF1E4radio","name":"电台"}}}]}}
+]}}}}}`)
+	}))
+	defer srv.Close()
+	pf := pathfinderURL
+	pathfinderURL = srv.URL
+	SetIdentity(Identity{Token: "t", Expires: time.Now().Add(time.Hour)})
+	defer func() {
+		pathfinderURL = pf
+		SetIdentity(Identity{})
+	}()
+
+	h, err := HomeFeed("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h.Daily != "spotify:playlist:37i9dQZF1E35mix" {
+		t.Errorf("daily = %q", h.Daily)
+	}
+}
+
 // Decorate names only the tracks without names, keeping their places in the
 // queue, and does not take them for unplayable for want of a playability.
 func TestDecorateNamesWhatIsOnlyAURI(t *testing.T) {
