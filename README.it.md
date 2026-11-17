@@ -155,7 +155,7 @@ Questa parte è ancora sperimentale. Registrazione e passaggio funzionano nei te
 
 | Funzione | Perché |
 | --- | --- |
-| Audio a 256k / lossless | La richiesta di licenza a 256k di un account gratuito viene rifiutata (403); il lossless c'è solo nelle app ufficiali per desktop e telefono |
+| Audio lossless | Solo nelle app ufficiali per desktop e telefono. Il 256k è per gli account Premium: attiva Alta qualità (256k) in Impostazioni › Qualità audio. La richiesta di licenza a 256k di un account gratuito viene rifiutata (403), e quel brano passa a 128k |
 | Testi parola per parola | Spotify dà al web player solo la sincronizzazione per riga; i testi parola per parola di NetEase non sono ancora collegati |
 | Download offline | Servono Premium e il client ufficiale |
 | Jam, DJ | Servono Premium o l'app per telefono |

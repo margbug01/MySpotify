@@ -458,5 +458,8 @@
   "没有翻译的歌，第二行显示下一句": "For songs without a translation, the second line shows the next line",
   "翻译": "Translation",
   "下一句": "Next line",
-  "不显示": "None"
+  "不显示": "None",
+  "音质": "Audio quality",
+  "高音质 (256k)": "High quality (256k)",
+  "需要 Premium。Spotify 不给某首歌授权时，这首歌自动改用 128k": "Needs Premium. If Spotify refuses a song's licence, that song plays at 128k instead."
 }

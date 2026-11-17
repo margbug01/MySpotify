@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -134,6 +135,36 @@ func TestRefusedLicenceStops(t *testing.T) {
 	next(t, ch) // the network is up
 	if p.Playing() || p.Current().ID != "1" || p.Err() != "这首歌暂时无法播放" || len(*waits) != 0 {
 		t.Fatalf("refused: playing %v, track %s, err %q, %d waits", p.Playing(), p.Current().ID, p.Err(), len(*waits))
+	}
+}
+
+// A licence refused for the highest bitrate, as a free account's is, loads
+// the track again at the lowest, where it was, rather than stopping at it; the
+// lowest refused too, it stops (high quality, 2026-11-17).
+func TestHighQualityRefusedFallsBack(t *testing.T) {
+	ch, p, _ := licensed(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+	})
+	spotify.SetHighQuality(true)
+	t.Cleanup(func() { spotify.SetHighQuality(false) })
+	var bitrate int
+	resolve = func(string) (*spotify.Media, error) {
+		return &spotify.Media{Manifest: "#EXTM3U\nhttps://cdn.test/a.mp4\n", Duration: time.Minute, Bitrate: bitrate}, nil
+	}
+	// Each run asks for a track no other has been refused for.
+	bitrate = 256000
+	p.PlayQueue([]spotify.Track{{ID: "hq" + strconv.FormatInt(int64(time.Now().Nanosecond()), 10)}}, 0)
+	next(t, ch)
+	fails(t, ch, p, strconv.Itoa(p.gen)) // refused at 256k
+	if !p.Loading() || !p.Playing() {
+		t.Fatalf("refused at 256k: loading %v, playing %v; want it loading again", p.Loading(), p.Playing())
+	}
+	bitrate = 128000
+	next(t, ch)
+	fails(t, ch, p, strconv.Itoa(p.gen)) // refused at 128k
+	next(t, ch)                          // the network is up
+	if p.Playing() || p.Err() != "这首歌暂时无法播放" {
+		t.Fatalf("refused at 128k: playing %v, err %q; want it stopped", p.Playing(), p.Err())
 	}
 }
 
