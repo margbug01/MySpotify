@@ -37,7 +37,7 @@ type Output interface {
 // systemOutput is an Output the system pauses, plays and skips by itself,
 // as the web player's (see webOut.OnSystem).
 type systemOutput interface {
-	OnSystem(func(string)) (off func())
+	OnSystem(func(cmd string, at time.Duration)) (off func())
 }
 
 // Bands is how many bands of pitch Levels splits a spectrum into.
@@ -204,8 +204,9 @@ func (p *Player) pageOut() *webOut {
 // WebKit pauses and plays the page itself for the media keys, Control
 // Center and apps such as Mami, which pauses what plays while one talks:
 // Vinyl went on showing it playing, kept it from being let go when idle,
-// and told Spotify Connect it played. It passes the page the skips too.
-func (p *Player) system(cmd string) {
+// and told Spotify Connect it played. It passes the page the skips and
+// seeks too.
+func (p *Player) system(cmd string, at time.Duration) {
 	switch cmd {
 	case "pause", "play":
 		playing := cmd == "play"
@@ -223,6 +224,8 @@ func (p *Player) system(cmd string) {
 		p.Next()
 	case "previous":
 		p.Prev()
+	case "seek":
+		p.Seek(at)
 	}
 }
 
@@ -1174,10 +1177,10 @@ func (p *Player) open(gen int, m *spotify.Media, v *spotify.Video) {
 		})
 	})
 	if out, ok := p.out.(systemOutput); ok {
-		out.OnSystem(func(cmd string) {
+		out.OnSystem(func(cmd string, at time.Duration) {
 			p.post(func() {
 				if gen == p.gen {
-					p.system(cmd)
+					p.system(cmd, at)
 				}
 			})
 		})

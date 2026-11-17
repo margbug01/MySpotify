@@ -19,7 +19,8 @@ class Hls {
   startLoad(position) { this.starts.push(position); this.stopped = false; }
   destroy() { this.destroyed = true; }
 }
-const session = { handlers: {}, setActionHandler(action, fn) { this.handlers[action] = fn; } };
+// made is how many elements there were when the page last took an action.
+const session = { handlers: {}, setActionHandler(action, fn) { this.handlers[action] = fn; this.made = elements.length; } };
 const context = vm.createContext({
   Hls, window: {}, navigator: { mediaSession: session },
   AbortSignal,
@@ -86,6 +87,12 @@ assert.equal(timers.size, 0);
 player.load(7);
 const sys = elements.at(-1);
 const sysHls = instances.at(-1);
+// WebKit forgot the actions the page took while no element played, and
+// offered the system 15-second skips instead of the next track (#30): each
+// element takes them as it plays.
+session.made = 0;
+sys.handlers.playing();
+assert.equal(session.made, elements.length);
 const reported = () => events.filter(event => event.gen === 7 && event.type.startsWith('system-')).map(event => event.type + '@' + event.seq);
 player.play(7, 1);
 sys.paused = true;
@@ -113,11 +120,14 @@ assert.deepEqual(reported(), ['system-pause@1', 'system-play@1']);
 session.handlers.nexttrack();
 session.handlers.previoustrack();
 assert.deepEqual(reported(), ['system-pause@1', 'system-play@1', 'system-next@0', 'system-previous@0']);
+// The system's progress bar seeks where it asks.
+session.handlers.seekto({ action: 'seekto', seekTime: 42.5 });
+assert.deepEqual(events.at(-1), { gen: 7, type: 'system-seek', t: 42.5, msg: '', seq: 0 });
 player.unload(7);
 // WebKit pauses an element taken out of the page: that is not the system's.
 sys.ended = false;
 sys.handlers.pause();
-assert.equal(reported().length, 4);
+assert.equal(reported().length, 5);
 assert.equal(timers.size, 0);
 session.handlers.nexttrack();
 assert.equal(events.filter(event => event.type === 'system-next').length, 1);
