@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"image/draw"
@@ -246,4 +247,69 @@ func TestDeskFrames(t *testing.T) {
 	}
 	png.Encode(f, tt.Image())
 	f.Close()
+}
+
+// The words of an English line keep the spaces between them: each word its
+// own text to come and go, they ran together as Holdmecloser.
+func TestDeskWordsKeepTheirSpaces(t *testing.T) {
+	a, d, _ := deskApp(t)
+	lines, _ := a.pl.Lyrics()
+	l := &lines[1]
+	l.Text = "Hold me closer"
+	l.Words = lyrics.SpreadWords(l.Text, l.At, l.End)
+	a.pl.Seek(12500 * time.Millisecond)
+	tt := ui.NewTester(d.view, deskW, deskH)
+	tt.Frame()
+	tt.Advance(time.Second)
+	tt.Frame()
+	hold, ok1 := tt.Find("Hold ")
+	me, ok2 := tt.Find("me ")
+	if !ok1 || !ok2 {
+		t.Fatalf("no words in %q", tt.Texts())
+	}
+	if gap := me.X - (hold.X + hold.W); gap < 5 {
+		t.Errorf("%.1f between Hold and me", gap)
+	}
+}
+
+// With NM_FRAMES set, saves a strip of the desktop lyrics, a frame every
+// 60 ms, as a line dissolves and the next comes in word by word: a Chinese
+// line after another, and an English one after it.
+func TestDeskChangeFrames(t *testing.T) {
+	dir := os.Getenv("NM_FRAMES")
+	if dir == "" {
+		t.Skip()
+	}
+	a, d, _ := deskApp(t)
+	d.hover = false
+	lines, _ := a.pl.Lyrics()
+	for i, text := range map[int]string{2: "车窗外萧瑟的风加速了寂寞", 3: "Hold me closer, tiny dancer"} {
+		l := &lines[i]
+		l.Text, l.End = text, lines[i+1].At
+		l.Words = lyrics.SpreadWords(text, l.At, l.At+5*time.Second)
+	}
+	lines[1].End = lines[2].At
+	for _, at := range []time.Duration{20 * time.Second, 30 * time.Second} {
+		const n = 14
+		img := image.NewRGBA(image.Rect(0, 0, deskW, deskH*n))
+		draw.Draw(img, img.Bounds(), image.NewUniform(color.RGBA{28, 34, 48, 255}), image.Point{}, draw.Src)
+		a.pl.Seek(at - 2*time.Second)
+		tt := ui.NewTester(d.view, deskW, deskH)
+		tt.Frame()
+		tt.Advance(time.Second)
+		tt.Frame()
+		for f := range n {
+			pos := at - 60*time.Millisecond + time.Duration(f)*60*time.Millisecond
+			a.pl.Seek(pos)
+			tt.Advance(60 * time.Millisecond)
+			tt.Frame()
+			draw.Draw(img, image.Rect(0, f*deskH, deskW, (f+1)*deskH), tt.Image(), image.Point{}, draw.Over)
+		}
+		f, err := os.Create(filepath.Join(dir, fmt.Sprintf("desk-change-%ds.png", at/time.Second)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		png.Encode(f, img)
+		f.Close()
+	}
 }
