@@ -411,6 +411,20 @@ func (a *app) playerBar(c *ui.Context) {
 	// narrower, the middle gives up to 140 DIPs, and what plays keeps room
 	// for its cover, some of its title and its heart.
 	const controls = 4*32 + 3*4 // lyrics, desktop lyrics, queue and the speaker
+	// Before them, where the window has room beyond what the rest keeps, the
+	// music video's button, then the badge of the bitrate ("256k", about
+	// 40): in a narrow window they pushed the speaker out of it.
+	w, _ := c.Size()
+	room := w - sidebarWidth - 1 - 2*20 - 2*20 - 150 - 300 - controls
+	side := float32(controls)
+	mv := tr != nil && pl.HasVideo() && room >= 32+4
+	if mv {
+		side += 32 + 4
+	}
+	badge := tr != nil && pl.Bitrate() > 0 && room-(side-controls) >= 44+4
+	if badge {
+		side += 44 + 4
+	}
 	ui.Row(c).Absolute().Left(0).Right(0).Bottom(0).Height(playerBarHeight).PaddingX(20).Gap(20).AlignItems(ui.Center).Children(func() {
 		// What plays.
 		ui.Row(c).Grow(1).Basis(0).MinWidth(150).Children(func() {
@@ -464,11 +478,11 @@ func (a *app) playerBar(c *ui.Context) {
 		})
 
 		// Lyrics and volume.
-		ui.Row(c).Grow(1).Basis(0).MinWidth(controls).Justify(ui.End).AlignItems(ui.Center).Gap(4).Children(func() {
-			if tr != nil {
+		ui.Row(c).Grow(1).Basis(0).MinWidth(side).Justify(ui.End).AlignItems(ui.Center).Gap(4).Children(func() {
+			if badge {
 				a.qualityBadge(c, p.press, p.faint)
 			}
-			if tr != nil && pl.HasVideo() {
+			if mv {
 				a.barMVButton(c)
 			}
 			lyr := p.muted
