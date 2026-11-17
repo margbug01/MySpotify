@@ -35,6 +35,27 @@ func TestSungLine(t *testing.T) {
 	}
 }
 
+// Through a break, and before the first line, the desktop lyrics show the
+// line coming, resting, and after the last line, the last: not the song's
+// name, which came and went with each break between lines.
+func TestDeskLineThroughBreaks(t *testing.T) {
+	s := time.Second
+	lines := []lyrics.Line{
+		{At: 2 * s, End: 5 * s, Text: "一"},
+		{At: 20 * s, End: 23 * s, Text: ""},
+		{At: 24 * s, End: 27 * s, Text: "三"},
+	}
+	for _, c := range []struct {
+		at      time.Duration
+		want    int
+		resting bool
+	}{{1 * s, 0, true}, {3 * s, 0, false}, {12 * s, 2, true}, {21 * s, 2, true}, {25 * s, 2, false}, {40 * s, 2, true}} {
+		if got, resting := deskLine(lines, c.at); got != c.want || resting != c.resting {
+			t.Errorf("at %v: line %d resting %v, want %d %v", c.at, got, resting, c.want, c.resting)
+		}
+	}
+}
+
 // Under the line shows its translation, or the next line without one, as
 // the listener chose; or always the next line; or nothing.
 func TestDeskUnder(t *testing.T) {
@@ -171,7 +192,7 @@ func TestDeskFrameBudget(t *testing.T) {
 
 // With NM_FRAMES set, saves the desktop lyrics over a light and a dark
 // desktop: a line half sung, under the pointer, locked under it, and the
-// song's name between lines.
+// line coming, dimmed, through a break between lines.
 func TestDeskFrames(t *testing.T) {
 	dir := os.Getenv("NM_FRAMES")
 	if dir == "" {

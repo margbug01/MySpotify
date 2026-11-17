@@ -214,8 +214,9 @@ func (d *desk) tools(c *ui.Context, shown float32) {
 }
 
 // lyrics shows the line sung and the one under it, the line rising in as
-// it begins; else the song's name and artists, or nothing playing, the
-// app's name.
+// it begins, or dimmed, the line coming through a break or the last after
+// it; without timed lyrics the song's name and artists, or nothing
+// playing, the app's name.
 func (d *desk) lyrics(c *ui.Context) {
 	a := d.a
 	pl := a.pl
@@ -223,9 +224,9 @@ func (d *desk) lyrics(c *ui.Context) {
 	lines, _ := pl.Lyrics()
 	pos := pl.SongPosition()
 	playing := pl.Playing()
-	cur := -1
+	cur, resting := -1, false
 	if tr != nil && timed(lines) {
-		cur = sungLine(lines, pos)
+		cur, resting = deskLine(lines, pos)
 		if playing {
 			if wait := lyricChange(lines, lyrics.Index(lines, pos), pos); wait > 0 {
 				c.After(time.Duration(float64(wait)/pl.Rate()) + 20*time.Millisecond)
@@ -239,8 +240,10 @@ func (d *desk) lyrics(c *ui.Context) {
 	case tr != nil:
 		text, under = tr.Name, tr.ArtistNames()
 	}
+	// A line rises in as it follows another; one shown dimmed through the
+	// break before it only brightens.
 	rise := float32(1)
-	if cur >= 0 && playing {
+	if cur >= 0 && playing && !resting && sungLine(lines, lines[cur].At-time.Millisecond) >= 0 {
 		if rise = clamp01(float32((pos - lines[cur].At).Seconds() / 0.3)); rise < 1 {
 			c.AnimationFrame()
 		}
@@ -251,8 +254,9 @@ func (d *desk) lyrics(c *ui.Context) {
 	size = fitFont(c, text, size*scale, 800, w-64)
 	underSize := fitFont(c, under, 18*scale, 600, w-64)
 
-	ui.Column(c.Key(cur)).Absolute().Top(deskTop+deskTool).Left(32).Right(32).Bottom(12).Center().Gap(6).
-		Opacity(rise).Translate(0, (1-rise)*10).PassThrough().Children(func() {
+	col := ui.Column(c.Key(cur)).Absolute().Top(deskTop + deskTool).Left(32).Right(32).Bottom(12).Center().Gap(6)
+	lit := col.AnimateTo("lit", 1-0.45*b2f(resting), ui.Animation{Duration: 300 * time.Millisecond})
+	col.Opacity(rise*lit).Translate(0, (1-rise)*10).PassThrough().Children(func() {
 		if cur >= 0 && len(lines[cur].Words) > 0 {
 			d.words(c, &lines[cur], pos, size, playing)
 		} else {
@@ -262,6 +266,27 @@ func (d *desk) lyrics(c *ui.Context) {
 			deskShadow(ui.Text(c.Key("under"), under).FontSize(underSize).FontWeight(600).TextColor(white.Alpha(0.78)).SingleLine().PassThrough())
 		}
 	})
+}
+
+// deskLine returns the line of timed lines to show at pos: the line sung,
+// or resting, the line coming, through a break or before the first, or
+// after the last, that line. -1 when no line has words.
+func deskLine(lines []lyrics.Line, pos time.Duration) (cur int, resting bool) {
+	if cur := sungLine(lines, pos); cur >= 0 {
+		return cur, false
+	}
+	i := lyrics.Index(lines, pos)
+	for j := i + 1; j < len(lines); j++ {
+		if lines[j].Text != "" {
+			return j, true
+		}
+	}
+	for j := min(i, len(lines)-1); j >= 0; j-- {
+		if lines[j].Text != "" {
+			return j, true
+		}
+	}
+	return -1, false
 }
 
 // words shows line l with its words sung by pos in the color chosen.
@@ -279,8 +304,9 @@ func (d *desk) words(c *ui.Context, l *lyrics.Line, pos time.Duration, size floa
 		}
 	})
 	// Words light up smoothly enough at 25 frames a second; sung, they rest.
+	// Shown ahead through a break, they wait for the first.
 	if playing && pos < l.Words[len(l.Words)-1].End {
-		c.After(40 * time.Millisecond)
+		c.After(max(40*time.Millisecond, l.Words[0].Start-pos))
 	}
 }
 
