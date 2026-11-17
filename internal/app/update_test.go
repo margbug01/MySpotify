@@ -31,7 +31,7 @@ func updateApp(found *release, fail error) (*app, *int) {
 
 func settingsTester(a *app) *ui.Tester {
 	a.open(route{page: pageSettings})
-	tt := ui.NewTester(a.view, 1200, 2000)
+	tt := ui.NewTester(a.view, 1200, 2600)
 	tt.Frame()
 	return tt
 }

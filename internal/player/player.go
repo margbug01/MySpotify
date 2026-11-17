@@ -78,6 +78,7 @@ type Player struct {
 	shuffle bool
 	repeat  RepeatMode
 	volume  float64
+	eq      []float64 // the gain of each band in dB, nil with the equalizer off
 	rate    float64 // how fast episodes play, 0 as 1; songs play at their own pace
 
 	// A radio goes on with the tracks its feed gives, as the queue nears
@@ -916,6 +917,23 @@ func (p *Player) SetVolume(v float64) {
 	p.applyGain()
 }
 
+// equalized is an Output that can equalize, as the web player's.
+type equalized interface{ SetEqualizer([]float64) }
+
+// EQBands are the frequencies of the equalizer, in Hz.
+var EQBands = [6]int{60, 150, 400, 1000, 2400, 15000}
+
+// SetEqualizer sets the gain of each band in dB, or turns the equalizer off.
+func (p *Player) SetEqualizer(on bool, gains [6]float64) {
+	p.eq = nil
+	if on {
+		p.eq = gains[:]
+	}
+	if out, ok := p.out.(equalized); ok {
+		out.SetEqualizer(p.eq)
+	}
+}
+
 // rated is an Output that plays faster or slower, as the web player's.
 type rated interface{ SetRate(float64) }
 
@@ -1210,6 +1228,9 @@ func (p *Player) open(gen int, m *spotify.Media, v *spotify.Video) {
 	}
 	p.fade.attach(p.out, level)
 	p.applyGain()
+	if out, ok := p.out.(equalized); ok && p.eq != nil {
+		out.SetEqualizer(p.eq)
+	}
 	if out, ok := p.out.(rated); ok && p.Rate() != 1 {
 		out.SetRate(p.Rate())
 	}

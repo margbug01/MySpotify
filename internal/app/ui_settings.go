@@ -3,10 +3,12 @@ package app
 import (
 	"cmp"
 	"fmt"
+	"strconv"
 
 	"github.com/egoist/mygo/ui"
 
 	"vinyl/internal/l10n"
+	"vinyl/internal/player"
 	"vinyl/internal/spotify"
 )
 
@@ -210,6 +212,57 @@ func (a *app) settingsPage(c *ui.Context) {
 				}
 			})
 		})
+
+		if eqHere {
+			group(l10n.T("均衡器"), func() {
+				row(l10n.T("均衡器"), l10n.T("调整各个频段的音量，每次最多增减 12 分贝"), func() {
+					if ui.Switch(c.Key("eq"), &s.EQ).Label(l10n.T("均衡器")).Changed() {
+						a.applyEqualizer()
+						a.changed()
+					}
+				})
+				if s.EQ {
+					row(l10n.T("预设"), "", func() {
+						labels := make([]string, len(eqPresets))
+						for i, p := range eqPresets {
+							labels[i] = l10n.T(p.name)
+						}
+						chosen := eqPresetName(s.EQGains)
+						if chosen == l10n.T("自定义") {
+							labels = append(labels, chosen)
+						}
+						if a.presetSelect(c.Key("eq-preset"), &chosen, labels) {
+							for _, p := range eqPresets {
+								if l10n.T(p.name) == chosen {
+									s.EQGains = p.gains
+								}
+							}
+							a.applyEqualizer()
+							a.changed()
+						}
+					})
+					ui.Row(c).Padding(12, 16).Gap(4).Justify(ui.SpaceBetween).Children(func() {
+						for i, hz := range player.EQBands {
+							ui.Column(c.Key(strconv.Itoa(hz))).Gap(6).AlignItems(ui.Center).Children(func() {
+								ui.Text(c, fmt.Sprintf("%+.0f", s.EQGains[i])).FontSize(11).FontFeatures("tnum").TextColor(p.muted)
+								if ui.Slider(c.Key("eq-band"), &s.EQGains[i], -12, 12).Vertical().Height(120).Step(1).Label(eqBandName(hz)).Changed() {
+									a.applyEqualizer()
+									a.changed()
+								}
+								ui.Text(c, eqBandName(hz)).FontSize(11).TextColor(p.muted)
+							})
+						}
+					})
+					row(l10n.T("重置"), "", func() {
+						if ui.Button(c.Key("eq-reset"), l10n.T("重置")).Changed() {
+							s.EQGains = [6]float64{}
+							a.applyEqualizer()
+							a.changed()
+						}
+					})
+				}
+			})
+		}
 
 		group(l10n.T("缓存"), func() {
 			row(l10n.T("歌曲缓存"), l10n.T("听过的歌曲（加密的）保存在本机，再次播放更快、不耗流量，但仍要联网授权；")+a.cacheUsage(), func() {

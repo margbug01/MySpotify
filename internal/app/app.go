@@ -414,6 +414,7 @@ func Run() error {
 		a.pl.SetVolume(a.volume)
 		a.pl.SetRate(a.settings.PodcastRate)
 		spotify.SetHighQuality(a.settings.HighQuality)
+		a.applyEqualizer()
 		a.win = mygo.NewWindow(mygo.WindowOptions{
 			Title:         appName,
 			Width:         1180,
