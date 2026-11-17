@@ -39,15 +39,19 @@ func (a *app) newTray() *mygo.Tray {
 			toggle = l10n.T("暂停")
 		}
 		idle := a.pl.Current() == nil
-		t.SetMenu(mygo.NewMenu([]*mygo.MenuItem{
+		items := []*mygo.MenuItem{
 			{Label: l10n.T("打开 ") + name, Click: run(a.showMain)},
 			mygo.Separator(),
 			{Label: toggle, Disabled: idle, Click: run(func() { a.pl.TogglePlay() })},
 			{Label: l10n.T("上一首"), Disabled: idle, Click: run(func() { a.pl.Prev() })},
 			{Label: l10n.T("下一首"), Disabled: idle, Click: run(func() { a.pl.Next() })},
 			mygo.Separator(),
-			{Label: l10n.T("退出 ") + name, Click: run(mygo.App.Quit)},
-		}))
+		}
+		if desk := a.deskMenu(run); desk != nil {
+			items = append(append(items, desk...), mygo.Separator())
+		}
+		items = append(items, &mygo.MenuItem{Label: l10n.T("退出 ") + name, Click: run(mygo.App.Quit)})
+		t.SetMenu(mygo.NewMenu(items))
 		// Without a menu, a click reaches OnClick.
 		defer t.SetMenu(nil)
 		t.PopUpMenu()

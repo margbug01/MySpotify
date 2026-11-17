@@ -378,19 +378,16 @@ func (a *app) mvLyrics(c *ui.Context, controls bool) {
 		return
 	}
 	pos := pl.SongPosition()
-	cur := lyrics.Index(lines, pos)
 	if pl.Playing() {
-		if wait := lyricChange(lines, cur, pos); wait > 0 {
+		if wait := lyricChange(lines, lyrics.Index(lines, pos), pos); wait > 0 {
 			c.After(wait)
 		}
 	}
-	if cur < 0 || lines[cur].Text == "" {
+	cur := sungLine(lines, pos)
+	if cur < 0 {
 		return
 	}
 	l := &lines[cur]
-	if pos > l.End+time.Second && (cur+1 == len(lines) || lines[cur+1].At-l.End > 4*time.Second) {
-		return
-	}
 	w, _ := c.Size()
 	f := min(34, max(20, w*0.022))
 	pose := ui.Pose{}
@@ -411,6 +408,21 @@ func (a *app) mvLyrics(c *ui.Context, controls bool) {
 			caption(l.Translation, f*0.62, white.Alpha(0.85))
 		}
 	})
+}
+
+// sungLine returns the line of timed lines sung at pos: the last begun,
+// held through a short pause, but -1 before the first, in a break of more
+// than 4 seconds or after the last, once a second past its end.
+func sungLine(lines []lyrics.Line, pos time.Duration) int {
+	cur := lyrics.Index(lines, pos)
+	if cur < 0 || lines[cur].Text == "" {
+		return -1
+	}
+	l := &lines[cur]
+	if pos > l.End+time.Second && (cur+1 == len(lines) || lines[cur+1].At-l.End > 4*time.Second) {
+		return -1
+	}
+	return cur
 }
 
 // lyricChange returns how long from pos the subtitles change: the next

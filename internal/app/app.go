@@ -53,6 +53,7 @@ type route struct {
 type app struct {
 	win   *mygo.Window
 	notch *notch
+	desk  *desk      // the desktop lyrics, where they can be had
 	tray  *mygo.Tray // the icon in the notification area, where there is one
 	art   *artCache
 	pl    *player.Player
@@ -245,6 +246,9 @@ func (a *app) redraw() {
 	}
 	if a.notch != nil && a.notch.win != nil {
 		a.notch.win.Invalidate()
+	}
+	if a.desk != nil && a.desk.win != nil && a.settings.DeskLyrics {
+		a.desk.win.Invalidate()
 	}
 }
 
@@ -467,6 +471,9 @@ func Run() error {
 			a.notch = newNotch(a)
 		} else {
 			a.tray = a.newTray()
+		}
+		if deskHere {
+			a.desk = newDesk(a)
 		}
 		if shotHook != nil {
 			shotHook(a)

@@ -25,6 +25,10 @@ type settings struct {
 	// NotchGreeted says the notch showed itself, once, as the first song
 	// played (greet).
 	NotchGreeted bool `json:"notchGreeted"`
+	// DeskLyrics floats the line sung over every app (desk); DeskLocked
+	// lets clicks through it, but for the key that unlocks it.
+	DeskLyrics bool `json:"deskLyrics"`
+	DeskLocked bool `json:"deskLocked"`
 	// Appearance is light, dark, or system to follow the system.
 	Appearance string `json:"appearance"`
 	// MyPlaylistGrid shows the listener's own and saved playlists in the

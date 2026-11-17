@@ -20,6 +20,7 @@ var hotkeyActions = []struct {
 	{"play", "播放/暂停", func(a *app) { a.pl.TogglePlay() }},
 	{"next", "下一首", func(a *app) { a.pl.Next() }},
 	{"prev", "上一首", func(a *app) { a.pl.Prev() }},
+	{"desk", "显示/隐藏桌面歌词", func(a *app) { a.setDesk(!a.settings.DeskLyrics) }},
 }
 
 // MyGo's global shortcuts, which need the app running: tests swap them.

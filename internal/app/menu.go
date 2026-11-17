@@ -22,7 +22,7 @@ func (a *app) syncDockMenu() {
 		toggle = l10n.T("暂停")
 	}
 	idle := a.pl.Current() == nil
-	sig := toggle + fmt.Sprint(idle)
+	sig := toggle + fmt.Sprint(idle, a.settings.DeskLyrics, a.settings.DeskLocked)
 	if sig == a.dockSig {
 		return
 	}
@@ -33,11 +33,29 @@ func (a *app) syncDockMenu() {
 			a.redraw()
 		}
 	}
-	mygo.App.Dock.SetMenu(mygo.NewMenu([]*mygo.MenuItem{
+	mygo.App.Dock.SetMenu(mygo.NewMenu(append([]*mygo.MenuItem{
 		{Label: toggle, Disabled: idle, Click: run(func() { a.pl.TogglePlay() })},
 		{Label: l10n.T("下一首"), Disabled: idle, Click: run(func() { a.pl.Next() })},
 		{Label: l10n.T("上一首"), Disabled: idle, Click: run(func() { a.pl.Prev() })},
-	}))
+		mygo.Separator(),
+	}, a.deskMenu(run)...)))
+}
+
+// deskMenu is the desktop lyrics' part of the Dock's menu and the
+// notification area's: showing or hiding them and, locked, unlocking them,
+// were the pointer to find no key on them.
+func (a *app) deskMenu(run func(func()) func(*mygo.MenuItem, *mygo.Window)) []*mygo.MenuItem {
+	if !deskHere {
+		return nil
+	}
+	if !a.settings.DeskLyrics {
+		return []*mygo.MenuItem{{Label: l10n.T("显示桌面歌词"), Click: run(func() { a.setDesk(true) })}}
+	}
+	items := []*mygo.MenuItem{{Label: l10n.T("隐藏桌面歌词"), Click: run(func() { a.setDesk(false) })}}
+	if a.settings.DeskLocked {
+		items = append(items, &mygo.MenuItem{Label: l10n.T("解锁桌面歌词"), Click: run(func() { a.setDeskLocked(false) })})
+	}
+	return items
 }
 
 // setMenu gives the app its menu bar, localized and named as the app
@@ -106,6 +124,7 @@ func (a *app) setMenu() {
 				a.showMain()
 				a.nowPlaying = !a.nowPlaying && a.pl.Current() != nil
 			})},
+			{Label: l10n.T("显示/隐藏桌面歌词"), Disabled: !deskHere, Click: run(func() { a.setDesk(!a.settings.DeskLyrics) })},
 		}},
 		{Label: l10n.T("窗口"), Submenu: []*mygo.MenuItem{
 			{Role: mygo.RoleMinimize, Label: l10n.T("最小化")},

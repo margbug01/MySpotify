@@ -432,5 +432,12 @@
   "音响拒绝了 Spotify 认证": "L'altoparlante ha rifiutato l'autenticazione Spotify",
   "音响未返回有效的设备信息": "L'altoparlante non ha restituito informazioni valide sul dispositivo",
   "Cast 握手超时": "Timeout dell'handshake Cast",
-  "播放速度": "Velocità di riproduzione"
+  "播放速度": "Velocità di riproduzione",
+  "桌面歌词": "Testo sul desktop",
+  "锁定桌面歌词": "Blocca il testo sul desktop",
+  "解锁桌面歌词": "Sblocca il testo sul desktop",
+  "关闭桌面歌词": "Chiudi il testo sul desktop",
+  "显示桌面歌词": "Mostra il testo sul desktop",
+  "隐藏桌面歌词": "Nascondi il testo sul desktop",
+  "显示/隐藏桌面歌词": "Mostra/nascondi il testo sul desktop"
 }

@@ -401,7 +401,7 @@ func (a *app) playerBar(c *ui.Context) {
 	// The controls keep the middle, between sides that share what is left:
 	// narrower, the middle gives up to 140 DIPs, and what plays keeps room
 	// for its cover, some of its title and its heart.
-	const controls = 3*32 + 2*4 // lyrics, queue and the speaker
+	const controls = 4*32 + 3*4 // lyrics, desktop lyrics, queue and the speaker
 	ui.Row(c).Absolute().Left(0).Right(0).Bottom(0).Height(playerBarHeight).PaddingX(20).Gap(20).AlignItems(ui.Center).Children(func() {
 		// What plays.
 		ui.Row(c).Grow(1).Basis(0).MinWidth(150).Children(func() {
@@ -465,6 +465,15 @@ func (a *app) playerBar(c *ui.Context) {
 			}
 			if iconButton(c.Key("lyrics"), iconLyrics, 16, lyr, lyricsName(tr)).Clicked() && tr != nil {
 				a.nowPlaying, a.npPane = true, a.lyricsPaneChosen()
+			}
+			if deskHere {
+				on := p.muted
+				if a.settings.DeskLyrics {
+					on = p.accent
+				}
+				if iconButton(c.Key("desk"), iconDesk, 16, on, l10n.T("桌面歌词")).Clicked() {
+					a.setDesk(!a.settings.DeskLyrics)
+				}
 			}
 			if iconButton(c.Key("queue"), iconQueue, 16, p.muted, l10n.T("播放队列")).Clicked() && tr != nil {
 				a.nowPlaying, a.npPane = true, paneQueue

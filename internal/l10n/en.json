@@ -432,5 +432,12 @@
   "音响拒绝了 Spotify 认证": "Speaker rejected Spotify authentication",
   "音响未返回有效的设备信息": "Speaker did not return valid device info",
   "Cast 握手超时": "Cast handshake timed out",
-  "播放速度": "Playback speed"
+  "播放速度": "Playback speed",
+  "桌面歌词": "Desktop lyrics",
+  "锁定桌面歌词": "Lock desktop lyrics",
+  "解锁桌面歌词": "Unlock desktop lyrics",
+  "关闭桌面歌词": "Close desktop lyrics",
+  "显示桌面歌词": "Show desktop lyrics",
+  "隐藏桌面歌词": "Hide desktop lyrics",
+  "显示/隐藏桌面歌词": "Show/Hide desktop lyrics"
 }
