@@ -173,3 +173,48 @@ func TestSongsAskForNoPodcastsFile(t *testing.T) {
 		t.Fatalf("asked with %q", query)
 	}
 }
+
+// An episode Spotify keeps only in files this platform cannot decrypt, and
+// names no other place for, plays where its podcast's own feed keeps it: the
+// podcast found in Apple's directory by name and publisher, the episode in
+// its feed by title. As 声动早咖啡's did not play at all on a Mac (#38).
+func TestEpisodePlaysFromItsPodcastsFeed(t *testing.T) {
+	old, oldDir := Client, directoryURL
+	t.Cleanup(func() {
+		Client, directoryURL = old, oldDir
+		SetIdentity(Identity{})
+		feedOf, feedsRead = map[string]string{}, map[string]feedRead{}
+	})
+	SetIdentity(Identity{Token: "t", ClientToken: "c"})
+	directoryURL = "https://directory.test/search"
+	Client = &http.Client{Transport: lyricsTransport(func(req *http.Request) (*http.Response, error) {
+		body := ""
+		switch req.URL.Host + req.URL.Path {
+		case "spclient.wg.spotify.com/track-playback/v1/media/spotify:episode:ep":
+			body = `{"media": {"spotify:episode:ep": {"item": {"track_type": "AUDIO", "metadata": {"duration": 643681, "name": "12306 开卖国际机票", "group_name": "声动早咖啡", "authors": [{"name": "声动活泼"}]}, "manifest": {` + episodeCenc + `}}}}}`
+		case "directory.test/search":
+			if req.URL.Query().Get("term") != "声动早咖啡" {
+				t.Errorf("directory asked for %q", req.URL.Query().Get("term"))
+			}
+			body = `{"results": [
+				{"collectionName": "声动早咖啡", "artistName": "别人", "feedUrl": "https://other.test/feed.xml"},
+				{"collectionName": "声动早咖啡", "artistName": "声动活泼", "feedUrl": "https://feed.test/a.xml"}]}`
+		case "feed.test/a.xml":
+			body = `<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"><channel><title>声动早咖啡</title>
+<item><title>另一集</title><enclosure url="https://audio.test/other.m4a" type="audio/x-m4a"/></item>
+<item><title>早咖啡 | 12306 开卖国际机票</title><itunes:title> 12306 开卖国际机票 </itunes:title><enclosure url="https://audio.test/ep.m4a" type="audio/x-m4a"/></item>
+</channel></rss>`
+		default:
+			return &http.Response{StatusCode: 404, Body: io.NopCloser(strings.NewReader("")), Header: http.Header{}}, nil
+		}
+		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(body)), Header: http.Header{}}, nil
+	})}
+	m, err := ResolveMedia("spotify:episode:ep")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.File != "https://audio.test/ep.m4a" || m.Manifest != "" || m.Duration.Milliseconds() != 643681 {
+		t.Fatalf("file %q, manifest %q, duration %v", m.File, m.Manifest, m.Duration)
+	}
+}

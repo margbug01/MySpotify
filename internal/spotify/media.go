@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/url"
 	"slices"
 	"sort"
 	"strconv"
@@ -44,7 +43,12 @@ type mediaEntry struct {
 	Item struct {
 		TrackType string `json:"track_type"` // AUDIO, VIDEO or MIXED
 		Metadata  struct {
-			Duration int64 `json:"duration"`
+			Duration int64  `json:"duration"`
+			Name     string `json:"name"`
+			Show     string `json:"group_name"` // an episode's podcast
+			Authors  []struct {
+				Name string `json:"name"`
+			} `json:"authors"`
 		} `json:"metadata"`
 		Manifest map[string][]mediaFile `json:"manifest"`
 	} `json:"item"`
@@ -159,7 +163,8 @@ var ErrNoAudioHere = errors.New("spotify: nothing of the episode plays here")
 // episodeMedia is how an episode plays that Spotify has no file of for
 // this platform's key system, as the web player in Safari finds most:
 // a video podcast's sound from its video, which is not encrypted, in step
-// with its picture; or else its audio where its podcast keeps it.
+// with its picture; or else its audio where its podcast keeps it, as
+// Spotify names it or as the podcast's own feed does.
 func episodeMedia(uri string, entry mediaEntry, media map[string]mediaEntry) (*Media, error) {
 	duration := time.Duration(entry.Item.Metadata.Duration) * time.Millisecond
 	if id := videoOf(entry, media); id != "" {
@@ -172,9 +177,19 @@ func episodeMedia(uri string, entry mediaEntry, media map[string]mediaEntry) (*M
 		}
 	}
 	for _, f := range entry.Item.Manifest[externalFormat] {
-		if u, err := url.Parse(f.FileURL); err == nil && (u.Scheme == "https" || u.Scheme == "http") && u.Host != "" {
+		if webURL(f.FileURL) {
 			return &Media{File: f.FileURL, Duration: duration}, nil
 		}
+	}
+	meta := entry.Item.Metadata
+	publisher := ""
+	if len(meta.Authors) > 0 {
+		publisher = meta.Authors[0].Name
+	}
+	if file, err := feedAudio(meta.Show, publisher, meta.Name); err != nil {
+		log.Printf("spotify: %s: feed: %v", uri, err)
+	} else if file != "" {
+		return &Media{File: file, Duration: duration}, nil
 	}
 	return nil, ErrNoAudioHere
 }
