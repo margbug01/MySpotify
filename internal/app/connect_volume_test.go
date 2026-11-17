@@ -158,7 +158,7 @@ func TestConnectZeroVolumeRestore(t *testing.T) {
 	a := connectTestApp()
 	a.settings = defaultSettings()
 	a.volume = 0.2
-	a.scrollVolume(ui.InputEvent{Kind: ui.InputScroll, DY: 400})
+	a.scrollVolume(ui.InputEvent{Kind: ui.InputScroll, DY: 400, Precise: true})
 	if a.volume != 0 || !a.hasLocalVolume || a.pl.Volume() != 0 {
 		t.Fatalf("scrollVolume to 0 failed: volume=%v hasLocalVolume=%v pl=%v", a.volume, a.hasLocalVolume, a.pl.Volume())
 	}
@@ -176,7 +176,7 @@ func TestConnectZeroVolumeRestore(t *testing.T) {
 	b := connectTestApp()
 	b.settings = defaultSettings()
 	b.volume = 0.2
-	b.scrollVolume(ui.InputEvent{Kind: ui.InputScroll, DY: 400})
+	b.scrollVolume(ui.InputEvent{Kind: ui.InputScroll, DY: 400, Precise: true})
 	b.connectEvent(spotify.ConnectEvent{Kind: "cluster", Data: json.RawMessage(speakerCluster)})
 	if math.Abs(b.volume-0.5) > 0.01 {
 		t.Fatalf("switching to speaker: expected ~0.5, got %v", b.volume)
@@ -196,7 +196,7 @@ func TestConnectZeroVolumeRestore(t *testing.T) {
 	c := connectTestApp()
 	c.settings = defaultSettings()
 	c.volume = 0.2
-	c.scrollVolume(ui.InputEvent{Kind: ui.InputScroll, DY: 400})
+	c.scrollVolume(ui.InputEvent{Kind: ui.InputScroll, DY: 400, Precise: true})
 	c.connectEvent(spotify.ConnectEvent{Kind: "cluster", Data: json.RawMessage(speakerCluster)})
 	if !c.isRemote() || math.Abs(c.volume-0.5) > 0.01 {
 		t.Fatalf("expected remote at ~0.5, got remote=%v volume=%v", c.isRemote(), c.volume)
@@ -224,7 +224,7 @@ func TestConnectZeroVolumeQuitSave(t *testing.T) {
 	a := connectTestApp()
 	a.settings = defaultSettings()
 	a.volume = 0.2
-	a.scrollVolume(ui.InputEvent{Kind: ui.InputScroll, DY: 400})
+	a.scrollVolume(ui.InputEvent{Kind: ui.InputScroll, DY: 400, Precise: true})
 	a.connectEvent(spotify.ConnectEvent{Kind: "cluster", Data: json.RawMessage(speakerCluster)})
 	if !a.isRemote() || math.Abs(a.volume-0.5) > 0.01 {
 		t.Fatalf("expected remote at ~0.5, got remote=%v volume=%v", a.isRemote(), a.volume)
@@ -239,7 +239,7 @@ func TestConnectZeroVolumeQuitSave(t *testing.T) {
 	b := connectTestApp()
 	b.settings = defaultSettings()
 	b.volume = 0.2
-	b.scrollVolume(ui.InputEvent{Kind: ui.InputScroll, DY: 400})
+	b.scrollVolume(ui.InputEvent{Kind: ui.InputScroll, DY: 400, Precise: true})
 	b.connectEvent(spotify.ConnectEvent{Kind: "cluster", Data: json.RawMessage(speakerCluster)})
 	b.settings.Volume = 0.8
 	b.stopConnect()
@@ -484,5 +484,31 @@ func TestConnectLocalRowClickDefersVolumeRestore(t *testing.T) {
 	b.connectEvent(spotify.ConnectEvent{Kind: "cluster", Data: json.RawMessage(localCluster)})
 	if b.isRemote() || b.volume != 0 || b.pl.Volume() != 0 || !b.connect.volLocal.IsZero() {
 		t.Fatalf("cluster exit did not restore local volume 0: remote=%v vol=%v pl=%v volLocalZero=%v", b.isRemote(), b.volume, b.pl.Volume(), b.connect.volLocal.IsZero())
+	}
+}
+
+// A notch of a mouse wheel turns the volume 5%, however many lines the
+// system scrolls for one: on Windows, at 9 lines, a notch is 297 DIPs, and
+// it turned the volume 74% (#42). The fingers on a touchpad still turn it
+// as far as they go.
+func TestWheelTurnsVolumeANotchAtATime(t *testing.T) {
+	a := newTestApp()
+	a.settings = defaultSettings()
+	a.volume = 0.5
+	for _, dy := range []float32{-297, -40, -50} { // Windows at 9 lines, macOS, Linux
+		a.scrollVolume(ui.InputEvent{Kind: ui.InputScroll, DY: dy})
+	}
+	if a.volume != 0.65 {
+		t.Fatalf("three notches up from 50%%: %v, want 0.65", a.volume)
+	}
+	for range 20 {
+		a.scrollVolume(ui.InputEvent{Kind: ui.InputScroll, DY: 297})
+	}
+	if a.volume != 0 {
+		t.Fatalf("turned all the way down: %v, want 0, silent", a.volume)
+	}
+	a.scrollVolume(ui.InputEvent{Kind: ui.InputScroll, DY: -4, Precise: true})
+	if a.volume != 0.01 {
+		t.Fatalf("a touchpad's 4 DIPs: %v, want 0.01", a.volume)
 	}
 }

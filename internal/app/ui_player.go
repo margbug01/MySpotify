@@ -1,6 +1,7 @@
 package app
 
 import (
+	"cmp"
 	"math"
 	"strconv"
 	"time"
@@ -246,12 +247,20 @@ func (a *app) nativeVolumeSlider(c *ui.Context, pop popover) {
 	})
 }
 
-// scrollVolume turns the volume up as the wheel or the fingers scroll up.
+// scrollVolume turns the volume up as the wheel or the fingers scroll up:
+// the fingers by how far they go, a wheel by 5% a notch. A notch is as far
+// as the system scrolls a page for it, on Windows 33 a line of its "lines
+// to scroll", which at 9 turned the volume 74% a notch (#42).
 func (a *app) scrollVolume(ev ui.InputEvent) bool {
 	if ev.Kind != ui.InputScroll {
 		return false
 	}
-	a.setVolume(min(1, max(0, a.volume-float64(ev.DY)/400)))
+	v := a.volume - float64(ev.DY)/400
+	if !ev.Precise {
+		// To the percent shown, so that turning down comes to 0, silent.
+		v = math.Round((a.volume-0.05*float64(cmp.Compare(ev.DY, 0)))*100) / 100
+	}
+	a.setVolume(min(1, max(0, v)))
 	return true
 }
 
