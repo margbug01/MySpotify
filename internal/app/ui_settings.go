@@ -264,6 +264,18 @@ func (a *app) settingsPage(c *ui.Context) {
 			})
 		}
 
+		group(l10n.T("播放选项"), func() {
+			row(l10n.T("歌曲之间淡入淡出"), l10n.T("一首歌快结束时与下一首重叠；同一专辑里相连的歌不会重叠"), func() {
+				ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
+					ui.Text(c, crossfadeLabel(s.Crossfade)).FontSize(12).FontFeatures("tnum").TextColor(p.muted).Width(44).TextAlign(ui.End)
+					if ui.Slider(c.Key("crossfade"), &s.Crossfade, 0, 12).Width(140).Step(1).Label(l10n.T("歌曲之间淡入淡出")).Changed() {
+						a.pl.SetCrossfade(s.Crossfade)
+						a.changed()
+					}
+				})
+			})
+		})
+
 		group(l10n.T("缓存"), func() {
 			row(l10n.T("歌曲缓存"), l10n.T("听过的歌曲（加密的）保存在本机，再次播放更快、不耗流量，但仍要联网授权；")+a.cacheUsage(), func() {
 				labels := make([]string, len(cacheLimits))
