@@ -283,12 +283,7 @@ func (a *app) playlistHeader(c *ui.Context, pl *spotify.Playlist, orig []int) {
 					if pillButton(c.Key("play"), iconPlay, l10n.T("播放"), p.accent, p.onAccent).Clicked() {
 						a.playFrom(spotify.HomeItem{List: pl}, list, a.playStart(list))
 					}
-					if pillButton(c.Key("shuffle"), iconShuffle, l10n.T("随机播放"), p.hover.Over(p.bg), p.text).Clicked() {
-						if !a.pl.Shuffle() {
-							a.pl.ToggleShuffle()
-						}
-						a.playFrom(spotify.HomeItem{List: pl}, list, randomPlayable(list))
-					}
+					a.shuffleSwitch(c)
 					if a.profile != nil && !pl.Liked() && a.editable(pl.ID) == nil {
 						icon, label := iconPlus, l10n.T("收藏")
 						if a.isSaved(pl.ID) {

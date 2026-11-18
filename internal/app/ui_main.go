@@ -570,6 +570,20 @@ func (a *app) playStart(tracks []spotify.Track) int {
 	return firstPlayable(tracks)
 }
 
+// shuffleSwitch is the shuffle button of a page of songs, a switch as in
+// Spotify's client: it turns shuffling on or off, and the play button next
+// to it plays as it says (playStart). Its label says what a click does.
+func (a *app) shuffleSwitch(c *ui.Context) {
+	p := a.pal
+	colour, label := p.muted, l10n.T("开启随机播放")
+	if a.pl.Shuffle() {
+		colour, label = p.accent, l10n.T("关闭随机播放")
+	}
+	if iconButton(c.Key("shuffle"), iconShuffle, 24, colour, label).Clicked() {
+		a.pl.ToggleShuffle()
+	}
+}
+
 func firstPlayable(tracks []spotify.Track) int {
 	for i := range tracks {
 		if tracks[i].Playable() {
