@@ -5,6 +5,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"vinyl/internal/player"
 	"vinyl/internal/spotify"
 )
 
@@ -49,6 +50,25 @@ func TestPlaylistShuffleStartsWhereRandomPicks(t *testing.T) {
 	}
 	if cur := a.pl.Current(); cur == nil || cur.ID != "3" {
 		t.Errorf("the shuffle started at %v, want the song the random source picked (富士山下)", cur)
+	}
+}
+
+// Ordinary playlist play uses the restored shuffle mode, which it used to turn off.
+func TestPlaylistPlayKeepsRestoredShuffle(t *testing.T) {
+	was := randomPick
+	randomPick = func(int) int { return 1 }
+	defer func() { randomPick = was }()
+
+	a := shuffleApp()
+	a.pl.Restore(player.Session{Queue: []spotify.Track{{ID: "old"}}, Order: []int{0}, Shuffle: true})
+	tt := ui.NewTester(a.view, 1200, 800)
+	tt.Frame()
+	if err := tt.Click("播放"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if cur := a.pl.Current(); !a.pl.Shuffle() || cur == nil || cur.ID != "3" {
+		t.Fatalf("ordinary play: shuffle %v, track %v; want shuffle on and track 3", a.pl.Shuffle(), cur)
 	}
 }
 

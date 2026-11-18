@@ -483,7 +483,12 @@ func (a *app) connectEvent(event spotify.ConnectEvent) {
 		// gave this device: the cluster's are what it reported, a step
 		// behind, and set the buttons back after the state had moved on.
 		if cluster.Active != state.client.ID || state.ref == nil {
-			a.connectOptions(cluster.Player.Options)
+			options := cluster.Player.Options
+			if (cluster.Active == "" || cluster.Active == state.client.ID) && state.ref == nil && a.pl.Current() != nil && !a.pl.IsRemote() {
+				// Until Spotify gives this queue a state, its shuffle is local.
+				options.Shuffle, state.options.Shuffle = nil, nil
+			}
+			a.connectOptions(options)
 		}
 		if cluster.Active != "" && cluster.Active != state.client.ID {
 			if oldActive == state.client.ID || oldActive == "" {
@@ -734,7 +739,7 @@ func (a *app) connectControl(action string, value any) bool {
 	}
 	extra := map[string]any{}
 	if action == "toggle" && target == state.client.ID && state.ref == nil && a.pl.Current() != nil {
-		extra = connectPlayBody(player.QueueRequest{Tracks: append([]spotify.Track(nil), a.pl.Queue()...), Start: 0})
+		extra = a.connectQueueBody(state, target, player.QueueRequest{Tracks: append([]spotify.Track(nil), a.pl.Queue()...), Start: 0})
 		order, at := a.pl.PlayOrder()
 		if at >= 0 && at < len(order) {
 			extra["options"].(map[string]any)["skip_to"] = map[string]any{"track_index": order[at]}
@@ -746,7 +751,7 @@ func (a *app) connectControl(action string, value any) bool {
 	}
 	switch action {
 	case "play":
-		extra = connectPlayBody(value.(player.QueueRequest))
+		extra = a.connectQueueBody(state, target, value.(player.QueueRequest))
 	case "toggle":
 		if a.pl.Playing() {
 			action = "pause"
@@ -869,6 +874,14 @@ func connectMessage(err error) string {
 		return fmt.Sprintf(l10n.T("Spotify 没有接受这个操作（%d），原因已写进日志"), turned.Status)
 	}
 	return err.Error()
+}
+
+func (a *app) connectQueueBody(state *connectState, target string, request player.QueueRequest) map[string]any {
+	body := connectPlayBody(request)
+	if target == state.client.ID && state.ref == nil {
+		body["options"].(map[string]any)["player_options_override"] = map[string]any{"shuffling_context": a.pl.Shuffle()}
+	}
+	return body
 }
 
 func connectPlayBody(request player.QueueRequest) map[string]any {

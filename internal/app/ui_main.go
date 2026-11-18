@@ -523,7 +523,7 @@ func (a *app) loadHome() {
 func (a *app) loadPlaylist(id string, thenPlay bool) {
 	if pl := a.playlists[id]; pl != nil {
 		if thenPlay {
-			a.playFrom(spotify.HomeItem{List: pl}, pl.Tracks, firstPlayable(pl.Tracks))
+			a.playFrom(spotify.HomeItem{List: pl}, pl.Tracks, a.playStart(pl.Tracks))
 		}
 		return
 	}
@@ -558,8 +558,16 @@ func (a *app) receivePlaylist(id string, pl *spotify.Playlist, err error, thenPl
 		a.likedFrom(ids, asked)
 	}
 	if thenPlay {
-		a.playFrom(spotify.HomeItem{List: pl}, pl.Tracks, firstPlayable(pl.Tracks))
+		a.playFrom(spotify.HomeItem{List: pl}, pl.Tracks, a.playStart(pl.Tracks))
 	}
+}
+
+// playStart picks the start of a list being played without selecting a track.
+func (a *app) playStart(tracks []spotify.Track) int {
+	if a.pl.Shuffle() {
+		return randomPlayable(tracks)
+	}
+	return firstPlayable(tracks)
 }
 
 func firstPlayable(tracks []spotify.Track) int {

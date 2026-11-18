@@ -543,7 +543,7 @@ func (a *app) playItem(it *spotify.HomeItem) {
 // first if it has not.
 func (a *app) playArtist(uri string) {
 	if pg := a.artists[uri]; pg != nil {
-		a.playFrom(spotify.HomeItem{Artist: &pg.ArtistCard}, pg.TopTracks, firstPlayable(pg.TopTracks))
+		a.playFrom(spotify.HomeItem{Artist: &pg.ArtistCard}, pg.TopTracks, a.playStart(pg.TopTracks))
 		return
 	}
 	go func() {
@@ -554,7 +554,7 @@ func (a *app) playArtist(uri string) {
 				return
 			}
 			a.artists[uri] = pg
-			a.playFrom(spotify.HomeItem{Artist: &pg.ArtistCard}, pg.TopTracks, firstPlayable(pg.TopTracks))
+			a.playFrom(spotify.HomeItem{Artist: &pg.ArtistCard}, pg.TopTracks, a.playStart(pg.TopTracks))
 		})
 	}()
 }

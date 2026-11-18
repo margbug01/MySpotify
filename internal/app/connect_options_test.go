@@ -179,6 +179,45 @@ func TestConnectOptionsUnsentGoBack(t *testing.T) {
 	}
 }
 
+// Local resume sends the saved shuffle in the play command and ignores a stale local cluster.
+func TestConnectResumeKeepsSessionShuffle(t *testing.T) {
+	old := connectCommand
+	defer func() { connectCommand = old }()
+	for _, shuffle := range []bool{true, false} {
+		a := connectTestApp()
+		a.pl.Restore(player.Session{
+			Queue: []spotify.Track{{ID: "one"}, {ID: "two"}}, Order: []int{1, 0},
+			Shuffle: shuffle, Position: 42000,
+		})
+		cluster(a, !shuffle, false, false)
+		if a.pl.Shuffle() != shuffle {
+			t.Fatalf("before resume: stale cluster changed saved shuffle %v", shuffle)
+		}
+		var called bool
+		connectCommand = func(_ *spotify.Connect, target, endpoint string, body map[string]any) error {
+			called = true
+			options, _ := body["options"].(map[string]any)
+			override, _ := options["player_options_override"].(map[string]any)
+			skip, _ := options["skip_to"].(map[string]any)
+			if target != "local" || endpoint != "play" || override["shuffling_context"] != shuffle || skip["track_index"] != 1 || options["seek_to"] != int64(42000) {
+				t.Fatalf("resume with shuffle %v sent %s to %s with %v", shuffle, endpoint, target, options)
+			}
+			return nil
+		}
+		a.pl.TogglePlay()
+		if len(a.connect.jobs) != 1 {
+			t.Fatalf("resume queued %d commands, want one", len(a.connect.jobs))
+		}
+		if err := (<-a.connect.jobs)(); err != nil || !called {
+			t.Fatalf("resume command called %v, error %v", called, err)
+		}
+		cluster(a, !shuffle, false, false)
+		if a.pl.Shuffle() != shuffle {
+			t.Fatalf("after resume: stale cluster changed saved shuffle %v", shuffle)
+		}
+	}
+}
+
 // Playing here, the cluster's shuffle and repeat, what this device reported
 // a step behind, don't set back those of the state Spotify gave it: live,
 // repeat went back for a moment after Spotify had said it was off.

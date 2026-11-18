@@ -274,18 +274,14 @@ func (a *app) playlistHeader(c *ui.Context, pl *spotify.Playlist, orig []int) {
 			// It wraps where the window is too narrow for the filter's field
 			// beside the pills, which the field covered.
 			ui.Row(c).Wrap().Gap(10).Margin(10, 0, 0, 0).AlignItems(ui.Center).Justify(ui.SpaceBetween).Children(func() {
-				// The pills play the playlist, or the matches of a filter,
-				// in the order the playlist has them.
+				// The pills play the playlist or just the matches of a filter.
 				ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
 					list := pl.Tracks
 					if orig != nil {
 						list = tracksAt(pl.Tracks, orig)
 					}
 					if pillButton(c.Key("play"), iconPlay, l10n.T("播放"), p.accent, p.onAccent).Clicked() {
-						if a.pl.Shuffle() {
-							a.pl.ToggleShuffle()
-						}
-						a.playFrom(spotify.HomeItem{List: pl}, list, firstPlayable(list))
+						a.playFrom(spotify.HomeItem{List: pl}, list, a.playStart(list))
 					}
 					if pillButton(c.Key("shuffle"), iconShuffle, l10n.T("随机播放"), p.hover.Over(p.bg), p.text).Clicked() {
 						if !a.pl.Shuffle() {
