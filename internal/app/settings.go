@@ -29,6 +29,9 @@ type settings struct {
 	// lets clicks through it, but for the key that unlocks it.
 	DeskLyrics bool `json:"deskLyrics"`
 	DeskLocked bool `json:"deskLocked"`
+	// DeskHidePaused hides the desk lyrics while paused and shows them
+	// again as the music plays.
+	DeskHidePaused bool `json:"deskHidePaused,omitempty"`
 	// DeskSize is "small" or "large", empty for the middle size; DeskColor
 	// the id of the color words sung take (deskColors), empty for the
 	// cover's; DeskUnder what shows under the line (deskUnders), empty for

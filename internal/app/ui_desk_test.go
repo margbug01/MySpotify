@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/egoist/mygo/audio"
 	"github.com/egoist/mygo/ui"
 
 	"vinyl/internal/lyrics"
@@ -173,6 +174,47 @@ func TestDeskBarButton(t *testing.T) {
 			t.Fatalf("shown %v, want %v", a.settings.DeskLyrics, want)
 		}
 		tt.Frame()
+	}
+}
+
+// Hide-when-paused on, the desk lyrics hide while the music pauses and
+// show again as it plays; off, a pause keeps them.
+func TestDeskHidePaused(t *testing.T) {
+	if !deskHere {
+		t.Skip("no desktop lyrics here")
+	}
+	a, _, _ := playingApp()
+	// With a silent output attached, pausing pauses: without one,
+	// TogglePlay loads the track instead.
+	out := audio.NewPlayer(&silence{})
+	out.SetVolume(0)
+	out.Play()
+	a.pl.Attach(out)
+	defer out.Close()
+	a.settings.DeskLyrics, a.settings.DeskHidePaused = true, true
+	d := &desk{a: a}
+	a.desk = d
+	a.syncDesk()
+	if !d.shown {
+		t.Fatal("playing, hidden")
+	}
+	a.pl.TogglePlay()
+	a.syncWindows()
+	if d.shown {
+		t.Fatal("paused, shown")
+	}
+	// Turning the option off shows them again even paused: the switch
+	// goes through syncDesk, not a change in what plays.
+	a.settings.DeskHidePaused = false
+	a.syncDesk()
+	if !d.shown {
+		t.Fatal("option off while paused, hidden")
+	}
+	a.settings.DeskHidePaused = true
+	a.pl.TogglePlay()
+	a.syncWindows()
+	if !d.shown {
+		t.Fatal("playing again, hidden")
 	}
 }
 
