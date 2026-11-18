@@ -12,6 +12,9 @@ video { display: block; width: 100%; height: 100%; object-fit: contain; }
 // its own, so that the events of one gone never pass for the next's: a
 // video element in the page that plays music videos, which shows it.
 let cur = null, volume = 1;
+// fadeSecs is the requested overlap; leaving is the previous song until
+// the new one starts playing or the previous one ends.
+let fadeSecs = 0, leaving = null;
 // keySystem decrypts what plays: Widevine, or FairPlay where WebKit plays.
 const ks = typeof location === 'undefined' ? null : /[?&]ks=([^&]*)/.exec(location.search);
 const keySystem = ks ? decodeURIComponent(ks[1]) : 'com.widevine.alpha';
@@ -20,6 +23,55 @@ const send = (gen, type, t, msg, seq) => fetch('/event', {
   method: 'POST',
   body: JSON.stringify({ gen, type, t: t || 0, msg: msg || '', seq: seq || 0 }),
 }).catch(() => {});
+
+// setVolume sets the volume of t: the listener's, times its own level, which
+// fades as songs overlap.
+function setVolume(t) { t.a.volume = volume * t.level; }
+
+function finishOverlap() {
+  if (leaving) {
+    const old = leaving;
+    leaving = null;
+    destroy(old);
+  }
+  if (cur) {
+    clearInterval(cur.ramp);
+    cur.lead = 0;
+    cur.level = 1;
+    setVolume(cur);
+  }
+}
+
+// Start both ramps when the new element plays, using the audible time left.
+function startOverlap(t) {
+  const old = leaving;
+  const secs = old && !old.a.ended && !old.a.paused ? Math.min(t.lead, old.a.duration - old.a.currentTime) : 0;
+  t.lead = 0;
+  if (!(secs > 0)) return finishOverlap();
+  const start = performance.now();
+  const oldLevel = old.level;
+  t.ramp = setInterval(() => {
+    const angle = Math.min(1, (performance.now() - start) / (secs * 1000)) * Math.PI / 2;
+    t.level = Math.sin(angle);
+    old.level = oldLevel * Math.cos(angle);
+    setVolume(t);
+    setVolume(old);
+    if (angle >= Math.PI / 2) finishOverlap();
+  }, 50);
+}
+
+// destroy lets go of t, its timers and its element.
+function destroy(t) {
+  clearTimeout(t.pauseTimer);
+  clearTimeout(t.endTimer);
+  clearInterval(t.watch);
+  clearInterval(t.ramp);
+  t.hls.destroy();
+  // Its source joined to the equalizer's filters would keep the element,
+  // and every track's before it, alive.
+  if (t.src) t.src.disconnect();
+  t.a.remove();
+}
 
 // rest stops loading what plays once it has been paused half a minute; wake
 // loads again, from where it is, what that stopped.
@@ -162,11 +214,16 @@ window.vinyl = {
   },
   // kind is 'file' for a file that plays as it is, an episode's where its
   // podcast keeps it: no manifest, no key system.
-  load(gen, kind) {
+  // lead, if the song before is leaving, is the seconds this one fades in over.
+  load(gen, kind, lead) {
     const file = kind === 'file';
-    vinyl.unload(cur && cur.gen);
+    if (cur) vinyl.unload(cur.gen);
+    if (!(lead > 0 && leaving)) {
+      finishOverlap();
+      lead = 0;
+    }
     const a = document.createElement(videoPage ? 'video' : 'audio');
-    a.volume = volume;
+    a.volume = lead > 0 ? 0 : volume;
     a.playsInline = true;
     document.body.append(a);
     const hls = file ? native(a, [], () => {}) : keySystem === 'com.apple.fps.1_0' ? nativeFairPlay(gen, a) : new Hls({
@@ -182,7 +239,7 @@ window.vinyl = {
     });
     // tries counts the recoveries, two at most; want is whether to play;
     // asked is how many times Vinyl had asked to play or pause.
-    const t = { gen, a, hls, seek: null, tries: 0, want: false, asked: 0, endSeq: 0, ending: false, lastTime: 0, still: 0, heard: false };
+    const t = { gen, a, hls, seek: null, tries: 0, want: false, asked: 0, endSeq: 0, ending: false, lastTime: 0, still: 0, heard: false, near: false, lead: lead > 0 ? lead : 0, level: lead > 0 ? 0 : 1 };
     eqAttach(t);
     const finish = (reason) => {
       if (cur !== t || t.ending) return;
@@ -237,12 +294,17 @@ window.vinyl = {
       fail({ type: d.type === Hls.ErrorTypes.KEY_SYSTEM_ERROR ? 'licence' : d.type, details: d.details, msg });
     });
     for (const n of ['playing', 'pause', 'waiting', 'seeked']) a.addEventListener(n, () => {
-      if (n === 'playing') { t.heard = true; takeSystemActions(); }
+      if (n === 'playing') {
+        t.heard = true;
+        takeSystemActions();
+        if (cur === t && t.lead) startOverlap(t);
+      }
       // WebKit pauses the element itself for the system: the media keys,
       // Control Center, or an app such as Mami pausing what plays while one
       // talks. Vinyl hears it as the system's; a pause it asked for, or the
       // one at the end, is its own.
       if (n === 'pause' && cur === t && t.want && a.paused && !a.ended) {
+        finishOverlap();
         t.want = false;
         t.still = 0;
         rest(t);
@@ -258,9 +320,19 @@ window.vinyl = {
       wake(t);
       send(gen, 'system-play', a.currentTime, '', t.asked);
     });
-    a.addEventListener('ended', () => finish('media ended'));
+    a.addEventListener('ended', () => {
+      if (leaving === t) finishOverlap();
+      else finish('media ended');
+    });
     a.addEventListener('seeking', () => { t.still = 0; t.heard = false; });
-    a.addEventListener('timeupdate', () => send(gen, 'time', a.currentTime));
+    a.addEventListener('timeupdate', () => {
+      send(gen, 'time', a.currentTime);
+      // The song nears its end: Vinyl may start the next one over it.
+      if (fadeSecs > 0 && cur === t && t.want && !t.near && !file && !videoPage && a.duration > fadeSecs * 3 && a.duration - a.currentTime <= fadeSecs + 0.5) {
+        t.near = true;
+        send(gen, 'near', a.currentTime);
+      }
+    });
     a.addEventListener('error', () => fail({ type: Hls.ErrorTypes.MEDIA_ERROR, details: '', msg: 'media ' + (a.error ? a.error.code + ' ' + a.error.message : '') }));
     a.addEventListener('loadedmetadata', () => {
       if (t.seek != null) { a.currentTime = t.seek; t.seek = null; }
@@ -282,6 +354,7 @@ window.vinyl = {
   },
   pause(gen, asked) {
     if (!cur || cur.gen !== gen) return;
+    finishOverlap();
     const t = cur;
     t.want = false;
     if (asked) t.asked = asked;
@@ -291,6 +364,8 @@ window.vinyl = {
   },
   seek(gen, t) {
     if (!cur || cur.gen !== gen) return;
+    finishOverlap();
+    cur.near = false;
     cur.ending = false;
     cur.still = 0;
     cur.heard = false;
@@ -299,7 +374,18 @@ window.vinyl = {
   },
   volume(v) {
     volume = Math.max(0, Math.min(1, v));
-    if (cur) cur.a.volume = volume;
+    if (cur) setVolume(cur);
+    if (leaving) setVolume(leaving);
+  },
+  // crossfade is how many seconds a song overlaps the next, 0 for none.
+  crossfade(secs) { fadeSecs = Math.max(0, secs); },
+  // Keep the song audible while its replacement opens.
+  leave(gen) {
+    if (!cur || cur.gen !== gen) return;
+    finishOverlap();
+    leaving = cur;
+    clearInterval(leaving.watch);
+    cur = null;
   },
   // meta names what plays to the system, which WebKit shows it the page
   // as: titled Vinyl, naming no song, without it.
@@ -319,16 +405,12 @@ window.vinyl = {
     cur.a.playbackRate = r;
   },
   unload(gen) {
+    if (leaving && leaving.gen === gen) finishOverlap();
     if (!cur || cur.gen !== gen) return;
-    clearTimeout(cur.pauseTimer);
-    clearTimeout(cur.endTimer);
-    clearInterval(cur.watch);
-    cur.hls.destroy();
-    // Its source joined to the equalizer's filters would keep the element,
-    // and every track's before it, alive.
-    if (cur.src) cur.src.disconnect();
-    cur.a.remove();
+    const old = cur;
     cur = null;
+    finishOverlap();
+    destroy(old);
   },
 };
 send(0, 'ready');

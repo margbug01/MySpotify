@@ -8,6 +8,7 @@ const events = [];
 const elements = [];
 let rejectEnd = false;
 let timerID = 0;
+let now = 0;
 class Hls {
   static Events = { ERROR: 'error' };
   static ErrorTypes = {};
@@ -24,7 +25,7 @@ const session = { handlers: {}, setActionHandler(action, fn) { this.handlers[act
 const context = vm.createContext({
   Hls, window: {}, navigator: { mediaSession: session },
   MediaMetadata: class { constructor(info) { Object.assign(this, info); } },
-  AbortSignal,
+  AbortSignal, performance: { now: () => now },
   fetch: (url, options) => {
     const event = JSON.parse(options.body);
     events.push(event);
@@ -221,6 +222,38 @@ async function checkEndings() {
   assert.equal(events.filter(event => event.gen === 6 && event.type === 'duration').length, 0);
   player.unload(6);
   assert.equal(intervals.size, 0);
-  console.log('player lifecycle and ending JS tests passed');
+  // The old song stays audible while the new one buffers. The overlap uses
+  // only the time left once the new one plays; pausing ends it immediately.
+  for (const mode of ['playing', 'ended', 'pause']) {
+    player.load(8);
+    const outgoing = elements.at(-1);
+    player.play(8);
+    outgoing.currentTime = 244;
+    player.leave(8);
+    player.load(9, null, 6);
+    const incoming = elements.at(-1);
+    player.play(9);
+    now += 4000;
+    outgoing.currentTime = 248;
+    tick();
+    assert.equal(outgoing.volume, 1, 'the next song is still buffering');
+    assert.equal(incoming.volume, 0);
+    if (mode === 'ended') outgoing.handlers.ended();
+    if (mode === 'pause') player.pause(9);
+    incoming.handlers.playing();
+    if (mode === 'playing') {
+      now += 1000;
+      tick();
+      assert.ok(Math.abs(incoming.volume - Math.SQRT1_2) < 1e-9);
+      assert.ok(Math.abs(outgoing.volume - Math.SQRT1_2) < 1e-9);
+      now += 1000;
+      tick();
+    }
+    assert.equal(incoming.volume, 1, mode);
+    assert.equal(outgoing.removed, true, mode);
+    player.unload(9);
+    assert.equal(intervals.size, 0);
+  }
+  console.log('player lifecycle, ending and crossfade JS tests passed');
 }
 checkEndings().catch(error => { console.error(error); process.exitCode = 1; });

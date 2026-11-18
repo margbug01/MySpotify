@@ -488,5 +488,9 @@
   "节奏布鲁斯": "R&B",
   "小扬声器": "Altoparlanti piccoli",
   "语音": "Parlato",
-  "高音减弱": "Alti ridotti"
+  "高音减弱": "Alti ridotti",
+  "歌曲之间淡入淡出": "Dissolvenza tra i brani",
+  "一首歌快结束时与下一首重叠；同一专辑里相连的歌不会重叠": "La fine di un brano si sovrappone all'inizio del successivo; i brani consecutivi di uno stesso album non si sovrappongono",
+  "%d 秒": "%d s",
+  "播放选项": "Riproduzione"
 }

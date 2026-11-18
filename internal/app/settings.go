@@ -54,6 +54,8 @@ type settings struct {
 	// bands, in dB.
 	EQ      bool       `json:"eq,omitempty"`
 	EQGains [6]float64 `json:"eqGains,omitempty"`
+	// Crossfade is how many seconds a song overlaps the next, 0 for none.
+	Crossfade float64 `json:"crossfade,omitempty"`
 	// Volume is where the volume was left, from 0 to 1.
 	Volume float64 `json:"volume"`
 	// PodcastRate is how fast episodes play, 0 at their own pace.

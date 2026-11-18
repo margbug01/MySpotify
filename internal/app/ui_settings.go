@@ -3,6 +3,7 @@ package app
 import (
 	"cmp"
 	"fmt"
+	"runtime"
 	"strconv"
 
 	"github.com/egoist/mygo/ui"
@@ -11,6 +12,9 @@ import (
 	"vinyl/internal/player"
 	"vinyl/internal/spotify"
 )
+
+// Only the Windows player has been tried with two protected streams at once.
+var crossfadeHere = runtime.GOOS == "windows"
 
 // openSettings goes to the settings page. The main window comes up first,
 // for the menu's sake: its accelerators reach the app while it lies hidden.
@@ -261,6 +265,20 @@ func (a *app) settingsPage(c *ui.Context) {
 						}
 					})
 				}
+			})
+		}
+
+		if crossfadeHere {
+			group(l10n.T("播放选项"), func() {
+				row(l10n.T("歌曲之间淡入淡出"), l10n.T("一首歌快结束时与下一首重叠；同一专辑里相连的歌不会重叠"), func() {
+					ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
+						ui.Text(c, crossfadeLabel(s.Crossfade)).FontSize(12).FontFeatures("tnum").TextColor(p.muted).Width(44).TextAlign(ui.End)
+						if ui.Slider(c.Key("crossfade"), &s.Crossfade, 0, 12).Width(140).Step(1).Label(l10n.T("歌曲之间淡入淡出")).Changed() {
+							a.pl.SetCrossfade(s.Crossfade)
+							a.changed()
+						}
+					})
+				})
 			})
 		}
 

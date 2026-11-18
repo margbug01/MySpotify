@@ -79,7 +79,13 @@ type Player struct {
 	repeat  RepeatMode
 	volume  float64
 	eq      []float64 // the gain of each band in dB, nil with the equalizer off
-	rate    float64 // how fast episodes play, 0 as 1; songs play at their own pace
+	// crossfade is how many seconds a song overlaps the next, 0 for none;
+	// crossing is set while the song after starts over it, and overlap is how
+	// long it fades in over, taken by the song it opens.
+	crossfade float64
+	crossing  time.Duration
+	overlap   float64
+	rate      float64 // how fast episodes play, 0 as 1; songs play at their own pace
 
 	// A radio goes on with the tracks its feed gives, as the queue nears
 	// its end, for as long as nothing else is played.
@@ -856,7 +862,10 @@ func (p *Player) TogglePlay() {
 	}
 	p.playing = true
 	if !p.seeking && !out.Playing() {
-		if out.Position() >= out.Duration()-time.Second {
+		// A song in its last second starts again, but not with songs
+		// overlapping: it goes on to its end, and the page starts one that
+		// ended again as it plays.
+		if p.crossfade == 0 && out.Position() >= out.Duration()-time.Second {
 			out.Seek(0)
 		}
 		out.Play()
@@ -915,6 +924,47 @@ func (p *Player) SetVolume(v float64) {
 	}
 	p.volume = v
 	p.applyGain()
+}
+
+// SetCrossfade sets how many seconds a song overlaps the next, 0 for none.
+func (p *Player) SetCrossfade(secs float64) {
+	p.crossfade = min(max(secs, 0), 12)
+	if p.Web != nil {
+		p.Web.SetCrossfade(p.crossfade)
+	}
+}
+
+// nearEnd starts the song after over the one that nears its end, if it is
+// one that overlaps: a song after a song, each from another album, with the
+// next already found. Otherwise the one ends as it would.
+func (p *Player) nearEnd() {
+	if p.crossfade <= 0 || !p.playing || p.loading || p.showsVideo || p.repeat == RepeatOne || p.track == nil || p.track.Episode || p.feed != nil {
+		return
+	}
+	at := p.at + 1
+	if at >= len(p.order) {
+		if p.repeat != RepeatAll {
+			return
+		}
+		at = 0
+	}
+	next := p.queue[p.order[at]]
+	// Songs one after the other on an album are made to follow each other.
+	if next.Episode || next.ID == p.track.ID || (next.Album.ID != "" && next.Album.ID == p.track.Album.ID) {
+		return
+	}
+	if p.upNext.id != next.ID || p.upNext.m == nil || time.Since(p.upNext.at) > aheadFresh {
+		return
+	}
+	p.crossing = time.Duration(p.crossfade * float64(time.Second))
+	p.throttles, p.flaky = 0, 0
+	// With Spotify Connect, the song goes on as it does at the end of one: its
+	// state moves on, which loads the next.
+	if p.control("advance", next.URI()) {
+		p.crossing = 0
+		return
+	}
+	p.load(at)
 }
 
 // equalized is an Output that can equalize, as the web player's.
@@ -1111,11 +1161,20 @@ func (p *Player) CloseWeb() {
 }
 
 func (p *Player) stop() {
+	lead := p.crossing
+	p.crossing, p.overlap = 0, 0
 	if out := p.out; out != nil {
-		// Paused first, it fades out over a few milliseconds, rather than
-		// stopping with a click.
-		out.Pause()
-		time.AfterFunc(100*time.Millisecond, out.Close)
+		if f, ok := out.(interface{ FadeAway() }); ok && lead > 0 {
+			// As the song after starts, this one fades out over it.
+			f.FadeAway()
+			time.AfterFunc(lead+time.Second, out.Close)
+			p.overlap = lead.Seconds()
+		} else {
+			// Paused first, it fades out over a few milliseconds, rather than
+			// stopping with a click.
+			out.Pause()
+			time.AfterFunc(100*time.Millisecond, out.Close)
+		}
 	}
 	p.out = nil
 	p.showsVideo = false
@@ -1219,6 +1278,11 @@ func (p *Player) open(gen int, m *spotify.Media, v *spotify.Video) {
 			p.sync()
 			return
 		}
+		if p.crossfade > 0 {
+			p.Web.SetCrossfade(p.crossfade)
+		}
+		p.Web.SetLead(p.overlap)
+		p.overlap = 0
 		p.out = p.Web.Open(m)
 	}
 	// From its middle, as a session picked up again, it fades in.
@@ -1235,6 +1299,15 @@ func (p *Player) open(gen int, m *spotify.Media, v *spotify.Video) {
 		out.SetRate(p.Rate())
 	}
 	currentOutput := p.out
+	if out, ok := p.out.(interface{ OnNear(func()) func() }); ok {
+		out.OnNear(func() {
+			p.post(func() {
+				if gen == p.gen && p.out == currentOutput {
+					p.nearEnd()
+				}
+			})
+		})
+	}
 	p.out.OnEnd(func() {
 		p.post(func() {
 			if gen == p.gen && p.out == currentOutput {

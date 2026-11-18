@@ -488,5 +488,9 @@
   "节奏布鲁斯": "R&B",
   "小扬声器": "Small speakers",
   "语音": "Spoken word",
-  "高音减弱": "Treble reducer"
+  "高音减弱": "Treble reducer",
+  "歌曲之间淡入淡出": "Crossfade between songs",
+  "一首歌快结束时与下一首重叠；同一专辑里相连的歌不会重叠": "The end of a song overlaps the start of the next; songs that follow each other on an album don't overlap",
+  "%d 秒": "%d s",
+  "播放选项": "Playback"
 }

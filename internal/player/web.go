@@ -34,6 +34,7 @@ var webFiles embed.FS
 // commands through Eval, and reports what plays back to the server on
 // 127.0.0.1 it is served from, which passes the media and licences through.
 type Web struct {
+	lead        float64 // seconds the next song opened fades in over, under mu
 	addr        string
 	browserKey  string
 	stopBrowser func()
@@ -252,6 +253,7 @@ var uriAttr = regexp.MustCompile(`URI="([^"]*)"`)
 
 // Open loads m to play, paused at its start, and returns what plays it.
 func (w *Web) Open(m *spotify.Media) Output {
+	lead := w.takeLead()
 	o := &webOut{w: w, dur: m.Duration, at: time.Now()}
 	w.mu.Lock()
 	w.gen++
@@ -265,12 +267,39 @@ func (w *Web) Open(m *spotify.Media) Output {
 	}
 	w.outs[o.gen] = o
 	w.mu.Unlock()
-	if o.file {
+	switch {
+	case lead > 0 && o.file:
+		w.send(fmt.Sprintf("vinyl.load(%d,'file',%g)", o.gen, lead))
+	case lead > 0:
+		w.send(fmt.Sprintf("vinyl.load(%d,null,%g)", o.gen, lead))
+	case o.file:
 		w.send(fmt.Sprintf("vinyl.load(%d,'file')", o.gen))
-	} else {
+	default:
 		w.send(fmt.Sprintf("vinyl.load(%d)", o.gen))
 	}
 	return o
+}
+
+// SetLead has the next song opened fade in over lead seconds, as the one
+// before fades out: for one song, not for those after.
+func (w *Web) SetLead(lead float64) {
+	w.mu.Lock()
+	w.lead = lead
+	w.mu.Unlock()
+}
+
+func (w *Web) takeLead() float64 {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	lead := w.lead
+	w.lead = 0
+	return lead
+}
+
+// SetCrossfade has the page tell when a song nears its end, within secs
+// of it; 0 for never.
+func (w *Web) SetCrossfade(secs float64) {
+	w.send(fmt.Sprintf("vinyl.crossfade(%g)", secs))
 }
 
 // OpenVideo loads v to play, paused at its start, and returns what plays
@@ -587,6 +616,8 @@ type webOut struct {
 	playing bool    // it was asked to play, and has not ended
 	asked   int     // how many times Vinyl asked the page to play or pause
 	onEnd   func()
+	// onNear hears the page say the song nears its end.
+	onNear func()
 	// onSystem hears what the system did to the page rather than Vinyl.
 	onSystem func(cmd string, at time.Duration)
 	endSeq   int
@@ -732,6 +763,23 @@ func (o *webOut) Duration() time.Duration {
 	return o.dur
 }
 
+// OnNear sets what runs as the page says the song nears its end.
+func (o *webOut) OnNear(fn func()) (off func()) {
+	o.mu.Lock()
+	o.onNear = fn
+	o.mu.Unlock()
+	return func() {
+		o.mu.Lock()
+		o.onNear = nil
+		o.mu.Unlock()
+	}
+}
+
+// FadeAway keeps the song playing until the next can fade in over it.
+func (o *webOut) FadeAway() {
+	o.w.send(fmt.Sprintf("vinyl.leave(%d)", o.gen))
+}
+
 func (o *webOut) OnEnd(fn func()) (off func()) {
 	o.mu.Lock()
 	o.onEnd = fn
@@ -823,6 +871,13 @@ func (o *webOut) event(kind string, t time.Duration, msg string, seq int) {
 		log.Printf("player: track %d ended seq=%d at=%v duration=%v (%s)", o.gen, seq, t, o.dur, msg)
 		o.running, o.playing = false, false
 		t, end = o.dur, o.onEnd
+	case "near":
+		fn := o.onNear
+		o.mu.Unlock()
+		if fn != nil {
+			fn()
+		}
+		return
 	case "duration":
 		// A file says how long it is once it loads: an episode's, where its
 		// podcast keeps it, may have more in it than Spotify's, as ads.

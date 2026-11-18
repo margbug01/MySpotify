@@ -96,3 +96,11 @@ func (a *app) presetSelect(c *ui.Context, chosen *string, labels []string) bool 
 	})
 	return sel.Trigger.Changed()
 }
+
+// crossfadeLabel is the crossfade of secs seconds as "6 s", or "Off".
+func crossfadeLabel(secs float64) string {
+	if secs <= 0 {
+		return l10n.T("关闭")
+	}
+	return fmt.Sprintf(l10n.T("%d 秒"), int(secs))
+}
