@@ -61,7 +61,7 @@ func badge(c *ui.Context, text, label string, on bool, color, ink ui.Color) bool
 	}
 	b.Border(1, edge).Background(b.AnimateColor("bg", bg, ui.Animation{Duration: 120 * time.Millisecond})).TextColor(fg)
 	b.Children(func() {
-		ui.Text(c, text).FontSize(11).FontWeight(800).LetterSpacing(0.4)
+		ui.Text(c, text).FontSize(11).FontWeight(800).LetterSpacing(0.4).NoWrap()
 	})
 	return b.Clicked()
 }

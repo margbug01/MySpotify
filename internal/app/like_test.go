@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"image/draw"
@@ -241,37 +242,66 @@ func TestSmokeFrames(t *testing.T) {
 	shots("smoke-bar", false)
 }
 
-// With NM_FRAMES set, saves the player bar at window widths from the
-// narrowest up.
+// With NM_FRAMES set, saves the player bar from the narrowest window up, including device and video controls in each language.
 func TestPlayerBarWidths(t *testing.T) {
 	dir := os.Getenv("NM_FRAMES")
 	if dir == "" {
 		t.Skip()
 	}
-	a := newTestApp()
-	a.settings = defaultSettings()
-	tr := spotify.Track{ID: "7", Name: "那些你很冒险的梦 (Live)", Artists: []spotify.Artist{{Name: "林俊杰"}, {Name: "JJ Lin"}}, Duration: 199000}
-	a.pl.Cue([]spotify.Track{tr})
-	a.pl.Seek(25 * time.Second)
-	widths := []int{880, 1000, 1180}
-	var strip *image.RGBA
-	y := 0
-	for i, w := range widths {
-		tt := ui.NewTester(a.view, w, 600)
-		tt.Frame()
-		img := tt.Image()
-		s := float32(img.Bounds().Dx()) / float32(w)
-		bar := image.Rect(int(float32(sidebarWidth)*s), int(float32(600-playerBarHeight)*s), img.Bounds().Dx(), img.Bounds().Dy())
-		if i == 0 {
-			strip = image.NewRGBA(image.Rect(0, 0, int(float32(1180-sidebarWidth)*s), bar.Dy()*len(widths)))
-			draw.Draw(strip, strip.Bounds(), image.NewUniform(color.RGBA{60, 60, 60, 255}), image.Point{}, draw.Src)
+	for _, variant := range []struct {
+		locale string
+		dark   bool
+		scale  float32
+	}{
+		{locale: "zh-Hans", scale: 1},
+		{locale: "zh-Hans", dark: true, scale: 2},
+		{locale: "en", scale: 1.25},
+		{locale: "it", dark: true, scale: 1.5},
+	} {
+		theme := "light"
+		if variant.dark {
+			theme = "dark"
 		}
-		draw.Draw(strip, image.Rect(0, y, bar.Dx(), y+bar.Dy()), img, bar.Min, draw.Src)
-		y += bar.Dy()
+		name := fmt.Sprintf("%s-%s-%gx", variant.locale, theme, variant.scale)
+		t.Run(name, func(t *testing.T) {
+			testLanguage(t, variant.locale)
+			for _, tc := range playerBarCases {
+				a := playerBarTestApp(tc)
+				if !tc.empty {
+					a.pl.Seek(25 * time.Second)
+				}
+				widths := []int{880, 935, 1000, 1180}
+				tt := ui.NewTester(a.view, widths[0], 600)
+				tt.SetDark(variant.dark)
+				tt.SetScale(variant.scale)
+				var strip *image.RGBA
+				y := 0
+				for i, width := range widths {
+					tt.SetSize(width, 600)
+					img := tt.Image()
+					s := float32(img.Bounds().Dx()) / float32(width)
+					bar := image.Rect(int(float32(sidebarWidth)*s), int(float32(600-playerBarHeight)*s), img.Bounds().Dx(), img.Bounds().Dy())
+					if i == 0 {
+						strip = image.NewRGBA(image.Rect(0, 0, int(float32(1180-sidebarWidth)*s), bar.Dy()*len(widths)))
+						draw.Draw(strip, strip.Bounds(), image.NewUniform(color.RGBA{60, 60, 60, 255}), image.Point{}, draw.Src)
+					}
+					draw.Draw(strip, image.Rect(0, y, bar.Dx(), y+bar.Dy()), img, bar.Min, draw.Src)
+					y += bar.Dy()
+				}
+				f, err := os.Create(filepath.Join(dir, "bar-widths-"+name+"-"+tc.name+".png"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := png.Encode(f, strip); err != nil {
+					f.Close()
+					t.Fatal(err)
+				}
+				if err := f.Close(); err != nil {
+					t.Fatal(err)
+				}
+			}
+		})
 	}
-	f, _ := os.Create(filepath.Join(dir, "bar-widths.png"))
-	defer f.Close()
-	png.Encode(f, strip)
 }
 
 // With NM_FRAMES set, saves the volume popover open, light and dark.
