@@ -407,24 +407,24 @@ func (a *app) playerBar(c *ui.Context) {
 	edge := ui.Box(c.Key("bottom-edge")).Absolute().Left(0).Right(0).Bottom(0).Height(playerBarHeight).
 		Material(glass.ScrollEdge{Hard: true, Bottom: true, Background: p.bg})
 	edge.Opacity(edgeShown(edge, a.underBottom))
-	// The controls keep the middle, between sides that share what is left:
-	// narrower, the middle gives up to 140 DIPs, and what plays keeps room
-	// for its cover, some of its title and its heart.
-	const controls = 4*32 + 3*4 // lyrics, desktop lyrics, queue and the speaker
-	// Before them, where the window has room beyond what the rest keeps, the
-	// music video's button, then the badge of the bitrate ("256k", about
-	// 40): in a narrow window they pushed the speaker out of it.
+	// The sides share what is left around the middle, which can shrink to
+	// its buttons' content width. Optional video and bitrate badges stay
+	// hidden where space is tight; count every control actually shown.
+	controls := float32(3*32 + 2*4) // lyrics, queue and the speaker
+	if deskHere {
+		controls += 32 + 4
+	}
+	if a.connect != nil {
+		controls += 32 + 4
+	}
 	w, _ := c.Size()
 	room := w - sidebarWidth - 1 - 2*20 - 2*20 - 150 - 300 - controls
-	side := float32(controls)
 	mv := tr != nil && pl.HasVideo() && room >= 32+4
+	videoSpace := float32(0)
 	if mv {
-		side += 32 + 4
+		videoSpace = 32 + 4
 	}
-	badge := tr != nil && pl.Bitrate() > 0 && room-(side-controls) >= 44+4
-	if badge {
-		side += 44 + 4
-	}
+	badge := tr != nil && pl.Bitrate() > 0 && room-videoSpace >= 44+4
 	ui.Row(c).Absolute().Left(0).Right(0).Bottom(0).Height(playerBarHeight).PaddingX(20).Gap(20).AlignItems(ui.Center).Children(func() {
 		// What plays.
 		ui.Row(c).Grow(1).Basis(0).MinWidth(150).Children(func() {
@@ -468,7 +468,7 @@ func (a *app) playerBar(c *ui.Context) {
 		})
 
 		// Controls over the progress.
-		ui.Column(c).Width(440).Shrink(1).MinWidth(300).Gap(0).AlignItems(ui.Stretch).Children(func() {
+		ui.Column(c).Basis(440).Shrink(1).Gap(0).AlignItems(ui.Stretch).Children(func() {
 			a.transport(c, p.text, p.muted, p.accent, 18)
 			ui.Row(c).Gap(10).AlignItems(ui.Center).Margin(-4, 0, 0, 0).Children(func() {
 				ui.Text(c, clock(pl.Position())).FontSize(10.5).FontFeatures("tnum").TextColor(p.faint).Width(34).TextAlign(ui.End)
@@ -477,8 +477,8 @@ func (a *app) playerBar(c *ui.Context) {
 			})
 		})
 
-		// Lyrics and volume.
-		ui.Row(c).Grow(1).Basis(0).MinWidth(side).Justify(ui.End).AlignItems(ui.Center).Gap(4).Children(func() {
+		// Keep enough room for every control actually shown.
+		ui.Row(c).Grow(1).Basis(0).Justify(ui.End).AlignItems(ui.Center).Gap(4).Children(func() {
 			if badge {
 				a.qualityBadge(c, p.press, p.faint)
 			}

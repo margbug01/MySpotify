@@ -673,6 +673,6 @@ func (a *app) qualityBadge(c *ui.Context, bg, fg ui.Color) {
 		return
 	}
 	ui.Row(c.Key("quality")).Padding(2, 7, 2, 7).Radius(999).Background(bg).Shrink(0).Children(func() {
-		ui.Text(c, strconv.Itoa(b/1000)+"k").FontSize(10.5).FontWeight(700).FontFeatures("tnum").TextColor(fg).SingleLine()
+		ui.Text(c, strconv.Itoa(b/1000)+"k").FontSize(10.5).FontWeight(700).FontFeatures("tnum").TextColor(fg).SingleLine().NoWrap()
 	})
 }
