@@ -108,6 +108,25 @@ func TestConnectResumeAndPlayRouting(t *testing.T) {
 	}
 }
 
+// An early crossfade hint can't stop or switch tracks if Connect lacks the prepared transition.
+func TestConnectCrossfadeWaitsForMatchingAdvance(t *testing.T) {
+	a := testConnectApp(t)
+	a.pl.Hold(time.Second)
+	a.connect.ref = &spotify.ConnectRef{Index: 0}
+	machine := []byte(`{"state_machine_id":"m","states":[{"state_id":"s1","track":0},{"state_id":"s2","track":1}],"tracks":[{"metadata":{"uri":"spotify:track:one"}},{"metadata":{"uri":"spotify:track:two"}}]}`)
+	if err := json.Unmarshal(machine, &a.connect.machine); err != nil {
+		t.Fatal(err)
+	}
+	for _, hasAdvance := range []bool{false, true} {
+		if hasAdvance {
+			a.connect.machine.States[0].Transitions.Advance = &spotify.ConnectRef{Index: 1}
+		}
+		if !a.connectControl("advance", "spotify:track:three") || !a.pl.Playing() || a.pl.Current().ID != "one" {
+			t.Fatalf("early advance with transition %v interrupted the current song", hasAdvance)
+		}
+	}
+}
+
 // Extended state machines update the visible queue without restarting the current audio.
 func TestConnectAdoptsExtendedQueue(t *testing.T) {
 	a := testConnectApp(t)

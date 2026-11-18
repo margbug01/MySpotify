@@ -84,9 +84,8 @@ type Player struct {
 	// long it fades in over, taken by the song it opens.
 	crossfade float64
 	crossing  time.Duration
-	crossedAt time.Time
 	overlap   float64
-	rate    float64 // how fast episodes play, 0 as 1; songs play at their own pace
+	rate      float64 // how fast episodes play, 0 as 1; songs play at their own pace
 
 	// A radio goes on with the tracks its feed gives, as the queue nears
 	// its end, for as long as nothing else is played.
@@ -929,9 +928,9 @@ func (p *Player) SetVolume(v float64) {
 
 // SetCrossfade sets how many seconds a song overlaps the next, 0 for none.
 func (p *Player) SetCrossfade(secs float64) {
-	p.crossfade = secs
-	if p.Web != nil && secs >= 0 {
-		p.Web.SetCrossfade(secs)
+	p.crossfade = min(max(secs, 0), 12)
+	if p.Web != nil {
+		p.Web.SetCrossfade(p.crossfade)
 	}
 }
 
@@ -951,17 +950,18 @@ func (p *Player) nearEnd() {
 	}
 	next := p.queue[p.order[at]]
 	// Songs one after the other on an album are made to follow each other.
-	if next.Episode || (next.Album.ID != "" && next.Album.ID == p.track.Album.ID) {
+	if next.Episode || next.ID == p.track.ID || (next.Album.ID != "" && next.Album.ID == p.track.Album.ID) {
 		return
 	}
 	if p.upNext.id != next.ID || p.upNext.m == nil || time.Since(p.upNext.at) > aheadFresh {
 		return
 	}
-	p.crossing, p.crossedAt = time.Duration(p.crossfade*float64(time.Second)), time.Now()
+	p.crossing = time.Duration(p.crossfade * float64(time.Second))
 	p.throttles, p.flaky = 0, 0
 	// With Spotify Connect, the song goes on as it does at the end of one: its
 	// state moves on, which loads the next.
-	if p.control("advance", nil) {
+	if p.control("advance", next.URI()) {
+		p.crossing = 0
 		return
 	}
 	p.load(at)
@@ -1162,15 +1162,11 @@ func (p *Player) CloseWeb() {
 
 func (p *Player) stop() {
 	lead := p.crossing
-	p.crossing = 0
-	// Set for the load that follows at once, not one a while after.
-	if time.Since(p.crossedAt) > 3*time.Second {
-		lead = 0
-	}
+	p.crossing, p.overlap = 0, 0
 	if out := p.out; out != nil {
-		if f, ok := out.(interface{ FadeAway(time.Duration) }); ok && lead > 0 {
+		if f, ok := out.(interface{ FadeAway() }); ok && lead > 0 {
 			// As the song after starts, this one fades out over it.
-			f.FadeAway(lead)
+			f.FadeAway()
 			time.AfterFunc(lead+time.Second, out.Close)
 			p.overlap = lead.Seconds()
 		} else {

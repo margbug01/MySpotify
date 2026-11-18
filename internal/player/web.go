@@ -775,9 +775,9 @@ func (o *webOut) OnNear(fn func()) (off func()) {
 	}
 }
 
-// FadeAway has the song fade out over d, as the next one comes in, and go.
-func (o *webOut) FadeAway(d time.Duration) {
-	o.w.send(fmt.Sprintf("vinyl.leave(%d,%g)", o.gen, d.Seconds()))
+// FadeAway keeps the song playing until the next can fade in over it.
+func (o *webOut) FadeAway() {
+	o.w.send(fmt.Sprintf("vinyl.leave(%d)", o.gen))
 }
 
 func (o *webOut) OnEnd(fn func()) (off func()) {

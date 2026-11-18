@@ -35,7 +35,7 @@ func TestSongsOverlapAtTheEnd(t *testing.T) {
 	}
 
 	got := strings.Join(run(6, []spotify.Track{song("1", "a"), song("2", "b")}, true), " ")
-	if !strings.Contains(got, "vinyl.leave(1,6)") || !strings.Contains(got, "vinyl.load(2,null,6)") {
+	if !strings.Contains(got, "vinyl.leave(1)") || !strings.Contains(got, "vinyl.load(2,null,6)") {
 		t.Fatalf("overlapping: sent %q", got)
 	}
 	for name, c := range map[string]struct {
@@ -101,7 +101,7 @@ func TestOverlapAdvancesSpotifyConnect(t *testing.T) {
 	p.post(func() { done = true })
 	until("near heard", func() bool { return done })
 	until("track 2 playing", func() bool { return p.out != nil && p.track.ID == "2" })
-	if got := strings.Join(sent(p.Web), " "); !strings.Contains(got, "vinyl.leave(1,6)") || !slices.Contains(asked, "advance") {
+	if got := strings.Join(sent(p.Web), " "); !strings.Contains(got, "vinyl.leave(1)") || !slices.Contains(asked, "advance") {
 		t.Fatalf("asked %v, sent %q", asked, got)
 	}
 }

@@ -773,6 +773,16 @@ func (a *app) connectControl(action string, value any) bool {
 			return false
 		}
 		next := state.machine.States[state.ref.Index].Transitions.Advance
+		if uri, overlapping := value.(string); overlapping {
+			// Keep playing to the end if Connect can't advance to the prepared song.
+			if next == nil {
+				return true
+			}
+			track, err := state.machine.Track(next.Index)
+			if err != nil || track.URI() != uri {
+				return true
+			}
+		}
 		if next == nil {
 			a.pl.StopConnect()
 			return true

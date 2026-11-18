@@ -416,7 +416,9 @@ func Run() error {
 		a.pl.SetRate(a.settings.PodcastRate)
 		spotify.SetHighQuality(a.settings.HighQuality)
 		a.applyEqualizer()
-		a.pl.SetCrossfade(a.settings.Crossfade)
+		if crossfadeHere {
+			a.pl.SetCrossfade(a.settings.Crossfade)
+		}
 		a.win = mygo.NewWindow(mygo.WindowOptions{
 			Title:         appName,
 			Width:         1180,
