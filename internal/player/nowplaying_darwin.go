@@ -70,9 +70,11 @@ func setNativeNowPlayingVisible(visible bool) {
 			return
 		}
 		if visible {
+			automaticNowPlaying(true)
 			api.eligible(1)
 			api.visibility(api.origin(), 1) // AlwaysVisible
 		} else {
+			automaticNowPlaying(false)
 			// Unknown also withdraws the default player. Stopped alone
 			// leaves an empty, selectable player in Control Center.
 			center := objc.ID(objc.GetClass("MPNowPlayingInfoCenter")).Send(objc.RegisterName("defaultCenter"))
@@ -83,4 +85,23 @@ func setNativeNowPlayingVisible(visible bool) {
 			api.eligible(0)
 		}
 	})
+}
+
+// automaticNowPlaying lets MediaPlayer's command center make the app's
+// player eligible to be now playing, or keeps it from it. The center does
+// so whenever it sends the system its commands, as about 100 ms after Clear
+// disables them: eligible(0) was undone, the player stayed eligible though
+// hidden and empty, and Control Center fell back to it, a card naming no
+// song, whenever another player stopped, as when a page made way for an MV
+// (#54). mediaremoted's log shows the player withdrawn only with this.
+func automaticNowPlaying(on bool) {
+	center := objc.ID(objc.GetClass("MPRemoteCommandCenter"))
+	if center != 0 {
+		center = center.Send(objc.RegisterName("sharedCommandCenter"))
+	}
+	if center == 0 || !responds(center, "setDisableAutomaticCanBeNowPlaying:") {
+		log.Printf("player: the command center cannot stop making the native player eligible")
+		return
+	}
+	center.Send(objc.RegisterName("setDisableAutomaticCanBeNowPlaying:"), !on)
 }
