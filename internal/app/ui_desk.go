@@ -24,6 +24,7 @@ type desk struct {
 	a   *app
 	win *mygo.Window
 
+	shown   bool   // the window shows, or would were there one, as in tests
 	hover   bool   // the pointer is over the window
 	passing bool   // clicks pass through to what is under it
 	unwatch func() // stops the pointer's moves polling, nil while they don't
@@ -67,7 +68,7 @@ func newDesk(a *app) *desk {
 			e.PreventDefault()
 		}
 	})
-	d.setEnabled(a.settings.DeskLyrics)
+	d.setEnabled(a.deskShown())
 	return d
 }
 
@@ -75,8 +76,19 @@ func newDesk(a *app) *desk {
 func (a *app) setDesk(on bool) {
 	a.settings.DeskLyrics = on
 	a.settings.save()
+	a.syncDesk()
+}
+
+// deskShown says the desk lyrics show: on, and, hiding them when paused,
+// playing.
+func (a *app) deskShown() bool {
+	return a.settings.DeskLyrics && (!a.settings.DeskHidePaused || a.pl.Playing())
+}
+
+// syncDesk shows or hides the desk window as deskShown asks.
+func (a *app) syncDesk() {
 	if a.desk != nil {
-		a.desk.setEnabled(on)
+		a.desk.setEnabled(a.deskShown())
 	}
 }
 
@@ -90,11 +102,17 @@ func (a *app) setDeskLocked(locked bool) {
 	}
 }
 
-// setEnabled shows the window or hides it.
+// setEnabled shows the window or hides it, doing nothing for the state it
+// is in already.
 func (d *desk) setEnabled(on bool) {
 	if d.win == nil {
-		return // as in tests
+		d.shown = on // as in tests
+		return
 	}
+	if on == d.shown {
+		return
+	}
+	d.shown = on
 	d.hover = false
 	if on {
 		d.win.ShowInactive()
@@ -122,7 +140,7 @@ func (d *desk) watch(on bool) {
 // through, cannot see it: over it, the window shows its controls, or
 // locked, takes clicks on the key only.
 func (d *desk) poll() {
-	if d.win == nil || !d.a.settings.DeskLyrics {
+	if d.win == nil || !d.a.deskShown() {
 		return
 	}
 	pt := mygo.Screen.CursorScreenPoint()
@@ -460,6 +478,12 @@ func (a *app) deskSettings(c *ui.Context, group func(string, func()), row func(s
 		row(l10n.T("显示桌面歌词"), l10n.T("正在唱的那句浮在所有窗口上面；锁定后鼠标可以直接穿过"), func() {
 			if ui.Switch(c.Key("desk"), &s.DeskLyrics).Label(l10n.T("显示桌面歌词")).Changed() {
 				a.setDesk(s.DeskLyrics)
+			}
+		})
+		row(l10n.T("暂停时隐藏"), l10n.T("暂停播放时收起歌词，继续播放再浮出来"), func() {
+			if ui.Switch(c.Key("desk-hide-paused"), &s.DeskHidePaused).Label(l10n.T("暂停时隐藏")).Changed() {
+				s.save()
+				a.syncDesk()
 			}
 		})
 		row(l10n.T("字号"), "", func() {

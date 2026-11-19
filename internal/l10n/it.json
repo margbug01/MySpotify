@@ -441,6 +441,8 @@
   "隐藏桌面歌词": "Nascondi il testo sul desktop",
   "显示/隐藏桌面歌词": "Mostra/nascondi il testo sul desktop",
   "正在唱的那句浮在所有窗口上面；锁定后鼠标可以直接穿过": "La riga cantata fluttua sopra tutte le finestre; bloccato, i clic lo attraversano",
+  "暂停时隐藏": "Nascondi in pausa",
+  "暂停播放时收起歌词，继续播放再浮出来": "In pausa il testo si ripiega; torna quando la musica riprende",
   "字号": "Dimensione del testo",
   "小": "Piccolo",
   "中": "Medio",

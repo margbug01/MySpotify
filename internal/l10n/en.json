@@ -441,6 +441,8 @@
   "隐藏桌面歌词": "Hide desktop lyrics",
   "显示/隐藏桌面歌词": "Show/Hide desktop lyrics",
   "正在唱的那句浮在所有窗口上面；锁定后鼠标可以直接穿过": "The line being sung floats above every window; locked, clicks go straight through it",
+  "暂停时隐藏": "Hide when paused",
+  "暂停播放时收起歌词，继续播放再浮出来": "The lyrics fold away while paused, and float back as the music plays",
   "字号": "Text size",
   "小": "Small",
   "中": "Medium",
