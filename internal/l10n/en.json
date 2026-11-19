@@ -495,6 +495,7 @@
   "一首歌快结束时与下一首重叠；同一专辑里相连的歌不会重叠": "The end of a song overlaps the start of the next; songs that follow each other on an album don't overlap",
   "%d 秒": "%d s",
   "播放选项": "Playback",
+  "均衡器曲线": "Equalizer curve",
   "开启随机播放": "Enable shuffle",
   "关闭随机播放": "Disable shuffle"
 }

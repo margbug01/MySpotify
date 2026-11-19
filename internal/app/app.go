@@ -201,6 +201,7 @@ type app struct {
 	proxyTyping bool            // the proxy's field had the focus last frame
 	recording   string          // the action whose global shortcut the settings wait for
 	recFocused  bool            // and its button has had the focus since
+	eqDrag      eqDrag          // the band of the equalizer's curve being dragged
 	hotkeyErr   map[string]bool // the actions whose shortcut the system would not take
 	cacheUsed   int64           // the bytes the cache of tracks takes, -1 until measured
 	cacheDirErr string          // why the folder chosen for it was not taken
