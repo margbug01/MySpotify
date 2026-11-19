@@ -180,12 +180,7 @@ func (a *app) artistHeader(c *ui.Context, pg *spotify.ArtistPage) {
 			if pillButton(c.Key("play"), iconPlay, l10n.T("播放"), p.accent, p.onAccent).Clicked() {
 				a.playFrom(spotify.HomeItem{Artist: &pg.ArtistCard}, pg.TopTracks, a.playStart(pg.TopTracks))
 			}
-			if pillButton(c.Key("shuffle"), iconShuffle, l10n.T("随机播放"), p.hover.Over(p.bg), p.text).Clicked() {
-				if !a.pl.Shuffle() {
-					a.pl.ToggleShuffle()
-				}
-				a.playFrom(spotify.HomeItem{Artist: &pg.ArtistCard}, pg.TopTracks, randomPlayable(pg.TopTracks))
-			}
+			a.shuffleSwitch(c)
 			label := l10n.T("电台")
 			if a.radioStarting == radioName(pg.ID, pg.Name) {
 				label = l10n.T("正在开启…")
