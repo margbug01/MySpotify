@@ -214,12 +214,39 @@ func (a *app) eqGraph(c *ui.Context) {
 					rad = 7
 					pt.Text(xs[i]-9, ys[i]-24, fmt.Sprintf("%+.0f", s.EQGains[i]), 12, p.text)
 				}
-				pt.Fill(ui.Rect{X: xs[i] - rad, Y: ys[i] - rad, W: 2 * rad, H: 2 * rad}, white, rad)
+				// Ringed in the accent: white alone is lost on the light theme.
+				pt.Fill(ui.Rect{X: xs[i] - rad, Y: ys[i] - rad, W: 2 * rad, H: 2 * rad}, p.accent, rad)
+				in := rad - 2
+				pt.Fill(ui.Rect{X: xs[i] - in, Y: ys[i] - in, W: 2 * in, H: 2 * in}, white, in)
 			}
 		})
 		ui.Row(c).Padding(0, 0, 0, eqLabelW).Children(func() {
-			for _, hz := range player.EQBands {
-				ui.Row(c.Key(eqBandName(hz))).Grow(1).Basis(0).Justify(ui.Center).Children(func() {
+			for i, hz := range player.EQBands {
+				// Each band's name is its slider for keys and assistive
+				// technology, which the curve, dragged only, is not.
+				b := ui.Row(c.Key(eqBandName(hz))).Grow(1).Basis(0).Justify(ui.Center).Focusable().
+					Role(ui.RoleSlider).Orientation(ui.Vertical).Label(eqBandName(hz)).Range(-12, 12, s.EQGains[i])
+				b.HandleInput(func(ev ui.InputEvent) bool {
+					if ev.Kind != ui.InputKeyDown || ev.Mods != 0 {
+						return false
+					}
+					var step float64
+					switch ev.Key {
+					case ui.KeyUp, ui.KeyRight:
+						step = 1
+					case ui.KeyDown, ui.KeyLeft:
+						step = -1
+					default:
+						return false
+					}
+					if v := min(max(s.EQGains[i]+step, -12), 12); v != s.EQGains[i] {
+						s.EQGains[i] = v
+						a.applyEqualizer()
+						s.save()
+					}
+					return true
+				})
+				b.Children(func() {
 					ui.Text(c, eqBandName(hz)).FontSize(11).TextColor(p.muted)
 				})
 			}
