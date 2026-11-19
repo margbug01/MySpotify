@@ -51,8 +51,9 @@ func eqPresetName(g [6]float64) string {
 }
 
 // eqHere is whether this system has the equalizer: Windows, where protected
-// media goes through Web Audio. On a Mac or Linux it is untried, so its setting
-// is hidden.
+// media goes through Web Audio. On a Mac, WebKit feeds the filters silence,
+// songs and podcasts alike, while a tone of the page's own passes them
+// (measured 2026-11-19); on Linux it is untried. Its setting is hidden there.
 var eqHere = runtime.GOOS == "windows"
 
 // applyEqualizer hands the equalizer's settings to the player.
