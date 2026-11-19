@@ -512,12 +512,7 @@ func (a *app) dailyPage(c *ui.Context) {
 					if pillButton(c.Key("play"), iconPlay, l10n.T("播放全部"), p.accent, p.onAccent).Clicked() {
 						a.playQueue(songs, a.playStart(songs))
 					}
-					if pillButton(c.Key("shuffle"), iconShuffle, l10n.T("随机播放"), p.hover.Over(p.bg), p.text).Clicked() {
-						if !a.pl.Shuffle() {
-							a.pl.ToggleShuffle()
-						}
-						a.playQueue(songs, randomPlayable(songs))
-					}
+					a.shuffleSwitch(c)
 				})
 			})
 		})

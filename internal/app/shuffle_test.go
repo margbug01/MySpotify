@@ -23,37 +23,8 @@ func shuffleApp() *app {
 	return a
 }
 
-// The shuffle button plays the playable track the random source picked,
-// not the playlist's first, and turns the player's shuffle on.
-func TestPlaylistShuffleStartsWhereRandomPicks(t *testing.T) {
-	was := randomPick
-	randomPick = func(n int) int {
-		if n != 2 {
-			t.Fatalf("randomPick(%d), want 2: one playable song of two", n)
-		}
-		return 1
-	}
-	defer func() { randomPick = was }()
-
-	a := shuffleApp()
-	tt := ui.NewTester(a.view, 1200, 800)
-	tt.Frame()
-	if err := tt.Click("随机播放"); err != nil {
-		t.Fatal(err)
-	}
-	tt.Frame()
-	if !a.pl.Shuffle() {
-		t.Error("the shuffle button left the player's shuffle off")
-	}
-	if len(a.pl.Queue()) != 3 {
-		t.Errorf("the queue holds %d songs, want the playlist's three", len(a.pl.Queue()))
-	}
-	if cur := a.pl.Current(); cur == nil || cur.ID != "3" {
-		t.Errorf("the shuffle started at %v, want the song the random source picked (富士山下)", cur)
-	}
-}
-
-// Ordinary playlist play uses the restored shuffle mode, which it used to turn off.
+// Ordinary playlist play uses the restored shuffle mode, which it used to
+// turn off, starting at the playable song the random source picked.
 func TestPlaylistPlayKeepsRestoredShuffle(t *testing.T) {
 	was := randomPick
 	randomPick = func(int) int { return 1 }
@@ -63,30 +34,36 @@ func TestPlaylistPlayKeepsRestoredShuffle(t *testing.T) {
 	a.pl.Restore(player.Session{Queue: []spotify.Track{{ID: "old"}}, Order: []int{0}, Shuffle: true})
 	tt := ui.NewTester(a.view, 1200, 800)
 	tt.Frame()
-	if err := tt.Click("播放"); err != nil {
-		t.Fatal(err)
-	}
-	tt.Frame()
+	click(t, tt, "播放")
 	if cur := a.pl.Current(); !a.pl.Shuffle() || cur == nil || cur.ID != "3" {
 		t.Fatalf("ordinary play: shuffle %v, track %v; want shuffle on and track 3", a.pl.Shuffle(), cur)
 	}
 }
 
-// A shuffled queue still starts at the playlist's first when the random
-// source picks it, as it may.
-func TestPlaylistShuffleCanStartAtFirst(t *testing.T) {
-	was := randomPick
-	randomPick = func(n int) int { return 0 }
-	defer func() { randomPick = was }()
-
-	a := shuffleApp()
-	tt := ui.NewTester(a.view, 1200, 800)
-	tt.Frame()
-	if err := tt.Click("随机播放"); err != nil {
-		t.Fatal(err)
+// The shuffle button of a page of songs is a switch, as Spotify's: it turns
+// shuffling on and off without playing anything, whichever the page, a
+// playlist's, an artist's or the daily songs.
+func TestShuffleButtonIsASwitch(t *testing.T) {
+	pages := map[string]func(*app){
+		"playlist": func(a *app) {},
+		"artist":   func(a *app) { a.route = route{page: pageArtist, artist: easonURI} },
+		"daily": func(a *app) {
+			a.daily = []spotify.Track{{ID: "t1", Name: "一首", Duration: 1000}, {ID: "t2", Name: "两首", Duration: 1000}}
+			a.route = route{page: pageDaily}
+		},
 	}
-	tt.Frame()
-	if cur := a.pl.Current(); cur == nil || cur.ID != "1" {
-		t.Errorf("the shuffle started at %v, want the first song (晴天)", cur)
+	for name, open := range pages {
+		a := artistApp()
+		open(a)
+		tt := ui.NewTester(a.view, 1200, 800)
+		tt.Frame()
+		click(t, tt, "开启随机播放")
+		if !a.pl.Shuffle() || a.pl.Current() != nil {
+			t.Fatalf("%s turned on: shuffle %v, playing %v", name, a.pl.Shuffle(), a.pl.Current())
+		}
+		click(t, tt, "关闭随机播放")
+		if a.pl.Shuffle() || a.pl.Current() != nil {
+			t.Fatalf("%s turned off: shuffle %v, playing %v", name, a.pl.Shuffle(), a.pl.Current())
+		}
 	}
 }
