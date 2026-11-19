@@ -51,6 +51,7 @@ type route struct {
 // app is the state both windows show. Everything in it is read and changed
 // on the main thread: by the views, and by goroutines through post.
 type app struct {
+	eqDrag eqDrag // the band of the equalizer's curve being dragged
 	win   *mygo.Window
 	notch *notch
 	desk  *desk      // the desktop lyrics, where they can be had

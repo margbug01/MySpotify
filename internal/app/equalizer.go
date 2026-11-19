@@ -2,11 +2,13 @@ package app
 
 import (
 	"fmt"
+	"math"
 	"runtime"
 
 	"github.com/egoist/mygo/ui"
 
 	"vinyl/internal/l10n"
+	"vinyl/internal/player"
 )
 
 // eqPresets are the gains of the six bands, in dB, each preset applies.
@@ -103,4 +105,124 @@ func crossfadeLabel(secs float64) string {
 		return l10n.T("关闭")
 	}
 	return fmt.Sprintf(l10n.T("%d 秒"), int(secs))
+}
+
+// eqDrag is the band of the equalizer's curve being dragged, while one is.
+type eqDrag struct {
+	band  int
+	on    bool
+	moved bool // a gain changed since the settings were saved
+}
+
+// The curve's room: eqLabelW on the left for the scale, and eqPad above and
+// below it.
+const (
+	eqLabelW = 46
+	eqPad    = 16
+	eqHeight = 176
+)
+
+// eqY is where the gain g, in dB, is in a curve of height h, and eqGain is
+// the gain at y, to a whole dB.
+func eqY(g, h float32) float32 { return eqPad + (12-g)/24*(h-2*eqPad) }
+func eqGain(y, h float32) float64 {
+	return math.Round(math.Min(12, math.Max(-12, float64(12-(y-eqPad)/(h-2*eqPad)*24))))
+}
+
+// eqGraph is the equalizer as a curve through its six bands, whose points
+// are dragged up and down.
+func (a *app) eqGraph(c *ui.Context) {
+	p, s := a.pal, &a.settings
+	ui.Column(c).Padding(12, 16, 16, 16).Gap(6).AlignItems(ui.Stretch).Children(func() {
+		g := ui.Box(c.Key("eq-graph")).Height(eqHeight).Label(l10n.T("均衡器曲线")).Cursor(ui.CursorResizeNS)
+		// width is the curve's, as last drawn.
+		var width float32
+		set := func(band int, y float32) {
+			if v := eqGain(y, eqHeight); v != s.EQGains[band] {
+				s.EQGains[band] = v
+				a.eqDrag.moved = true
+				// The sound follows as the point is dragged; the settings are
+				// kept as it is let go. a.changed() waits for the main thread and
+				// does what the equalizer doesn't need (the theme, the notch).
+				a.applyEqualizer()
+			}
+		}
+		g.HandleInput(func(ev ui.InputEvent) bool {
+			switch ev.Kind {
+			case ui.InputPointerDown:
+				if ev.Button != 0 {
+					return false
+				}
+				band := min(max(int((ev.X-eqLabelW)/((width-eqLabelW)/float32(len(s.EQGains)))), 0), len(s.EQGains)-1)
+				a.eqDrag = eqDrag{band: band, on: true}
+				set(band, ev.Y)
+				return true
+			case ui.InputPointerMove:
+				if a.eqDrag.on {
+					set(a.eqDrag.band, ev.Y)
+					return true
+				}
+			case ui.InputPointerUp:
+				a.eqDrag.on = false
+				if a.eqDrag.moved {
+					a.eqDrag.moved = false
+					s.save()
+				}
+			}
+			return false
+		})
+		grabbed, band := a.eqDrag.on, a.eqDrag.band
+		g.Draw(func(pt *ui.Painter, r ui.Rect) {
+			width = r.W
+			n := len(s.EQGains)
+			top, foot := r.Y+eqPad, r.Y+r.H-eqPad
+			col := (r.W - eqLabelW) / float32(n)
+			xs, ys := make([]float32, n), make([]float32, n)
+			for i, v := range s.EQGains {
+				xs[i], ys[i] = r.X+eqLabelW+col*(float32(i)+0.5), r.Y+eqY(float32(v), r.H)
+			}
+			for _, row := range []struct {
+				v    string
+				y    float32
+				line ui.Color
+			}{{"+12 dB", top, p.hairline}, {"0", (top + foot) / 2, p.muted.Alpha(0.5)}, {"-12 dB", foot, p.hairline}} {
+				pt.Text(r.X, row.y-6, row.v, 11, p.muted)
+				pt.Line(r.X+eqLabelW, row.y, r.X+r.W, row.y, 1, row.line)
+			}
+			for _, x := range xs {
+				pt.Line(x, top, x, foot, 1, p.hairline)
+			}
+			// A smooth curve through the points, each one's tangent
+			// the way from the one before it to the one after.
+			along := func(path *ui.Path) {
+				path.MoveTo(xs[0], ys[0])
+				for i := 0; i+1 < n; i++ {
+					before, after := max(i-1, 0), min(i+2, n-1)
+					path.CubeTo(xs[i]+(xs[i+1]-xs[before])/6, ys[i]+(ys[i+1]-ys[before])/6,
+						xs[i+1]-(xs[after]-xs[i])/6, ys[i+1]-(ys[after]-ys[i])/6, xs[i+1], ys[i+1])
+				}
+			}
+			var area, line ui.Path
+			along(&area)
+			area.LineTo(xs[n-1], foot).LineTo(xs[0], foot).Close()
+			pt.FillPathGradient(&area, ui.LinearGradient{From: p.accent.Alpha(0.5), To: p.accent.Alpha(0), Angle: 180})
+			along(&line)
+			pt.StrokePath(&line, 3, p.accent)
+			for i := range xs {
+				rad := float32(5)
+				if grabbed && i == band {
+					rad = 7
+					pt.Text(xs[i]-9, ys[i]-24, fmt.Sprintf("%+.0f", s.EQGains[i]), 12, p.text)
+				}
+				pt.Fill(ui.Rect{X: xs[i] - rad, Y: ys[i] - rad, W: 2 * rad, H: 2 * rad}, white, rad)
+			}
+		})
+		ui.Row(c).Padding(0, 0, 0, eqLabelW).Children(func() {
+			for _, hz := range player.EQBands {
+				ui.Row(c.Key(eqBandName(hz))).Grow(1).Basis(0).Justify(ui.Center).Children(func() {
+					ui.Text(c, eqBandName(hz)).FontSize(11).TextColor(p.muted)
+				})
+			}
+		})
+	})
 }
