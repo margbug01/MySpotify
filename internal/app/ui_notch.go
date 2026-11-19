@@ -525,8 +525,6 @@ func (a *app) syncWindows() {
 	if sig != a.sig {
 		a.sig = sig
 		a.redraw()
-		// Pausing and playing change whether the desk lyrics show; sync them.
-		a.syncDesk()
 		if sig.playing && !sig.loading && a.notch != nil {
 			a.notch.greet()
 		}

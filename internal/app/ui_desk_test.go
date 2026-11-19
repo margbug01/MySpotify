@@ -178,12 +178,19 @@ func TestDeskBarButton(t *testing.T) {
 }
 
 // Hide-when-paused on, the desk lyrics hide while the music pauses and
-// show again as it plays; off, a pause keeps them.
+// show again as it plays, with no window drawing; off, a pause keeps them.
+// They were synced only as a window drew: with the main window hidden,
+// once paused they never came back.
 func TestDeskHidePaused(t *testing.T) {
 	if !deskHere {
 		t.Skip("no desktop lyrics here")
 	}
+	defer func(after func(time.Duration, func())) { sessionAfter = after }(sessionAfter)
+	sessionAfter = func(time.Duration, func()) {}
+	defer func(p func() (string, error)) { sessionPath = p }(sessionPath)
+	sessionPath = func() (string, error) { return filepath.Join(t.TempDir(), "session.json"), nil }
 	a, _, _ := playingApp()
+	a.pl.Changed = a.playbackChanged
 	// With a silent output attached, pausing pauses: without one,
 	// TogglePlay loads the track instead.
 	out := audio.NewPlayer(&silence{})
@@ -199,7 +206,6 @@ func TestDeskHidePaused(t *testing.T) {
 		t.Fatal("playing, hidden")
 	}
 	a.pl.TogglePlay()
-	a.syncWindows()
 	if d.shown {
 		t.Fatal("paused, shown")
 	}
@@ -211,8 +217,11 @@ func TestDeskHidePaused(t *testing.T) {
 		t.Fatal("option off while paused, hidden")
 	}
 	a.settings.DeskHidePaused = true
+	a.syncDesk()
+	if d.shown {
+		t.Fatal("option on again while paused, shown")
+	}
 	a.pl.TogglePlay()
-	a.syncWindows()
 	if !d.shown {
 		t.Fatal("playing again, hidden")
 	}

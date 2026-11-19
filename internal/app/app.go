@@ -226,6 +226,9 @@ func (a *app) playbackChanged() {
 	}
 	a.keepSession()
 	a.reportConnect()
+	// Here, not as a window draws: with the main window hidden and the desk
+	// lyrics hidden by a pause, no window draws to bring them back.
+	a.syncDesk()
 }
 
 // post runs fn on the main thread and redraws both windows. Without a
