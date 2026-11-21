@@ -188,7 +188,7 @@ func (a *app) nowPlayingBody(c *ui.Context, tr *spotify.Track, art *artwork, acc
 					ui.Text(c, status).FontSize(11).FontFeatures("tnum").TextColor(white.Alpha(0.5))
 				})
 				ui.Box(c).Margin(14, 0, 18, 0).Children(func() {
-					a.transport(c, white, white.Alpha(0.45), accent, 28)
+					a.transport(c, white, white.Alpha(0.45), a.pal.accent, 28)
 				})
 				ui.Row(c).Justify(ui.Center).Children(func() {
 					a.volumeSlider(c, white.Alpha(0.7), white.Alpha(0.18), 180)
@@ -270,7 +270,7 @@ func (a *app) stageBar(c *ui.Context, tr *spotify.Track, art *artwork, accent ui
 				a.likeButton(c.Key("like"), tr, 17, white.Alpha(0.6))
 				a.songMenu(c.Key("more"), tr, 17, white.Alpha(0.6)).Margin(0, 0, 0, -10)
 			})
-			a.transport(c, white, white.Alpha(0.45), white, 22)
+			a.transport(c, white, white.Alpha(0.45), a.pal.accent, 22)
 			ui.Row(c).Grow(1).Basis(0).MinWidth(0).Justify(ui.End).Children(func() {
 				ui.Text(c, clock(pl.Position())+" / "+clock(pl.Duration())).FontSize(11.5).FontFeatures("tnum").TextColor(white.Alpha(0.5))
 			})

@@ -459,7 +459,7 @@ func (n *notch) expanded(c *ui.Context, tr *spotify.Track, open, left float32) {
 			ui.Text(c, "-"+clock(pl.Duration()-pl.Position())).FontSize(10.5).FontFeatures("tnum").TextColor(white.Alpha(0.5)).Width(34).TextAlign(ui.End)
 		})
 		ui.Box(c).Margin(-6, 0, 0, 0).Children(func() {
-			a.transport(c, white, white.Alpha(0.4), white, 20)
+			a.transport(c, white, white.Alpha(0.4), a.pal.accent, 20)
 		})
 	})
 }
