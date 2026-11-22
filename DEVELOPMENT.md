@@ -2,7 +2,7 @@
 
 **简体中文** · [English](DEVELOPMENT.en.md)
 
-MySpotify 的实现细节、构建、发版和调试。普通使用看 [README](README.md) 就够了。
+MySpotify 的实现细节、构建、发版和调试。普通使用看 [README](README.zh-CN.md) 就够了。
 
 ## 怎么做到的
 
@@ -89,4 +89,4 @@ Linux 附件包括 `.deb`、`.tar.gz`、`update-linux-amd64.json` 及 `install-l
 
 ## 官网
 
-官网从 `main` 分支的 `docs/` 发布，不需要构建。`docs/index.html` 是中文，`docs/en.html` 是英文，两页结构一样，共用 `docs/style.css` 和 `docs/site.js`。改功能说明时同步改两个页面和两份 README（`README.md`、`README.en.md`）。
+官网从 `main` 分支的 `docs/` 发布，不需要构建。`docs/index.html` 是中文，`docs/en.html` 是英文，两页结构一样，共用 `docs/style.css` 和 `docs/site.js`。改功能说明时同步改页面和各语言 README（`README.md`、`README.zh-CN.md`、`README.it.md`）。

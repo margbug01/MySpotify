@@ -8,9 +8,9 @@
 
 Interfaccia nativa, testi che scorrono, video musicali e podcast video. Gli account gratuiti riproducono i brani per intero e puoi dare un'occhiata anche senza accedere.
 
-[简体中文](README.md) · [English](README.en.md) · **Italiano**
+[English](README.md) · [简体中文](README.zh-CN.md) · **Italiano**
 
-[![Ultima versione](https://img.shields.io/github/v/release/margbug01/MySpotify?style=flat-square&label=ultima&color=ef3b45)](https://github.com/margbug01/MySpotify/releases/latest) ![Windows 10/11](https://img.shields.io/badge/Windows-10%20%7C%2011-3a6ea5?style=flat-square) ![macOS Apple silicon](https://img.shields.io/badge/macOS-Apple%20silicon-555555?style=flat-square) ![AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-c2410c?style=flat-square)
+[![Test](https://github.com/margbug01/MySpotify/actions/workflows/test.yml/badge.svg)](https://github.com/margbug01/MySpotify/actions/workflows/test.yml) [![Ultima versione](https://img.shields.io/github/v/release/margbug01/MySpotify?style=flat-square&label=ultima&color=ef3b45)](https://github.com/margbug01/MySpotify/releases/latest) ![Windows 10/11](https://img.shields.io/badge/Windows-10%20%7C%2011-3a6ea5?style=flat-square) ![macOS Apple silicon](https://img.shields.io/badge/macOS-Apple%20silicon-555555?style=flat-square) ![AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-c2410c?style=flat-square)
 
 **[Scarica l'ultima versione](https://github.com/margbug01/MySpotify/releases/latest)** · [Sito](https://margbug01.github.io/MySpotify/it.html) · [Installazione](#per-iniziare) · [FAQ](#faq)
 

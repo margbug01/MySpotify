@@ -2,7 +2,7 @@
 
 [简体中文](DEVELOPMENT.md) · **English**
 
-How MySpotify is built, released and debugged. To just use it, the [README](README.en.md) is enough.
+How MySpotify is built, released and debugged. To just use it, the [README](README.md) is enough.
 
 ## How it works
 
@@ -88,4 +88,4 @@ A version built without `-H windowsgui` shows these scenes' output in the consol
 
 ## Website
 
-The website is published from `docs/` on `main`, with no build step. `docs/index.html` is Chinese and `docs/en.html` is English; the two have the same structure and share `docs/style.css` and `docs/site.js`. When changing product details, change both pages and both READMEs (`README.md`, `README.en.md`).
+The website is published from `docs/` on `main`, with no build step. `docs/index.html` is Chinese and `docs/en.html` is English; the two have the same structure and share `docs/style.css` and `docs/site.js`. When changing product details, change the pages and READMEs (`README.md`, `README.zh-CN.md`, `README.it.md`).
