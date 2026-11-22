@@ -183,10 +183,23 @@ func TestLive(t *testing.T) {
 	if err != nil {
 		t.Fatal("track:", err)
 	}
-	t.Logf("track %s by %v: %d plays, %d, %d like it, %d credits (%+v), %d popular of %s", tp.Track.Name, tp.Track.Artists, tp.Plays, tp.Year,
-		len(tp.Recommended), len(tp.Credits), tp.Credits[:min(2, len(tp.Credits))], len(tp.Popular), tp.Artist.Name)
-	if tp.Plays == 0 || len(tp.Recommended) == 0 || len(tp.Credits) == 0 || tp.Track.Album.PicURL == "" {
+	t.Logf("track %s by %v: %d plays, %d, %d like it, %d popular of %s", tp.Track.Name, tp.Track.Artists, tp.Plays, tp.Year,
+		len(tp.Recommended), len(tp.Popular), tp.Artist.Name)
+	if tp.Plays == 0 || len(tp.Recommended) == 0 || tp.Track.Album.PicURL == "" {
 		t.Error("track page incomplete")
+	}
+	// Blinding Lights has 40 credits, of which Spotify's default gave 10.
+	cr, err := TrackCredits("0VjIjW4GlUZAMYd2vXMi3b")
+	if err != nil {
+		t.Fatal("credits:", err)
+	}
+	n := 0
+	for _, g := range cr.Groups {
+		n += len(g.People)
+		t.Logf("credits %s: %+v", g.Name, g.People)
+	}
+	if len(cr.Groups) < 4 || n <= 10 || len(cr.Sources) == 0 {
+		t.Errorf("credits: %d groups, %d people, sources %v", len(cr.Groups), n, cr.Sources)
 	}
 
 	cats, err := Categories()

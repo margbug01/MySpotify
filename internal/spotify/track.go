@@ -2,6 +2,7 @@ package spotify
 
 import (
 	"log"
+	"slices"
 	"strconv"
 	"sync"
 )
@@ -15,7 +16,20 @@ type TrackPage struct {
 	Artist      ArtistCard
 	Popular     []Playlist
 	Recommended []Track // songs like it
-	Credits     []Credit
+}
+
+// Credits are who made a track, as Spotify's credits list them.
+type Credits struct {
+	// Groups are in Spotify's order: artists, songwriting, production,
+	// performers, named in the language the app asks in.
+	Groups  []CreditGroup
+	Sources []string // the labels it came from
+}
+
+// CreditGroup is a kind of work on a track, as 作曲和作词, and who did it.
+type CreditGroup struct {
+	Name   string
+	People []Credit
 }
 
 // Credit is someone who made a track, with what they did.
@@ -40,19 +54,15 @@ type gqlTrackArtist struct {
 	} `json:"discography"`
 }
 
-// TrackDetail returns the page of track id: the track, songs like it, and
-// who made it.
+// TrackDetail returns the page of track id: the track and songs like it.
 func TrackDetail(id string) (*TrackPage, error) {
 	uri := "spotify:track:" + id
 	var (
-		wg        sync.WaitGroup
-		recs      []Track
-		credits   []Credit
-		recErr    error
-		creditErr error
+		wg     sync.WaitGroup
+		recs   []Track
+		recErr error
 	)
 	wg.Go(func() { recs, recErr = recommended(uri) })
-	wg.Go(func() { credits, creditErr = trackCredits(uri) })
 	var res struct {
 		TrackUnion struct {
 			URI         string `json:"uri"`
@@ -95,7 +105,6 @@ func TrackDetail(id string) (*TrackPage, error) {
 		},
 		Year:        al.Date.Year,
 		Recommended: recs,
-		Credits:     credits,
 	}
 	pg.Plays, _ = strconv.ParseInt(t.Playcount, 10, 64)
 	for _, ar := range append(t.FirstArtist.Items, t.OtherArtists.Items...) {
@@ -109,11 +118,9 @@ func TrackDetail(id string) (*TrackPage, error) {
 			pg.Popular = append(pg.Popular, r.playlist(by))
 		}
 	}
-	// Without songs like it or its credits, the page still shows.
-	for _, err := range []error{recErr, creditErr} {
-		if err != nil {
-			log.Printf("track %s: %v", id, err)
-		}
+	// Without songs like it, the page still shows.
+	if recErr != nil {
+		log.Printf("track %s: %v", id, recErr)
 	}
 	return pg, nil
 }
@@ -138,37 +145,70 @@ func recommended(uri string) ([]Track, error) {
 	return tracks(items, nil), nil
 }
 
-// trackCredits returns who made the track uri, each once, with all they
-// did, in Spotify's order.
-func trackCredits(uri string) ([]Credit, error) {
-	var res struct {
-		TrackUnion struct {
-			CreditsTrait struct {
-				Contributors struct {
-					Items []struct {
-						Name string `json:"name"`
-						Role string `json:"role"`
-						URI  string `json:"uri"`
-					} `json:"items"`
-				} `json:"contributors"`
-			} `json:"creditsTrait"`
-		} `json:"trackUnion"`
-	}
-	if err := query("queryTrackCreditsGroupedModal", map[string]any{"trackUri": uri}, &res); err != nil {
-		return nil, err
-	}
-	var out []Credit
-	at := map[string]int{}
-	for _, c := range res.TrackUnion.CreditsTrait.Contributors.Items {
-		key := c.Name + "\n" + c.URI
-		i, ok := at[key]
-		if !ok {
-			i = len(out)
-			at[key] = i
-			out = append(out, Credit{Name: c.Name, Artist: c.URI})
+// creditsPage is how many contributors one ask for credits returns.
+// Without a limit Spotify gives 10, which cut most songs' producers,
+// engineers and players off.
+const creditsPage = 100
+
+// TrackCredits returns who made track id, grouped as Spotify groups them,
+// each person once in a group with all they did in it.
+func TrackCredits(id string) (*Credits, error) {
+	out := &Credits{}
+	groups := map[string]int{} // a group's index in out.Groups
+	people := map[string]int{} // a person's index in their group, by group, name and URI
+	for offset := 0; offset < 10*creditsPage; offset += creditsPage {
+		var res struct {
+			TrackUnion struct {
+				CreditsTrait struct {
+					Contributors struct {
+						Items []struct {
+							Name      string `json:"name"`
+							Role      string `json:"role"`
+							URI       string `json:"uri"`
+							RoleGroup struct {
+								Name string `json:"name"`
+							} `json:"roleGroup"`
+						} `json:"items"`
+					} `json:"contributors"`
+					Sources struct {
+						Items []struct {
+							Name string `json:"name"`
+						} `json:"items"`
+					} `json:"sources"`
+				} `json:"creditsTrait"`
+			} `json:"trackUnion"`
 		}
-		if c.Role != "" {
-			out[i].Roles = append(out[i].Roles, c.Role)
+		vars := map[string]any{"trackUri": "spotify:track:" + id, "contributorsLimit": creditsPage, "contributorsOffset": offset}
+		if err := query("queryTrackCreditsGroupedModal", vars, &res); err != nil {
+			return nil, err
+		}
+		ct := &res.TrackUnion.CreditsTrait
+		for _, c := range ct.Contributors.Items {
+			gi, ok := groups[c.RoleGroup.Name]
+			if !ok {
+				gi = len(out.Groups)
+				groups[c.RoleGroup.Name] = gi
+				out.Groups = append(out.Groups, CreditGroup{Name: c.RoleGroup.Name})
+			}
+			g := &out.Groups[gi]
+			key := c.RoleGroup.Name + "\n" + c.Name + "\n" + c.URI
+			pi, ok := people[key]
+			if !ok {
+				pi = len(g.People)
+				people[key] = pi
+				g.People = append(g.People, Credit{Name: c.Name, Artist: c.URI})
+			}
+			if p := &g.People[pi]; c.Role != "" && !slices.Contains(p.Roles, c.Role) {
+				p.Roles = append(p.Roles, c.Role)
+			}
+		}
+		for _, s := range ct.Sources.Items {
+			if s.Name != "" && !slices.Contains(out.Sources, s.Name) {
+				out.Sources = append(out.Sources, s.Name)
+			}
+		}
+		if len(ct.Contributors.Items) < creditsPage {
+			break
 		}
 	}
 	return out, nil

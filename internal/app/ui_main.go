@@ -82,6 +82,7 @@ func (a *app) view(c *ui.Context) {
 		a.nowPlayingLayer(c, npOpen, npSettled)
 		a.playlistNameDialog(c)
 		a.deletePlaylistDialog(c)
+		a.creditsDialogView(c)
 	})
 	if a.toast != "" {
 		c.Toast(a.toast)
@@ -199,6 +200,7 @@ func (a *app) show(r route) {
 		a.loadRecent()
 	case pageTrack:
 		a.loadTrack(r.track)
+		a.loadCredits(r.track)
 	case pageBrowse:
 		a.loadCategories()
 	case pageCategory:

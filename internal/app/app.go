@@ -126,6 +126,11 @@ type app struct {
 	loadingTr map[string]bool
 	trErr     map[string]string
 
+	credits   map[string]*spotify.Credits // who made a track, by its ID
+	loadingCr map[string]bool
+	crErr     map[string]string
+	creditsOf creditsDialog // whose credits the dialog shows
+
 	cats      []spotify.Category               // the tiles of the browse page
 	catPages  map[string]*spotify.CategoryPage // by URI
 	users     map[string]*spotify.UserPage     // profiles, by username

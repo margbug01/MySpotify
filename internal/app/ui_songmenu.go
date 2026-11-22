@@ -64,6 +64,9 @@ func (a *app) songItems(tr *spotify.Track, pid string) func(m *ui.Menu) {
 		if here := (route{page: pageTrack, track: tr.ID}); !tr.Episode && a.route != here && m.Item(l10n.T("查看歌曲")).Chosen() {
 			a.goTo(here)
 		}
+		if !tr.Episode && tr.ID != "" && m.Item(l10n.T("查看制作人员")).Chosen() {
+			a.showCredits(tr)
+		}
 		for _, ar := range tr.Artists {
 			if ar.ID != "" && m.Item(l10n.T("查看歌手：")+ar.Name).Chosen() {
 				a.openArtist(ar.ID)

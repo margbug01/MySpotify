@@ -44,6 +44,7 @@ func (a *app) reloadLocalizedPages() {
 	a.facets, a.sectionAll = nil, nil
 	a.cats, a.catPages = nil, nil
 	a.loading, a.loadErr = nil, nil
+	a.credits, a.loadingCr, a.crErr = nil, nil, nil
 	a.toast, a.proxyErr, a.upd.err = "", "", ""
 	if reloadHome {
 		a.loadHome()
@@ -60,6 +61,11 @@ func (a *app) reloadLocalizedPages() {
 		a.loadUser(a.route.user)
 	case pageSection:
 		a.loadSection(a.route.section)
+	case pageTrack:
+		a.loadCredits(a.route.track)
+	}
+	if a.creditsOf.open {
+		a.loadCredits(a.creditsOf.track.ID)
 	}
 }
 

@@ -108,22 +108,10 @@ func (a *app) trackHeader(c *ui.Context, pg *spotify.TrackPage) {
 // trackFooter follows the songs like a track: who made it, and its first
 // artist's popular releases.
 func (a *app) trackFooter(c *ui.Context, pg *spotify.TrackPage) {
-	p := a.pal
 	ui.Column(c).PaddingX(12).Children(func() {
-		if len(pg.Credits) > 0 {
+		if cr := a.credits[pg.Track.ID]; cr != nil && len(cr.Groups) > 0 {
 			a.section(c, l10n.T("制作人员"))
-			ui.Column(c).Gap(14).Children(func() {
-				for i, cr := range pg.Credits {
-					ui.Column(c.Key(i)).Gap(3).AlignItems(ui.Start).Children(func() {
-						if cr.Artist == "" {
-							ui.Text(c, cr.Name).FontSize(14).FontWeight(500)
-						} else if link(c.Key("name"), cr.Name, 14, p.text, p.text).Clicked() {
-							a.goTo(route{page: pageArtist, artist: cr.Artist})
-						}
-						ui.Text(c, strings.Join(cr.Roles, "、")).FontSize(12.5).TextColor(p.muted)
-					})
-				}
-			})
+			a.creditGroups(c.Key("credits"), cr, func(artist string) { a.goTo(route{page: pageArtist, artist: artist}) })
 		}
 		if len(pg.Popular) > 0 {
 			a.section(c, pg.Artist.Name+l10n.T(" 的热门作品"))
