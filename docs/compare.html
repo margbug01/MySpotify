@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MySpotify vs 官方 Spotify 客户端 / Spicetify / 终端客户端 深度对比</title>
+<meta name="description" content="从渲染引擎、内存占用、安装包体积、桌面悬浮歌词、歌词补全翻译、MV、均衡器、音质、离线下载与账号风险全面对比 MySpotify、Spotify 官方客户端、Spicetify 与 ncspot 等终端客户端。">
+<meta name="theme-color" content="#0d0a09">
+<link rel="canonical" href="https://margbug01.github.io/MySpotify/compare.html">
+<link rel="alternate" hreflang="zh-CN" href="https://margbug01.github.io/MySpotify/compare.html">
+<link rel="alternate" hreflang="en" href="https://margbug01.github.io/MySpotify/compare-en.html">
+<link rel="alternate" hreflang="x-default" href="https://margbug01.github.io/MySpotify/compare-en.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="MySpotify">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:url" content="https://margbug01.github.io/MySpotify/compare.html">
+<meta property="og:title" content="MySpotify vs 官方 Spotify / Spicetify / 终端客户端 对比">
+<meta property="og:description" content="实事求是的 Spotify 桌面客户端横向对比：内存占用、桌面歌词、MV、均衡器、离线支持与各自适用人群。">
+<meta property="og:image" content="https://margbug01.github.io/MySpotify/og-zh.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="MySpotify vs 官方 Spotify / Spicetify / 终端客户端 对比">
+<meta name="twitter:description" content="从架构、内存、桌面歌词、MV、音质与风险全面对比主流 Spotify 桌面方案。">
+<meta name="twitter:image" content="https://margbug01.github.io/MySpotify/og-zh.png">
+<link rel="icon" href="icon.png">
+<link rel="stylesheet" href="style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "MySpotify", "item": "https://margbug01.github.io/MySpotify/"},
+        {"@type": "ListItem", "position": 2, "name": "客户端对比", "item": "https://margbug01.github.io/MySpotify/compare.html"}
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "为什么 MySpotify 比官方 Spotify 桌面端更省内存？",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "官方桌面端基于 CEF 内置了一套完整 Chromium 浏览器环境来渲染全部界面；MySpotify 使用 Go 与 MyGo 原生绘制全部界面，仅在播放加密音频时按需调用系统自带的 WebView2 或 WebKit DRM 模块，因此安装包小于 10 MB，仅浏览时约 190 MB，播放时增加约 60 MB。"
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "MySpotify 和 Spicetify 有什么区别？",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Spicetify 是对官方 Spotify 客户端注入主题与扩展的工具，仍需安装并运行官方 CEF 客户端，保留离线下载等官方能力；MySpotify 是完全独立的 Go 原生软件，无需安装官方客户端，体积和内存大幅降低，且原生内置桌面悬浮歌词、多源歌词补全和零遥测。"
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "什么时候应该继续使用官方 Spotify 客户端？",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "如果你需要离线下载歌曲、无损音质、Jam 一起听、AI DJ、好友动态、本地音乐文件，或者完全不想承担第三方客户端的条款与封号风险，建议直接使用 Spotify 官方客户端。"
+          }
+        }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip" href="#main">跳到正文</a>
+
+<header class="nav">
+  <a class="brand" href="./"><img src="icon.png" alt="" width="28" height="28">MySpotify</a>
+  <nav class="links" aria-label="导航">
+    <a href="./">首页</a>
+    <a href="desktop-lyrics.html">桌面歌词</a>
+    <a href="compare.html" aria-current="page">客户端对比</a>
+    <a href="./#install">下载安装</a>
+    <a href="https://github.com/margbug01/MySpotify">GitHub</a>
+    <span class="langs">
+      <a href="compare.html" hreflang="zh-CN" lang="zh-CN" aria-current="page">中文</a>
+      <a href="compare-en.html" hreflang="en" lang="en">EN</a>
+    </span>
+  </nav>
+</header>
+
+<main id="main">
+  <section class="sub-hero">
+    <p class="crumb"><a href="./">MySpotify</a> / 客户端对比</p>
+    <p class="eyebrow">BENCHMARK &amp; COMPARISON</p>
+    <h1>MySpotify vs 官方客户端、Spicetify 与终端播放器</h1>
+    <p class="lead">没有一款客户端适合所有人。下面基于架构、内存实测、核心功能和边界限制，把主流 Spotify 桌面方案的取舍一次讲清楚。</p>
+  </section>
+
+  <section class="section" style="padding-top: 24px;">
+    <div class="compare-wrap">
+      <table class="compare">
+        <thead>
+          <tr>
+            <th>维度</th>
+            <th class="hl">MySpotify (Go/MyGo)</th>
+            <th>官方 Spotify 桌面端</th>
+            <th>官方端 + Spicetify</th>
+            <th>终端客户端 (ncspot / spotify-player)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>技术架构</th>
+            <td class="hl">Go + MyGo 原生 GUI（非 Electron）</td>
+            <td>CEF（内置 Chromium）</td>
+            <td>官方 CEF + JS/CSS 注入</td>
+            <td>Rust 终端 TUI（librespot）</td>
+          </tr>
+          <tr>
+            <th>安装包体积</th>
+            <td class="hl">&lt; 10 MB</td>
+            <td>~150–250 MB</td>
+            <td>依赖官方客户端 + CLI</td>
+            <td>约 10–25 MB</td>
+          </tr>
+          <tr>
+            <th>典型内存占用</th>
+            <td class="hl">浏览 ≈ 190 MB，播放 +≈ 60 MB</td>
+            <td>常见 500 MB – 1 GB+</td>
+            <td>与官方端相近或略高</td>
+            <td>约 30–80 MB</td>
+          </tr>
+          <tr>
+            <th>支持账号类型</th>
+            <td class="hl">免费账号（128k）&amp; Premium（256k），支持访客浏览</td>
+            <td>免费账号 &amp; Premium</td>
+            <td>免费账号 &amp; Premium</td>
+            <td>通常需要 Premium（librespot 协议）</td>
+          </tr>
+          <tr>
+            <th>桌面悬浮歌词</th>
+            <td class="hl">原生内置（Mac/Win，封面取色、锁定穿透、暂停隐藏）</td>
+            <td>无</td>
+            <td>需第三方插件，无独立系统级穿透悬浮窗</td>
+            <td>无</td>
+          </tr>
+          <tr>
+            <th>多源歌词与翻译</th>
+            <td class="hl">Spotify + 网易云 + LRCLIB，自动带中文翻译</td>
+            <td>仅 Spotify 官方词库</td>
+            <td>依赖社区扩展</td>
+            <td>基础歌词</td>
+          </tr>
+          <tr>
+            <th>MV 与视频播客</th>
+            <td class="hl">支持 MV、视频播客、逐字稿与 0.5×–3× 倍速</td>
+            <td>完整支持</td>
+            <td>完整支持</td>
+            <td>不支持视频</td>
+          </tr>
+          <tr>
+            <th>均衡器与淡入淡出</th>
+            <td class="hl">Windows 支持 6 段可拖拽曲线 EQ（22 预设）与 0–12s 淡入淡出</td>
+            <td>支持</td>
+            <td>支持</td>
+            <td>有限或无</td>
+          </tr>
+          <tr>
+            <th>离线下载与无损</th>
+            <td class="hl">不支持（缓存为加密分段，需联网获证）</td>
+            <td>支持（需 Premium）</td>
+            <td>支持（需 Premium）</td>
+            <td>不支持官方离线加密库</td>
+          </tr>
+          <tr>
+            <th>系统集成</th>
+            <td class="hl">系统媒体键、托盘、macOS 刘海播放器 &amp; AppleScript、Spotify Connect / Google Cast</td>
+            <td>系统媒体键、Spotify Connect</td>
+            <td>同官方客户端</td>
+            <td>MPRIS / 快捷键</td>
+          </tr>
+          <tr>
+            <th>开源与隐私</th>
+            <td class="hl">AGPL-3.0 开源，零统计零遥测</td>
+            <td>闭源，含遥测统计</td>
+            <td>插件开源，底座闭源</td>
+            <td>开源，无官方遥测</td>
+          </tr>
+          <tr>
+            <th>账号与维护风险</th>
+            <td class="hl">非官方内部接口，有账号受限与接口变更风险</td>
+            <td>官方支持，无封号风险</td>
+            <td>改包存在版本更新失效与条款风险</td>
+            <td>非官方客户端，存在条款风险</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="section">
+    <p class="kicker">HOW TO CHOOSE</p>
+    <h2>哪一种更适合你？</h2>
+    <div class="cards">
+      <article class="card">
+        <h3>适合选 MySpotify</h3>
+        <p>嫌官方桌面端笨重占内存；想要原生 macOS/Windows 桌面悬浮歌词、网易云/LRCLIB 补全与中文翻译；看重开源零遥测、快速冷启动和 MV/播客逐字稿。</p>
+      </article>
+      <article class="card">
+        <h3>适合选官方客户端（或配 Spicetify）</h3>
+        <p>刚需 Premium 离线下载、无损音质、Jam 协作、AI DJ、本地文件同步，或希望绝对零账号风险与完整官方支持。</p>
+      </article>
+      <article class="card">
+        <h3>适合选终端客户端（ncspot 等）</h3>
+        <p>已有 Spotify Premium 账号，重度使用 Linux/SSH 纯键盘工作流，不需要封面视觉界面、MV 和桌面悬浮歌词，追求极致低内存。</p>
+      </article>
+    </div>
+    <div class="cta-inline">
+      <a class="btn primary" href="https://github.com/margbug01/MySpotify/releases/latest">下载最新版 MySpotify<small>Windows / macOS · &lt; 10 MB</small></a>
+      <a class="btn" href="desktop-lyrics.html">了解桌面悬浮歌词<small>Mac / Win 原生置顶</small></a>
+    </div>
+  </section>
+
+  <section class="section" id="faq">
+    <p class="kicker">FAQ</p>
+    <h2>选型常见问题</h2>
+    <div class="faq">
+      <details><summary>为什么 MySpotify 比官方 Spotify 桌面端更省内存？</summary><p>官方桌面端基于 CEF 内置了一套完整 Chromium 浏览器环境来渲染全部界面；MySpotify 使用 Go 与 MyGo 原生绘制全部界面，仅在播放加密音频时按需调用系统自带的 WebView2 或 WebKit DRM 模块，因此安装包小于 10 MB，仅浏览时约 190 MB，播放时增加约 60 MB。</p></details>
+      <details><summary>MySpotify 和 Spicetify 有什么区别？</summary><p>Spicetify 是对官方 Spotify 客户端注入主题与扩展的工具，仍需安装并运行官方 CEF 客户端，保留离线下载等官方能力；MySpotify 是完全独立的 Go 原生软件，无需安装官方客户端，体积和内存大幅降低，且原生内置桌面悬浮歌词、多源歌词补全和零遥测。</p></details>
+      <details><summary>什么时候应该继续使用官方 Spotify 客户端？</summary><p>如果你需要离线下载歌曲、无损音质、Jam 一起听、AI DJ、好友动态、本地音乐文件，或者完全不想承担第三方客户端的条款与封号风险，建议直接使用 Spotify 官方客户端。</p></details>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <p><a href="./">返回 MySpotify 首页</a> · <a href="desktop-lyrics.html">桌面歌词专题</a> · <a href="llms.txt">llms.txt</a></p>
+  <p><a href="https://github.com/margbug01/MySpotify">GitHub</a> · <a href="https://github.com/margbug01/MySpotify/blob/main/LICENSE">AGPL-3.0</a></p>
+  <p>Spotify 是 Spotify AB 的商标，MySpotify 与其没有关联。</p>
+</footer>
+</body>
+</html>

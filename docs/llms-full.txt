@@ -1,0 +1,79 @@
+# MySpotify — Complete Factual Reference (llms-full.txt)
+
+## Summary
+
+MySpotify (original internal name: Vinyl) is an open-source (AGPL-3.0), unofficial desktop client for Spotify written in Go with the native GPU-rendered UI framework [MyGo](https://github.com/egoist/mygo). Unlike the official Spotify desktop application (which bundles CEF/Chromium) or Electron-based players, MySpotify compiles to a native binary under 10 MB and uses approximately 190 MB of RAM while browsing, plus ~60 MB for the system DRM playback process while playing audio.
+
+- **Repository**: https://github.com/margbug01/MySpotify
+- **Website (EN)**: https://margbug01.github.io/MySpotify/en.html
+- **Website (ZH)**: https://margbug01.github.io/MySpotify/
+- **Website (IT)**: https://margbug01.github.io/MySpotify/it.html
+- **Latest Release**: https://github.com/margbug01/MySpotify/releases/latest (v0.4.41 as of November 2026)
+- **Author**: margbug01 (also author of MyGo desktop apps Mami, MyShoes, and Candle)
+- **License**: AGPL-3.0
+
+---
+
+## Core Metrics & Architecture
+
+| Metric / Component | Details |
+| :--- | :--- |
+| UI Framework | Go + MyGo (native GPU-accelerated rendering, not Electron/CEF) |
+| Download Size | < 10 MB (macOS `.dmg` / Windows `.zip`) |
+| Browsing Memory | ~190 MB total |
+| Playback Overhead | +~60 MB for system DRM decryption subprocess |
+| Cold Start to Content | 1–2 seconds (guest browsing works before sign-in) |
+| Telemetry / Analytics | 0 (no tracking; connects only to Spotify, Gravatar, NetEase/LRCLIB for lyrics, and GitHub for update checks) |
+| Windows Audio DRM | System WebView2 Widevine (128k AAC free, 256k AAC Premium) |
+| macOS Audio DRM | System WebKit FairPlay (128k AAC free, 256k AAC Premium) |
+| Linux Audio DRM (Experimental) | Qt WebEngine + Widevine CDM from official Chrome (amd64 `.deb` / `.tar.gz`) |
+| Credential Storage | Renewal cookies encrypted via Windows DPAPI or macOS Login Keychain |
+
+---
+
+## Feature List
+
+1. **Native Desktop Experience**: Sidebar, player bar, full-screen Now Playing with cover-derived multi-color backdrop and smoke effect, rhythm stage, light & dark themes, system media keys, global hotkeys, system tray background playback, in-app self-updater ("Update and restart").
+2. **Floating Desktop Lyrics (macOS & Windows)**: Always-on-top floating lyric bar with album cover accent color sweep, smooth line transitions, interlude previews, click-through lock mode (borderless/shadowless on Windows), optional Hide when paused, customizable font size/colors, second-line mode (translation or next line), and global hotkey toggle.
+3. **Multi-Source Synced Lyrics & Translation**: Uses Spotify lyrics first; when missing or untimed, falls back to NetEase Cloud Music and LRCLIB with strict title + duration validation to avoid mismatched covers or live recordings. Shows Chinese translations for foreign-language tracks when available and converts Traditional to Simplified Chinese when configured for Simplified Chinese.
+4. **Music Videos (MV) & Video Podcasts**: Plays Spotify music videos inline (replacing cover), window-fill, or full screen with live lyrics underneath and `[` / `]` 0.5-second per-song lyric offset adjustment. Video podcasts support synchronized word-by-word clickable transcripts and pitch-preserved 0.5x–3x playback speed.
+5. **Windows Audio DSP**: 6-band draggable curve equalizer with 22 presets and keyboard adjustments (1 dB steps), plus configurable 0–12 second crossfade between tracks.
+6. **macOS Integrations**: macOS notch mini-player, native Control Center / Now Playing integration, and read-only AppleScript dictionary (`player state`, `player position`, `player rate`, `current track`) compatible with Music.app for Raycast, SketchyBar, and automation scripts.
+7. **Library & Discovery**: Home feed, Daily Mixes / Made for You, Charts, Browse all categories, Playlists (create/edit/delete + instant `Cmd/Ctrl+F` in-playlist filtering), Albums, Artists, Track pages with full grouped song credits (writers, producers, engineers, performers, labels), Search, Likes/Follows/Saves, Play Next & Queue, Radio, Recently Played.
+8. **Spotify Connect & Google Cast (Experimental)**: Appears in mobile/web Spotify device lists for handoff, remote-controls other active devices, and discovers/wakes Google Cast & Nest speakers (including multi-room groups) on the local network.
+9. **Resilience & Caching**: Auto-retries expired licenses, honors Spotify 429 rate-limit wait intervals, pauses and resumes cleanly across 502 server errors or network drops, auto-discovers updated web player GraphQL query hashes, caches encrypted CDN audio segments locally (customizable cache directory and size cap), and supports system/HTTP/HTTPS/SOCKS5 proxies.
+10. **Guest Browsing & Free Account Playback**: Acquires an anonymous guest token like the Spotify web player for instant browsing without login. Signing in via Spotify's official web login page enables full-song playback on free accounts (128k AAC) and optional High quality (256k AAC) on Premium accounts (automatically falling back to 128k if Spotify returns 403).
+
+---
+
+## Comparison: MySpotify vs Alternatives
+
+| Attribute | MySpotify (Go / MyGo) | Official Spotify Desktop | Official + Spicetify | TUI Clients (ncspot / spotify-player) |
+| :--- | :--- | :--- | :--- | :--- |
+| UI Engine | Native Go + MyGo | CEF (Chromium) | Official CEF + JS/CSS | Rust Terminal UI |
+| Installer Size | < 10 MB | ~150–250 MB | Official + CLI | ~10–25 MB |
+| Typical RAM | ~190 MB (+60 MB playing) | 500 MB – 1 GB+ | 500 MB – 1 GB+ | ~30–80 MB |
+| Account Tier | Free & Premium | Free & Premium | Free & Premium | Premium required (librespot) |
+| Floating Desktop Lyrics | Built-in (macOS & Windows) | No | Community plugins only | No |
+| Lyrics Fallback | Spotify + NetEase + LRCLIB | Spotify only | Community extensions | Basic |
+| Music Videos & Video Podcasts | Yes | Yes | Yes | Audio only |
+| Offline Downloads / Lossless | No | Yes (Premium) | Yes (Premium) | No |
+| Telemetry | None | Yes | Yes (base app) | None |
+
+---
+
+## Explicit Limitations & Risk Boundaries
+
+- **Not an official Spotify product**: Uses Spotify Web Player's undocumented internal Pathfinder GraphQL and spclient endpoints. Changes by Spotify can break functionality.
+- **Account / ToS Risk**: Accessing Spotify through third-party software violates Spotify's Terms of Service and may lead to account restriction or termination. MySpotify also does not play free-tier web ads. Users who want zero ToS risk should use the official Spotify client or subscribe to Premium.
+- **No DRM Bypass**: Decryption happens strictly inside system Widevine (Windows/Linux) or FairPlay (macOS) modules. Keys and decrypted streams are never accessible to MySpotify, which is why macOS screenshots/recordings show black video for FairPlay MVs and why cached encrypted segments cannot play offline without a live license.
+- **Unsupported Features**: Lossless audio, offline downloads, Jam, AI DJ, word-by-word music lyrics (Spotify web player supplies line-level timing only), Spotify-hosted Widevine-only podcasts without public RSS feeds on macOS, Friend Activity, local audio files, Blend.
+- **Experimental Platforms**: Intel Mac (`macos-amd64.dmg`) awaits full physical hardware testing; Linux (`linux-amd64` `.deb`/`.tar.gz` via Qt WebEngine) requires installing Qt runtime and Widevine CDM separately.
+
+---
+
+## Installation Summary
+
+- **macOS (Apple Silicon / Intel experimental)**: Download `.dmg` from GitHub Releases, drag to Applications. Because the app is not Apple-notarized, allow it in System Settings → Privacy & Security → Open Anyway or run `xattr -dr com.apple.quarantine /Applications/MySpotify.app`.
+- **Windows 10/11**: Download `.zip` from GitHub Releases, extract, run `MySpotify.exe` (click More info → Run anyway on SmartScreen if prompted). Requires WebView2 Runtime (preinstalled on Windows 11).
+- **Updates**: In-app via Settings → About → Update and restart. Settings and sign-in are stored separately (`%APPDATA%\Vinyl` on Windows, `~/Library/Application Support/Vinyl` on macOS) and survive updates.

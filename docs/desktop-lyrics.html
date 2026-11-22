@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spotify 桌面歌词（Mac / Windows）— 悬浮置顶、鼠标穿透与翻译 | MySpotify</title>
+<meta name="description" content="MySpotify 内置 macOS 与 Windows 桌面悬浮歌词：专辑封面取色逐字亮起、锁定后鼠标穿透、暂停自动隐藏、Spotify + 网易云 + LRCLIB 多源补全与外语中文翻译，无需额外插件。">
+<meta name="theme-color" content="#0d0a09">
+<link rel="canonical" href="https://margbug01.github.io/MySpotify/desktop-lyrics.html">
+<link rel="alternate" hreflang="zh-CN" href="https://margbug01.github.io/MySpotify/desktop-lyrics.html">
+<link rel="alternate" hreflang="en" href="https://margbug01.github.io/MySpotify/desktop-lyrics-en.html">
+<link rel="alternate" hreflang="x-default" href="https://margbug01.github.io/MySpotify/desktop-lyrics-en.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="MySpotify">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:url" content="https://margbug01.github.io/MySpotify/desktop-lyrics.html">
+<meta property="og:title" content="Spotify 桌面悬浮歌词（Mac / Windows）— MySpotify">
+<meta property="og:description" content="免插件实现 Spotify 桌面悬浮歌词：封面取色、锁定鼠标穿透、暂停自动隐藏、多源歌词补全与外语中文翻译。">
+<meta property="og:image" content="https://margbug01.github.io/MySpotify/og-zh.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Spotify 桌面悬浮歌词（Mac / Windows）— MySpotify">
+<meta name="twitter:description" content="MySpotify 原生内置 Spotify 桌面悬浮歌词、网易云/LRCLIB 补全与外语中文翻译。">
+<meta name="twitter:image" content="https://margbug01.github.io/MySpotify/og-zh.png">
+<link rel="icon" href="icon.png">
+<link rel="stylesheet" href="style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "MySpotify", "item": "https://margbug01.github.io/MySpotify/"},
+        {"@type": "ListItem", "position": 2, "name": "桌面歌词", "item": "https://margbug01.github.io/MySpotify/desktop-lyrics.html"}
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Spotify 官方客户端没有桌面歌词，MySpotify 是怎么实现的？",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "MySpotify 在 macOS 和 Windows 上原生内置了独立置顶悬浮窗桌面歌词，不需要额外安装第三方歌词插件或修改官方客户端。点击播放栏的「桌面歌词」按钮、系统菜单、托盘/Dock 菜单或自定义的全局快捷键即可开关。"
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "桌面歌词会不会挡住工作窗口点击？",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "不会。点击悬浮窗上的锁图标锁定后，Windows 和 macOS 上鼠标点击会直接穿透歌词窗口操作下层应用，且 Windows 锁定后无边框无阴影，只在鼠标悬停时显示一个解锁按钮。你还可以开启「暂停时隐藏」。"
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Spotify 本身没有歌词或没有中文翻译的歌怎么办？",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "当 Spotify 缺少歌词或缺少时间轴时，MySpotify 会自动向网易云音乐和 LRCLIB 检索，按歌名和歌曲时长严格校验，避免套用错误的翻唱或现场版；有中文翻译的外语歌会在第二行自动显示翻译。"
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "看 MV 时歌词和画面不同步可以调吗？",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "可以。看 MV 时按键盘 [ 或 ] 每次提前或延后 0.5 秒，调节结果会按单曲自动记住。"
+          }
+        }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip" href="#main">跳到正文</a>
+
+<header class="nav">
+  <a class="brand" href="./"><img src="icon.png" alt="" width="28" height="28">MySpotify</a>
+  <nav class="links" aria-label="导航">
+    <a href="./">首页</a>
+    <a href="desktop-lyrics.html" aria-current="page">桌面歌词</a>
+    <a href="compare.html">客户端对比</a>
+    <a href="./#install">下载安装</a>
+    <a href="https://github.com/margbug01/MySpotify">GitHub</a>
+    <span class="langs">
+      <a href="desktop-lyrics.html" hreflang="zh-CN" lang="zh-CN" aria-current="page">中文</a>
+      <a href="desktop-lyrics-en.html" hreflang="en" lang="en">EN</a>
+    </span>
+  </nav>
+</header>
+
+<main id="main">
+  <section class="sub-hero">
+    <p class="crumb"><a href="./">MySpotify</a> / 桌面歌词</p>
+    <p class="eyebrow">DESKTOP LYRICS · MACOS &amp; WINDOWS</p>
+    <h1>给 Spotify 加上真正好用的桌面悬浮歌词</h1>
+    <p class="lead">Spotify 官方桌面客户端至今不支持悬浮桌面歌词，也不带中文翻译。MySpotify 原生内置桌面歌词窗口与多源歌词补全：免插件、低占用、锁定后鼠标穿透，写代码或看文档时照样跟唱。</p>
+    <div class="cta-inline">
+      <a class="btn primary" href="https://github.com/margbug01/MySpotify/releases/latest">下载最新版 MySpotify<small>macOS / Windows · &lt; 10 MB</small></a>
+      <a class="btn" href="./#install">查看安装步骤<small>开箱即用</small></a>
+    </div>
+    <img class="sub-shot" src="screenshots/playing.webp" width="1480" height="978" alt="MySpotify 正在播放页：封面取色背景与逐行滚动歌词及中文翻译" fetchpriority="high">
+  </section>
+
+  <section class="section">
+    <p class="kicker">CAPABILITIES</p>
+    <h2>桌面歌词与多源补全的核心能力</h2>
+    <div class="cards">
+      <article class="card">
+        <h3>悬浮置顶 &amp; 封面取色过渡</h3>
+        <p>正在唱的那句浮在所有应用窗口上方，文字随专辑封面主色亮起，换句时采用平滑飘散与淡入过渡，间奏中提前预告下一句。</p>
+      </article>
+      <article class="card">
+        <h3>锁定穿透 &amp; 暂停自动隐藏</h3>
+        <p>锁定后鼠标直接穿透歌词，Windows 上完全去掉边框和阴影，只剩纯净文字；在「设置 › 桌面歌词」中可开启「暂停时隐藏」。</p>
+      </article>
+      <article class="card">
+        <h3>网易云 + LRCLIB 三源补全</h3>
+        <p>Spotify 缺词时自动查询网易云音乐和 LRCLIB，带时间轴优先，并严格按歌名和时长校验版本，绝不把 Live 版和录音室版张冠李戴。</p>
+      </article>
+      <article class="card">
+        <h3>外语歌自动显示中文翻译</h3>
+        <p>第二行可在「中文翻译」与「下一句预览」之间自由切换；系统语言为简体中文时，还会自动把繁体歌词转为简体。</p>
+      </article>
+      <article class="card">
+        <h3>全局快捷键与多入口开关</h3>
+        <p>支持播放栏一键开关、macOS Dock / 控制菜单、Windows 系统托盘菜单，也可在设置里绑定全局快捷键，在任意软件中随手显隐。</p>
+      </article>
+      <article class="card">
+        <h3>MV 同步歌词与微调偏移</h3>
+        <p>播放 MV 时窗口下方持续显示当前歌词；如果 MV 与音源存在片头差，按 <code>[</code> / <code>]</code> 每次微调 0.5 秒并按单曲永久记住。</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="section">
+    <p class="kicker">HOW TO USE</p>
+    <h2>3 步开启 Spotify 桌面歌词</h2>
+    <div class="quiet">
+      <div><h3>1. 点击播放栏「桌面歌词」</h3><p>打开 MySpotify 播放任意歌曲，点击底部播放栏右侧的「桌面歌词」按钮（或使用托盘 / Dock 菜单）即可唤出悬浮窗。</p></div>
+      <div><h3>2. 拖动位置并自定义外观</h3><p>鼠标移到悬浮窗上可直接拖拽位置或切歌；在「设置 › 桌面歌词」里调整字号、配色、第二行显示内容、全局快捷键与「暂停时隐藏」。</p></div>
+      <div><h3>3. 点击锁定图标防误触</h3><p>点一下锁图标即进入鼠标穿透模式，完全不影响下方窗口的滚动与点击；需要移动或关闭时，将鼠标悬停在歌词上点击解锁即可。</p></div>
+      <div><h3>4. 隐私透明</h3><p>补全歌词时，网易云与 LRCLIB 仅收到歌曲名、歌手、专辑名与时长，不上传账号信息、听歌记录或设备标识。</p></div>
+    </div>
+  </section>
+
+  <section class="section" id="faq">
+    <p class="kicker">FAQ</p>
+    <h2>桌面歌词常见问题</h2>
+    <div class="faq">
+      <details><summary>Spotify 官方客户端没有桌面歌词，MySpotify 是怎么实现的？</summary><p>MySpotify 在 macOS 和 Windows 上原生内置了独立置顶悬浮窗桌面歌词，不需要额外安装第三方歌词插件或修改官方客户端。点击播放栏的「桌面歌词」按钮、系统菜单、托盘/Dock 菜单或自定义的全局快捷键即可开关。</p></details>
+      <details><summary>桌面歌词会不会挡住工作窗口点击？</summary><p>不会。点击悬浮窗上的锁图标锁定后，Windows 和 macOS 上鼠标点击会直接穿透歌词窗口操作下层应用，且 Windows 锁定后无边框无阴影，只在鼠标悬停时显示一个解锁按钮。你还可以开启「暂停时隐藏」。</p></details>
+      <details><summary>Spotify 本身没有歌词或没有中文翻译的歌怎么办？</summary><p>当 Spotify 缺少歌词或缺少时间轴时，MySpotify 会自动向网易云音乐和 LRCLIB 检索，按歌名和歌曲时长严格校验，避免套用错误的翻唱或现场版；有中文翻译的外语歌会在第二行自动显示翻译。</p></details>
+      <details><summary>看 MV 时歌词和画面不同步可以调吗？</summary><p>可以。看 MV 时按键盘 <code>[</code> 或 <code>]</code> 每次提前或延后 0.5 秒，调节结果会按单曲自动记住。</p></details>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <p><a href="./">返回 MySpotify 首页</a> · <a href="compare.html">客户端全面对比</a> · <a href="llms.txt">llms.txt</a></p>
+  <p><a href="https://github.com/margbug01/MySpotify">GitHub</a> · <a href="https://github.com/margbug01/MySpotify/blob/main/LICENSE">AGPL-3.0</a></p>
+  <p>Spotify 是 Spotify AB 的商标，MySpotify 与其没有关联。</p>
+</footer>
+</body>
+</html>

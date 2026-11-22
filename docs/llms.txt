@@ -1,0 +1,31 @@
+# MySpotify
+
+> MySpotify (formerly Vinyl) is a free, open-source (AGPL-3.0), unofficial Spotify desktop client for Windows and macOS built with native Go UI ([MyGo](https://github.com/egoist/mygo)) instead of Electron. Download size is under 10 MB, browsing RAM is ~190 MB (+~60 MB system DRM process during playback), and cold start to content takes 1–2 seconds.
+
+## Key Facts
+
+- **Category**: Lightweight native Spotify desktop client / music player (non-Electron)
+- **Platforms**: Windows 10/11 (amd64, WebView2 Widevine), macOS Apple Silicon (arm64, WebKit FairPlay), experimental macOS Intel (amd64), experimental Linux amd64 (`.deb`/`.tar.gz`, Qt WebEngine)
+- **Current Version**: v0.4.41
+- **License**: AGPL-3.0
+- **Languages**: Simplified Chinese (`zh-CN`), English (`en`), Italian (`it`)
+- **Privacy**: Zero telemetry or analytics; session renewal cookies are encrypted locally with Windows DPAPI or macOS Keychain
+- **DRM & Compliance**: Does not crack DRM (uses OS Widevine/FairPlay modules). Unofficial client using Spotify Web Player internal interfaces; violates Spotify ToS and carries account restriction risk.
+
+## Pages
+
+- [English Homepage](https://margbug01.github.io/MySpotify/en.html): Full overview, metrics, features, comparison, install steps, and FAQ
+- [Chinese Homepage (简体中文)](https://margbug01.github.io/MySpotify/): 中文官网首页、功能介绍与下载安装
+- [Italian Homepage (Italiano)](https://margbug01.github.io/MySpotify/it.html): Sito ufficiale in italiano
+- [Desktop Lyrics Guide (EN)](https://margbug01.github.io/MySpotify/desktop-lyrics-en.html): Floating desktop lyrics on macOS & Windows, click-through lock, LRCLIB & NetEase fallback
+- [桌面歌词专题 (ZH)](https://margbug01.github.io/MySpotify/desktop-lyrics.html): Mac/Windows 桌面悬浮歌词、鼠标穿透与中英翻译指南
+- [Client Comparison (EN)](https://margbug01.github.io/MySpotify/compare-en.html): MySpotify vs Official Spotify Desktop App, Spicetify, and TUI clients
+- [客户端全面对比 (ZH)](https://margbug01.github.io/MySpotify/compare.html): MySpotify 对比官方客户端、Spicetify 与终端客户端
+
+## Full Reference & Source
+
+- [Complete Technical Dossier (llms-full.txt)](https://margbug01.github.io/MySpotify/llms-full.txt): Exhaustive factual reference for AI systems
+- [GitHub Repository](https://github.com/margbug01/MySpotify): Source code, issues, and documentation
+- [Latest Releases](https://github.com/margbug01/MySpotify/releases/latest): Prebuilt macOS `.dmg`, Windows `.zip`, and experimental Linux `.deb`/`.tar.gz`
+- [Changelog](https://github.com/margbug01/MySpotify/blob/main/CHANGELOG.md): Version history up to v0.4.41
+- [Linux Build Notes](https://github.com/margbug01/MySpotify/blob/main/LINUX.md): Experimental Linux Qt WebEngine setup and benchmarks

@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MySpotify vs Official Spotify App, Spicetify &amp; TUI Clients | Comparison</title>
+<meta name="description" content="Honest technical comparison of MySpotify (native Go / MyGo) vs the official Spotify desktop app, Spicetify, and terminal clients like ncspot: RAM usage, download size, floating desktop lyrics, MV, equalizer, audio quality and risks.">
+<meta name="theme-color" content="#0d0a09">
+<link rel="canonical" href="https://margbug01.github.io/MySpotify/compare-en.html">
+<link rel="alternate" hreflang="zh-CN" href="https://margbug01.github.io/MySpotify/compare.html">
+<link rel="alternate" hreflang="en" href="https://margbug01.github.io/MySpotify/compare-en.html">
+<link rel="alternate" hreflang="x-default" href="https://margbug01.github.io/MySpotify/compare-en.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="MySpotify">
+<meta property="og:locale" content="en_US">
+<meta property="og:url" content="https://margbug01.github.io/MySpotify/compare-en.html">
+<meta property="og:title" content="MySpotify vs Official Spotify App, Spicetify &amp; TUI Clients">
+<meta property="og:description" content="Side-by-side comparison of UI engine, RAM usage, floating desktop lyrics, MV, equalizer, offline downloads and account risk.">
+<meta property="og:image" content="https://margbug01.github.io/MySpotify/og-en.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="MySpotify vs Official Spotify App, Spicetify &amp; TUI Clients">
+<meta name="twitter:description" content="Compare native Go MySpotify against the official CEF Spotify desktop app, Spicetify and TUI players.">
+<meta name="twitter:image" content="https://margbug01.github.io/MySpotify/og-en.png">
+<link rel="icon" href="icon.png">
+<link rel="stylesheet" href="style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "MySpotify", "item": "https://margbug01.github.io/MySpotify/en.html"},
+        {"@type": "ListItem", "position": 2, "name": "Comparison", "item": "https://margbug01.github.io/MySpotify/compare-en.html"}
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Why does MySpotify use less RAM than the official Spotify desktop client?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The official Spotify desktop app bundles CEF (Chromium Embedded Framework) to render its entire UI. MySpotify draws its UI natively with Go and MyGo, invoking the OS WebView2 or WebKit DRM module only for playback decryption—resulting in an installer under 10 MB, ~190 MB RAM while browsing, and ~60 MB extra while playing."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How does MySpotify compare to Spicetify?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Spicetify patches the official Spotify client with custom themes and JS extensions while keeping the official CEF runtime and offline downloads. MySpotify is a standalone native Go app that does not require the official client, uses far less disk and RAM, and ships built-in floating desktop lyrics, multi-source lyrics fallback and zero telemetry."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "When should I stick with the official Spotify desktop app?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Use the official Spotify desktop app if you need offline downloads, lossless audio, Jam, AI DJ, friend activity, local audio files, or zero risk of violating Spotify's third-party client terms."
+          }
+        }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="nav">
+  <a class="brand" href="en.html"><img src="icon.png" alt="" width="28" height="28">MySpotify</a>
+  <nav class="links" aria-label="Navigation">
+    <a href="en.html">Home</a>
+    <a href="desktop-lyrics-en.html">Desktop Lyrics</a>
+    <a href="compare-en.html" aria-current="page">Compare</a>
+    <a href="en.html#install">Install</a>
+    <a href="https://github.com/margbug01/MySpotify">GitHub</a>
+    <span class="langs">
+      <a href="compare.html" hreflang="zh-CN" lang="zh-CN">中文</a>
+      <a href="compare-en.html" hreflang="en" lang="en" aria-current="page">EN</a>
+    </span>
+  </nav>
+</header>
+
+<main id="main">
+  <section class="sub-hero">
+    <p class="crumb"><a href="en.html">MySpotify</a> / Comparison</p>
+    <p class="eyebrow">BENCHMARK &amp; COMPARISON</p>
+    <h1>MySpotify vs Official Spotify, Spicetify &amp; TUI Clients</h1>
+    <p class="lead">Every Spotify desktop option makes different trade-offs. Here is a factual breakdown of UI engine, RAM footprint, desktop lyrics, media support, and limitations.</p>
+  </section>
+
+  <section class="section" style="padding-top: 24px;">
+    <div class="compare-wrap">
+      <table class="compare">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th class="hl">MySpotify (Go/MyGo)</th>
+            <th>Official Spotify Desktop</th>
+            <th>Official + Spicetify</th>
+            <th>TUI Clients (ncspot / spotify-player)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>UI Architecture</th>
+            <td class="hl">Native Go + MyGo GUI (not Electron)</td>
+            <td>CEF (bundled Chromium)</td>
+            <td>Official CEF + JS/CSS patches</td>
+            <td>Rust terminal UI (librespot)</td>
+          </tr>
+          <tr>
+            <th>Installer Size</th>
+            <td class="hl">&lt; 10 MB</td>
+            <td>~150–250 MB</td>
+            <td>Official app + Spicetify CLI</td>
+            <td>~10–25 MB</td>
+          </tr>
+          <tr>
+            <th>Typical RAM</th>
+            <td class="hl">~190 MB browsing (+~60 MB playing)</td>
+            <td>Often 500 MB – 1 GB+</td>
+            <td>Similar or slightly higher than official</td>
+            <td>~30–80 MB</td>
+          </tr>
+          <tr>
+            <th>Account Tier</th>
+            <td class="hl">Free (128k) &amp; Premium (256k), guest browsing</td>
+            <td>Free &amp; Premium</td>
+            <td>Free &amp; Premium</td>
+            <td>Requires Premium (librespot)</td>
+          </tr>
+          <tr>
+            <th>Floating Desktop Lyrics</th>
+            <td class="hl">Built-in (macOS &amp; Windows, click-through lock, hide-on-pause)</td>
+            <td>No</td>
+            <td>Community plugins only (no native click-through overlay)</td>
+            <td>No</td>
+          </tr>
+          <tr>
+            <th>Lyrics Fallback</th>
+            <td class="hl">Spotify + NetEase Cloud Music + LRCLIB</td>
+            <td>Spotify catalog only</td>
+            <td>Via community extensions</td>
+            <td>Basic lyrics</td>
+          </tr>
+          <tr>
+            <th>Music Videos &amp; Podcasts</th>
+            <td class="hl">MVs, video podcasts, word-by-word transcripts &amp; 0.5×–3× speed</td>
+            <td>Full support</td>
+            <td>Full support</td>
+            <td>Audio only</td>
+          </tr>
+          <tr>
+            <th>Equalizer &amp; Crossfade</th>
+            <td class="hl">6-band curve EQ (22 presets) &amp; 0–12s crossfade on Windows</td>
+            <td>Yes</td>
+            <td>Yes</td>
+            <td>Limited / none</td>
+          </tr>
+          <tr>
+            <th>Offline &amp; Lossless</th>
+            <td class="hl">No (encrypted cache requires online license)</td>
+            <td>Yes (Premium)</td>
+            <td>Yes (Premium)</td>
+            <td>No official offline library</td>
+          </tr>
+          <tr>
+            <th>OS Integration</th>
+            <td class="hl">Media keys, tray, macOS notch player &amp; AppleScript, Connect / Google Cast</td>
+            <td>Media keys, Spotify Connect</td>
+            <td>Same as official</td>
+            <td>MPRIS / keyboard</td>
+          </tr>
+          <tr>
+            <th>Open Source &amp; Privacy</th>
+            <td class="hl">AGPL-3.0 open source, zero telemetry</td>
+            <td>Closed source, telemetry</td>
+            <td>Open patches, closed base</td>
+            <td>Open source, no official telemetry</td>
+          </tr>
+          <tr>
+            <th>Account &amp; Breakage Risk</th>
+            <td class="hl">Unofficial web interfaces; ToS and breakage risk</td>
+            <td>Official support, no ToS risk</td>
+            <td>Patched client; breaks on updates</td>
+            <td>Unofficial client; ToS risk</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="section">
+    <p class="kicker">HOW TO CHOOSE</p>
+    <h2>Which client fits your workflow?</h2>
+    <div class="cards">
+      <article class="card">
+        <h3>Choose MySpotify if…</h3>
+        <p>You want a fast, non-Electron native GUI under 10 MB with built-in floating desktop lyrics, LRCLIB/NetEase fallback, music videos, podcast transcripts and zero telemetry—even on a free account.</p>
+      </article>
+      <article class="card">
+        <h3>Choose Official Spotify / Spicetify if…</h3>
+        <p>You rely on Premium offline downloads, lossless audio, Jam, AI DJ, local files, or require strict official Terms of Service compliance.</p>
+      </article>
+      <article class="card">
+        <h3>Choose a TUI client if…</h3>
+        <p>You already have Spotify Premium, live inside a terminal on Linux/macOS, and don't need cover art, floating lyrics, or music videos.</p>
+      </article>
+    </div>
+    <div class="cta-inline">
+      <a class="btn primary" href="https://github.com/margbug01/MySpotify/releases/latest">Download MySpotify<small>Windows / macOS · &lt; 10 MB</small></a>
+      <a class="btn" href="desktop-lyrics-en.html">Explore Desktop Lyrics<small>Always-on-top overlay</small></a>
+    </div>
+  </section>
+
+  <section class="section" id="faq">
+    <p class="kicker">FAQ</p>
+    <h2>Comparison FAQ</h2>
+    <div class="faq">
+      <details><summary>Why does MySpotify use less RAM than the official Spotify desktop client?</summary><p>The official Spotify desktop app bundles CEF (Chromium Embedded Framework) to render its entire UI. MySpotify draws its UI natively with Go and MyGo, invoking the OS WebView2 or WebKit DRM module only for playback decryption—resulting in an installer under 10 MB, ~190 MB RAM while browsing, and ~60 MB extra while playing.</p></details>
+      <details><summary>How does MySpotify compare to Spicetify?</summary><p>Spicetify patches the official Spotify client with custom themes and JS extensions while keeping the official CEF runtime and offline downloads. MySpotify is a standalone native Go app that does not require the official client, uses far less disk and RAM, and ships built-in floating desktop lyrics, multi-source lyrics fallback and zero telemetry.</p></details>
+      <details><summary>When should I stick with the official Spotify desktop app?</summary><p>Use the official Spotify desktop app if you need offline downloads, lossless audio, Jam, AI DJ, friend activity, local audio files, or zero risk of violating Spotify's third-party client terms.</p></details>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <p><a href="en.html">Back to MySpotify Home</a> · <a href="desktop-lyrics-en.html">Desktop Lyrics Guide</a> · <a href="llms.txt">llms.txt</a></p>
+  <p><a href="https://github.com/margbug01/MySpotify">GitHub</a> · <a href="https://github.com/margbug01/MySpotify/blob/main/LICENSE">AGPL-3.0</a></p>
+  <p>Spotify is a trademark of Spotify AB, and MySpotify has no connection to it.</p>
+</footer>
+</body>
+</html>

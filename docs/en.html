@@ -3,23 +3,150 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MySpotify — Spotify desktop player | Windows/macOS</title>
-<meta name="description" content="An unofficial Spotify desktop player for Windows and macOS, with native MyGo UI, synchronized lyrics and music videos. Open source and uses your own Spotify account.">
+<title>MySpotify — Lightweight Native Spotify Desktop Client (No Electron) | Lyrics &amp; MV</title>
+<meta name="description" content="Open-source unofficial Spotify desktop client for Windows and macOS built with native Go (MyGo), not Electron. Under 10 MB download, ~190 MB RAM, floating desktop lyrics, music videos, equalizer, podcasts and Spotify Connect.">
 <meta name="theme-color" content="#0d0a09">
 <link rel="canonical" href="https://margbug01.github.io/MySpotify/en.html">
 <link rel="alternate" hreflang="zh-CN" href="https://margbug01.github.io/MySpotify/">
 <link rel="alternate" hreflang="en" href="https://margbug01.github.io/MySpotify/en.html">
 <link rel="alternate" hreflang="it" href="https://margbug01.github.io/MySpotify/it.html">
-<link rel="alternate" hreflang="x-default" href="https://margbug01.github.io/MySpotify/">
+<link rel="alternate" hreflang="x-default" href="https://margbug01.github.io/MySpotify/en.html">
 <meta property="og:type" content="website">
+<meta property="og:site_name" content="MySpotify">
+<meta property="og:locale" content="en_US">
 <meta property="og:url" content="https://margbug01.github.io/MySpotify/en.html">
-<meta property="og:title" content="MySpotify — Spotify desktop player | Windows/macOS">
-<meta property="og:description" content="An unofficial Spotify desktop player for Windows and macOS, with native MyGo UI, synchronized lyrics and music videos. Open source and uses your own Spotify account.">
-<meta property="og:image" content="https://margbug01.github.io/MySpotify/screenshots/en/hero.webp">
+<meta property="og:title" content="MySpotify — Lightweight Native Spotify Desktop Client (No Electron)">
+<meta property="og:description" content="Native Go + MyGo Spotify desktop player for Windows &amp; macOS: <10 MB download, ~190 MB RAM, floating desktop lyrics, music videos, equalizer and zero telemetry.">
+<meta property="og:image" content="https://margbug01.github.io/MySpotify/og-en.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="MySpotify lightweight native Spotify desktop client in light and dark themes">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="MySpotify — Lightweight Native Spotify Desktop Client (No Electron)">
+<meta name="twitter:description" content="Under 10 MB native Go Spotify client for Windows &amp; macOS with floating desktop lyrics, MV, podcast transcripts, equalizer and Spotify Connect.">
+<meta name="twitter:image" content="https://margbug01.github.io/MySpotify/og-en.png">
 <link rel="icon" href="icon.png">
 <link rel="stylesheet" href="style.css">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"MySpotify","url":"https://margbug01.github.io/MySpotify/en.html","description":"An unofficial Spotify desktop player for Windows and macOS, with native MyGo UI, synchronized lyrics and music videos. Open source and uses your own Spotify account.","operatingSystem":"Windows, macOS","applicationCategory":"MultimediaApplication","downloadUrl":"https://github.com/margbug01/MySpotify/releases/latest","license":"https://github.com/margbug01/MySpotify/blob/main/LICENSE","screenshot":"https://margbug01.github.io/MySpotify/screenshots/en/hero.webp"}</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://margbug01.github.io/MySpotify/en.html#app",
+      "name": "MySpotify",
+      "alternateName": "Vinyl",
+      "url": "https://margbug01.github.io/MySpotify/en.html",
+      "description": "An open-source unofficial Spotify desktop client for Windows and macOS built with native Go (MyGo) instead of Electron, featuring <10 MB download size, ~190 MB browsing RAM, floating desktop lyrics, synced lyrics fallback, music videos, video podcasts, equalizer and Spotify Connect.",
+      "operatingSystem": "Windows 10, Windows 11, macOS (Apple Silicon, Intel experimental), Linux (experimental)",
+      "applicationCategory": "MultimediaApplication",
+      "applicationSubCategory": "MusicPlayer",
+      "softwareVersion": "0.4.41",
+      "inLanguage": ["en", "zh-CN", "it"],
+      "isAccessibleForFree": true,
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "author": {
+        "@type": "Person",
+        "name": "margbug01",
+        "url": "https://github.com/margbug01"
+      },
+      "downloadUrl": "https://github.com/margbug01/MySpotify/releases/latest",
+      "softwareHelp": "https://github.com/margbug01/MySpotify/blob/main/README.en.md#faq",
+      "license": "https://github.com/margbug01/MySpotify/blob/main/LICENSE",
+      "screenshot": "https://margbug01.github.io/MySpotify/screenshots/en/hero.webp",
+      "sameAs": [
+        "https://github.com/margbug01/MySpotify",
+        "https://margbug01.github.io/MySpotify/",
+        "https://margbug01.github.io/MySpotify/it.html"
+      ],
+      "featureList": [
+        "Native Go + MyGo UI (not Electron): under 10 MB download and ~190 MB browsing memory",
+        "Floating desktop lyrics on macOS and Windows with cover-colored highlight, click-through lock and hide-on-pause",
+        "Synced lyrics fallback via NetEase Cloud Music and LRCLIB with optional translation",
+        "Music videos, video podcasts, word-by-word transcripts and 0.5x-3x podcast playback speed",
+        "6-band draggable curve equalizer (22 presets) and 0-12s crossfade on Windows",
+        "macOS notch mini-player and read-only AppleScript integration",
+        "Experimental Spotify Connect handoff and Google Cast / Nest speaker wake-up",
+        "Zero analytics or telemetry, encrypted local cookies and proxy support"
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://margbug01.github.io/MySpotify/en.html#faq-schema",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How is MySpotify different from the official Spotify desktop app?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "MySpotify renders its interface natively with Go and MyGo rather than shipping a full Chromium/Electron shell. The installer is under 10 MB and uses about 190 MB of RAM while browsing (plus ~60 MB for the system DRM playback process). It adds built-in floating desktop lyrics, multi-source lyrics fallback and zero telemetry, while the official app offers lossless audio, offline downloads, Jam/DJ and official account safety."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does MySpotify have floating desktop lyrics on macOS and Windows?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Click Desktop lyrics in the player bar on macOS or Windows to float the current lyric line above all windows. Words light up in the album cover's accent color, with click-through lock mode, optional hide-on-pause, customizable font size and colors, and a global shortcut toggle."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is MySpotify safe? Does it crack DRM or collect account data?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "MySpotify does not crack DRM. Decryption runs inside your operating system's WebView2 Widevine (Windows) or WebKit FairPlay (macOS) module, so the app never sees keys or decrypted streams. You sign in on Spotify's official login page, renewal cookies are encrypted via Windows DPAPI or macOS Keychain, and there is zero telemetry."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What audio quality is supported for free vs Premium Spotify accounts?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Free accounts play full songs at 128k AAC via the same DRM path as Spotify's web player, and you can browse without signing in. Premium accounts can enable High quality (256k AAC) under Settings > Audio quality; if a free account enables 256k and Spotify refuses the license, it automatically falls back to 128k. Lossless audio requires the official app."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why does a song say it can't be played right now?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It isn't available in your region, or Spotify refused the license (403). If the web player can't play it either, it's a licensing or regional restriction."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "The player bar says Spotify is rate limiting. What do I do?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Nothing. MySpotify waits as long as Spotify asks, then resumes where it was. Starting songs over and over in a short time is what triggers rate limiting."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "If songs are cached, why does it still need the network?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The cache stores encrypted audio segments as delivered by the CDN, and decrypting them requires a fresh license from Spotify on each play. Caching saves bandwidth and reduces buffering, and you can choose the cache folder and size limit in settings."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I set a proxy or fully quit the app?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It follows the system proxy by default, or you can enter 127.0.0.1:7890, http://, https:// or socks5:// under Settings > Network > Proxy. Closing the window sends MySpotify to the tray; right-click the tray icon and choose Quit MySpotify to exit completely."
+          }
+        }
+      ]
+    }
+  ]
+}
+</script>
 <script src="site.js" defer></script>
 </head>
 <body>
@@ -29,6 +156,8 @@
   <a class="brand" href="en.html"><img src="icon.png" alt="" width="28" height="28">MySpotify</a>
   <nav class="links" aria-label="Navigation">
     <a href="#features">Features</a>
+    <a href="desktop-lyrics-en.html">Desktop Lyrics</a>
+    <a href="compare-en.html">Compare</a>
     <a href="#install">Install</a>
     <a href="https://github.com/margbug01/MySpotify">GitHub</a>
     <span class="langs">
@@ -42,15 +171,15 @@
 <main id="main">
   <div class="hero">
     <div class="hero-copy">
-      <p class="eyebrow">MYSPOTIFY · UNOFFICIAL · OPEN SOURCE · WINDOWS / MACOS</p>
+      <p class="eyebrow">MYSPOTIFY · NATIVE GO (NO ELECTRON) · OPEN SOURCE · WINDOWS / MACOS</p>
       <h1>Spotify, in a real desktop app</h1>
-      <p class="lead">A native interface, lyrics that scroll, music videos and video podcasts. Free accounts play whole songs, and you can look around before signing in.</p>
+      <p class="lead">A native Go + MyGo interface under 10 MB, with floating desktop lyrics, music videos, video podcasts, equalizer and Spotify Connect. Free accounts play whole songs, and you can look around before signing in.</p>
       <div class="cta">
         <a class="btn" data-dl="mac" href="https://github.com/margbug01/MySpotify/releases/latest">Download for macOS<small data-size="Apple silicon">Apple silicon</small></a>
         <a class="btn" data-dl="mac-intel" href="https://github.com/margbug01/MySpotify/releases/latest">Download for Intel Mac<small data-size="Experimental">Experimental</small></a>
         <a class="btn" data-dl="win" href="https://github.com/margbug01/MySpotify/releases/latest">Download for Windows<small data-size="Windows 10 / 11">Windows 10 / 11</small></a>
       </div>
-      <p class="caveat">A personal project with no ties to Spotify. Using it could get your account restricted. <a href="#risk">Read the risks first</a></p>
+      <p class="caveat">An open-source personal project (AGPL-3.0) with no ties to Spotify. Using it could get your account restricted. <a href="#risk">Read the risks first</a></p>
     </div>
     <div class="disc" aria-hidden="true">
       <svg viewBox="0 0 1024 1024"><path d="M226.2 677A330 330 0 0 1 512 182" fill="none" stroke="#fff" stroke-width="62" stroke-linecap="round"/><path d="M292.7 409.7A242 242 0 0 1 650.8 313.8" fill="none" stroke="#fff" stroke-width="54" stroke-linecap="round"/><path d="M471.6 361.3A156 156 0 0 1 653.4 446.1" fill="none" stroke="#fff" stroke-width="46" stroke-linecap="round"/><circle cx="512" cy="512" r="44" fill="#fff"/></svg>
@@ -79,7 +208,7 @@
         <article class="line" data-shot="artist" data-glow="#4a2a22">
           <time>[00:12.40]</time>
           <h3>Feels like desktop software.</h3>
-          <p>The interface is drawn natively by <a href="https://github.com/egoist/mygo">MyGo</a>, not a web page in a frame. A sidebar, full-screen Now Playing, a rhythm stage, system media keys, global shortcuts, light and dark themes. Closing the window keeps the music going from the tray.</p>
+          <p>The interface is drawn natively by <a href="https://github.com/egoist/mygo">MyGo</a>, not a web page in a frame. A sidebar, full-screen Now Playing, a rhythm stage, macOS notch player, system media keys, global shortcuts, light and dark themes. Closing the window keeps the music going from the tray.</p>
         </article>
         <article class="line" data-shot="browse" data-glow="#3f2147">
           <time>[00:31.08]</time>
@@ -88,23 +217,23 @@
         </article>
         <article class="line" data-shot="album" data-glow="#22303f">
           <time>[00:49.72]</time>
-          <h3>Whole songs on a free account.</h3>
-          <p>You sign in on Spotify's own page. The DRM module built into your system's web component decrypts the audio, the same path as listening in a browser, at 128k AAC.</p>
+          <h3>Whole songs on free, 256k on Premium.</h3>
+          <p>You sign in on Spotify's own page. The DRM module built into your system's web component decrypts the audio, the same path as listening in a browser: 128k AAC on free accounts, or 256k AAC for Premium under Settings.</p>
         </article>
         <article class="line" data-shot="playing" data-glow="#5a3320">
           <time>[01:16.25]</time>
-          <h3>Lyrics for nearly everything, and they scroll.</h3>
-          <p>What Spotify lacks comes from NetEase Cloud Music and LRCLIB. Timed lyrics win, and the title and length must match, so another version never slips in. Foreign-language songs show a Chinese translation when one exists.</p>
+          <h3>Floating desktop lyrics that actually scroll.</h3>
+          <p>What Spotify lacks comes from NetEase Cloud Music and LRCLIB, matched strictly by title and length. Float the current line above every window on macOS and Windows with cover-colored highlight, click-through lock and hide-on-pause. <a href="desktop-lyrics-en.html">Explore desktop lyrics</a></p>
         </article>
         <article class="line" data-shot="playing" data-glow="#642a24">
           <time>[01:42.90]</time>
           <h3>Music videos, too.</h3>
-          <p>Songs with a video wear a small tag: click it to play, or switch from the player bar at any time. Watch in place of the cover, filling the window or full screen, with the current lyric below.</p>
+          <p>Songs with a video wear a small tag: click it to play, or switch from the player bar at any time. Watch in place of the cover, filling the window or full screen, with the current lyric below and <code>[</code> / <code>]</code> 0.5 s offset tuning.</p>
         </article>
         <article class="line" data-shot="podcast" data-glow="#4a2228">
           <time>[02:07.33]</time>
           <h3>Podcasts to hear, watch and read along.</h3>
-          <p>Video podcasts show their picture with one click. The transcript scrolls like lyrics, lighting up word by word, and clicking a sentence jumps to it.</p>
+          <p>Video podcasts show their picture with one click, with pitch-preserved 0.5×–3× playback speed. The transcript scrolls like lyrics, lighting up word by word, and clicking a sentence jumps to it.</p>
         </article>
       </div>
     </div>
@@ -118,15 +247,15 @@
         <h3>Plays</h3>
         <ol>
           <li><i>1</i><div><b>Home</b><span>Spotify's own sections and titles, filtered by music or podcasts</span></div></li>
-          <li><i>2</i><div><b>Daily mixes and charts</b></div></li>
+          <li><i>2</i><div><b>Daily mixes and charts</b><span>Finds Made for You playlists reliably</span></div></li>
           <li><i>3</i><div><b>Browse all categories</b></div></li>
-          <li><i>4</i><div><b>Playlists and albums</b><span>Edit your own playlists; ones added on the web or your phone sync over by themselves</span></div></li>
-          <li><i>5</i><div><b>Artist and song pages</b><span>Credits, play counts, similar songs</span></div></li>
+          <li><i>4</i><div><b>Playlists and albums</b><span>Edit playlists, filter large playlists instantly with ⌘/Ctrl+F, auto-sync across devices</span></div></li>
+          <li><i>5</i><div><b>Artist and song pages</b><span>Full grouped song credits, play counts and similar songs</span></div></li>
           <li><i>6</i><div><b>Search</b><span>Songs, artists, albums, playlists, podcasts</span></div></li>
           <li><i>7</i><div><b>Likes, follows, saves</b></div></li>
           <li><i>8</i><div><b>Play next and the queue</b></div></li>
           <li><i>9</i><div><b>Radio</b><span>From a song or an artist</span></div></li>
-          <li><i>10</i><div><b>Recently played and your profile</b></div></li>
+          <li><i>10</i><div><b>Recently played, profile &amp; podcast speed</b><span>0.5×–3× pitch-preserved speed remembered for episodes</span></div></li>
         </ol>
       </div>
       <div>
@@ -136,18 +265,86 @@
           <li class="off"><i></i><div><b>Offline downloads</b><span>Needs Premium and the official client</span></div></li>
           <li class="off"><i></i><div><b>Jam, DJ</b><span>Needs Premium or the phone app</span></div></li>
           <li class="off"><i></i><div><b>Word-by-word lyrics</b><span>Spotify gives the web player timing per line only</span></div></li>
-          <li class="off"><i></i><div><b>Some podcasts on macOS</b><span>Shows hosted by Spotify with Widevine-encrypted audio only</span></div></li>
-          <li class="off"><i></i><div><b>Stable Intel Mac / Linux support</b><span>Experimental installers; Intel still needs physical hardware testing</span></div></li>
+          <li class="off"><i></i><div><b>Some podcasts on macOS</b><span>Spotify-hosted shows with Widevine-only audio and no public RSS feed</span></div></li>
+          <li class="off"><i></i><div><b>Stable Intel Mac / Linux support</b><span>Experimental installers (Qt WebEngine default on Linux); Intel awaits hardware verification</span></div></li>
           <li class="off"><i></i><div><b>Friend activity, local files, Blend</b><span>Not built yet</span></div></li>
         </ul>
       </div>
     </div>
   </section>
 
+  <section class="section" id="compare">
+    <p class="kicker">COMPARISON</p>
+    <h2>MySpotify vs official desktop app &amp; web player</h2>
+    <p class="note">An honest side-by-side look: MySpotify focuses on native speed, low RAM, floating desktop lyrics and privacy, while the official client provides lossless audio, offline downloads and official account support. <a href="compare-en.html">Read the full comparison (including Spicetify &amp; TUI clients)</a></p>
+    <div class="compare-wrap">
+      <table class="compare">
+        <thead>
+          <tr>
+            <th>Attribute</th>
+            <th class="hl">MySpotify (Go / MyGo)</th>
+            <th>Official Spotify Desktop</th>
+            <th>Spotify Web Player</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>UI Engine</th>
+            <td class="hl">Native Go + MyGo (not Electron)</td>
+            <td>CEF (bundled Chromium engine)</td>
+            <td>Browser tab</td>
+          </tr>
+          <tr>
+            <th>Download Size</th>
+            <td class="hl">&lt; 10 MB</td>
+            <td>~150–250 MB</td>
+            <td>None</td>
+          </tr>
+          <tr>
+            <th>Typical RAM Usage</th>
+            <td class="hl">~190 MB browsing (+~60 MB playing)</td>
+            <td>Typically 500 MB – 1 GB+</td>
+            <td>Varies with browser</td>
+          </tr>
+          <tr>
+            <th>Floating Desktop Lyrics</th>
+            <td class="hl">Built-in (macOS &amp; Windows, click-through lock)</td>
+            <td>No</td>
+            <td>No</td>
+          </tr>
+          <tr>
+            <th>Lyrics Fallback &amp; Translation</th>
+            <td class="hl">Spotify + NetEase + LRCLIB, Chinese translation</td>
+            <td>Spotify catalog only</td>
+            <td>Spotify catalog only</td>
+          </tr>
+          <tr>
+            <th>Equalizer &amp; Crossfade</th>
+            <td class="hl">6-band curve EQ (22 presets) &amp; 0–12s crossfade on Windows</td>
+            <td>Yes</td>
+            <td>No</td>
+          </tr>
+          <tr>
+            <th>Audio Quality &amp; Offline</th>
+            <td class="hl">128k free / 256k Premium AAC; online only</td>
+            <td>Higher quality &amp; offline downloads (Premium)</td>
+            <td>128k / 256k AAC; online only</td>
+          </tr>
+          <tr>
+            <th>Telemetry &amp; Support</th>
+            <td class="hl">Zero telemetry, open source; unofficial account risk</td>
+            <td>Official support, includes telemetry</td>
+            <td>Official support, ads on free tier</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
   <section class="section" id="screens">
     <p class="kicker">SCREENS</p>
     <h2>A look around the app</h2>
-    <p class="note">Screenshots use sample data. Change the app language in Settings › Appearance › Language.</p>
+    <p class="note">Screenshots use sample data. Change the app language anytime in Settings › Appearance › Language (English, Simplified Chinese, Italian or System).</p>
     <div class="strip" tabindex="0" role="group" aria-label="More screenshots">
     <img src="screenshots/en/search.webp" width="1480" height="978" loading="lazy" alt="Search results: artists and albums">
     <img src="screenshots/en/track.webp" width="1480" height="978" loading="lazy" alt="A song's page: cover, play count and recommendations">
@@ -160,10 +357,12 @@
     <p class="kicker">BEHIND THE SCENES</p>
     <h2>The parts you won't see</h2>
     <div class="quiet">
-      <div><h3>Hand off between phone and computer (experimental)</h3><p>Your computer appears in the device list of Spotify on your phone: tap it and the music moves over. While the phone plays, the computer can see it and control it.</p></div>
-      <div><h3>Errors don't leave it stuck</h3><p>An expired license gets a new identity and a retry. When rate limited, it waits as long as Spotify asks and resumes where it was. When the network drops, it picks up once the network is back.</p></div>
-      <div><h3>No downloading a song twice</h3><p>Songs you've played stay on your computer as the encrypted segments they arrived in, so they start faster and use no data. Choose the limit in settings, or clear them all.</p></div>
-      <div><h3>Your data stays on your computer</h3><p>Settings and history are local, and the cookies for renewing a session are stored encrypted. It connects only to Spotify, Gravatar, NetEase and LRCLIB for lyrics, and GitHub to check for updates.</p></div>
+      <div><h3>Spotify Connect &amp; Google Cast (experimental)</h3><p>Your computer appears in Spotify's device list on your phone, and you can also wake and cast directly to Google Cast / Nest speakers and multi-room groups on your local network.</p></div>
+      <div><h3>Equalizer &amp; crossfade on Windows</h3><p>Shape sound with a draggable 6-band curve equalizer and 22 presets (keyboard accessible), plus 0–12 second crossfade between tracks under playback settings.</p></div>
+      <div><h3>macOS notch player &amp; AppleScript</h3><p>Check and control playback from the macOS notch mini-player, or query track metadata via read-only AppleScript compatible with Music.app for Raycast and status bars.</p></div>
+      <div><h3>Errors don't leave it stuck</h3><p>An expired license gets a new identity and a retry. On 429 rate limits, 502 server errors or dropped networks, it waits and resumes cleanly where it left off.</p></div>
+      <div><h3>No downloading a song twice</h3><p>Played songs stay cached locally as encrypted segments so replays start faster and save data. Choose a custom cache folder and size limit, or clear it in one click.</p></div>
+      <div><h3>Your data stays on your computer</h3><p>Settings and history are local, and renewal cookies are encrypted via Windows DPAPI or macOS Keychain. It connects only to Spotify, Gravatar, NetEase/LRCLIB for lyrics, and GitHub for updates.</p></div>
     </div>
   </section>
 
@@ -207,13 +406,13 @@
         <a class="btn" data-dl="win" href="https://github.com/margbug01/MySpotify/releases/latest">Download .zip</a>
       </div>
     </div>
-    <p class="note">Install updates from Settings › About with “Update and restart.” Settings and your sign-in live apart from the program files, so nothing is lost.</p>
+    <p class="note">Install updates from Settings › About with “Update and restart.” Experimental Linux <code>.deb</code> / <code>.tar.gz</code> builds (Qt WebEngine default) are documented in <a href="https://github.com/margbug01/MySpotify/blob/main/LINUX.md">LINUX.md</a>.</p>
     <div class="keys">
       <span><kbd>Space</kbd> Play / pause</span>
       <span><kbd>⌘/Ctrl ← →</kbd> Previous / next</span>
       <span><kbd>⌘/Ctrl D</kbd> Like</span>
       <span><kbd>⌘/Ctrl L</kbd> Now Playing</span>
-      <span><kbd>⌘/Ctrl F</kbd> Search</span>
+      <span><kbd>⌘/Ctrl F</kbd> Search / Filter playlist</span>
     </div>
   </section>
 
@@ -221,11 +420,14 @@
     <p class="kicker">FAQ</p>
     <h2>Questions</h2>
     <div class="faq">
-      <details><summary>Why does a song say it can't be played right now?</summary><p>It isn't available in your region, or Spotify refused the license. If the web player can't play it either, it's a licensing matter.</p></details>
-      <details><summary>The player bar says Spotify is rate limiting. What do I do?</summary><p>Nothing. MySpotify waits as long as Spotify asks, then resumes where it was. Starting songs over and over in a short time is what triggers it.</p></details>
-      <details><summary>If songs are cached, why does it still need the network?</summary><p>The cache holds encrypted audio, and decrypting it needs a license Spotify issues on the spot. The cache saves data and buffering.</p></details>
-      <details><summary>How do I set a proxy?</summary><p>It follows the system proxy by default. You can also enter <code>127.0.0.1:7890</code>, <code>http://…</code>, <code>https://…</code> or <code>socks5://…</code> under Settings › Network › Proxy.</p></details>
-      <details><summary>Why does music keep playing after I close the window, and how do I quit?</summary><p>Closing the window only sends it to the tray. To quit, right-click the tray icon and choose Quit MySpotify.</p></details>
+      <details><summary>How is MySpotify different from the official Spotify desktop app?</summary><p>MySpotify renders its interface natively with Go and MyGo rather than shipping a full Chromium/Electron shell. The installer is under 10 MB and uses about 190 MB of RAM while browsing (plus ~60 MB for the system DRM playback process). It adds built-in floating desktop lyrics, multi-source lyrics fallback and zero telemetry, while the official app offers lossless audio, offline downloads, Jam/DJ and official account safety.</p></details>
+      <details><summary>Does MySpotify have floating desktop lyrics on macOS and Windows?</summary><p>Yes. Click Desktop lyrics in the player bar on macOS or Windows to float the current lyric line above all windows. Words light up in the album cover's accent color, with click-through lock mode, optional hide-on-pause, customizable font size and colors, and a global shortcut toggle.</p></details>
+      <details><summary>Is MySpotify safe? Does it crack DRM or collect account data?</summary><p>MySpotify does not crack DRM. Decryption runs inside your operating system's WebView2 Widevine (Windows) or WebKit FairPlay (macOS) module, so the app never sees keys or decrypted streams. You sign in on Spotify's official login page, renewal cookies are encrypted via Windows DPAPI or macOS Keychain, and there is zero telemetry.</p></details>
+      <details><summary>What audio quality is supported for free vs Premium Spotify accounts?</summary><p>Free accounts play full songs at 128k AAC via the same DRM path as Spotify's web player, and you can browse without signing in. Premium accounts can enable High quality (256k AAC) under Settings › Audio quality; if a free account enables 256k and Spotify refuses the license, it automatically falls back to 128k. Lossless audio requires the official app.</p></details>
+      <details><summary>Why does a song say it can't be played right now?</summary><p>It isn't available in your region, or Spotify refused the license (403). If the web player can't play it either, it's a licensing or regional restriction.</p></details>
+      <details><summary>The player bar says Spotify is rate limiting. What do I do?</summary><p>Nothing. MySpotify waits as long as Spotify asks, then resumes where it was. Starting songs over and over in a short time is what triggers rate limiting.</p></details>
+      <details><summary>If songs are cached, why does it still need the network?</summary><p>The cache stores encrypted audio segments as delivered by the CDN, and decrypting them requires a fresh license from Spotify on each play. Caching saves bandwidth and reduces buffering, and you can choose the cache folder and size limit in settings.</p></details>
+      <details><summary>How do I set a proxy or fully quit the app?</summary><p>It follows the system proxy by default, or you can enter <code>127.0.0.1:7890</code>, <code>http://…</code>, <code>https://…</code> or <code>socks5://…</code> under Settings › Network › Proxy. Closing the window sends MySpotify to the tray; right-click the tray icon and choose Quit MySpotify to exit completely.</p></details>
     </div>
     <p class="note"><a href="https://github.com/margbug01/MySpotify/blob/main/README.en.md#faq">More questions</a> · <a href="https://github.com/margbug01/MySpotify/issues">Report an issue</a></p>
   </section>
@@ -233,7 +435,7 @@
 
 <footer>
   <p>More MyGo apps by the same author: <a href="https://margbug01.github.io/mami/">Mami</a> · <a href="https://margbug01.github.io/ShoesGUI/">MyShoes</a> · <a href="https://margbug01.github.io/Candle/">Candle</a></p>
-  <p><a href="https://github.com/margbug01/MySpotify">GitHub</a> · <a href="https://github.com/margbug01/MySpotify/blob/main/LICENSE">AGPL-3.0</a></p>
+  <p><a href="desktop-lyrics-en.html">Desktop Lyrics</a> · <a href="compare-en.html">Comparison</a> · <a href="llms.txt">llms.txt</a> · <a href="https://github.com/margbug01/MySpotify">GitHub</a> · <a href="https://github.com/margbug01/MySpotify/blob/main/LICENSE">AGPL-3.0</a></p>
   <p>Spotify is a trademark of Spotify AB, and MySpotify has no connection to it. Covers and photos in the screenshots belong to their respective owners.</p>
 </footer>
 

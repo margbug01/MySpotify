@@ -14,7 +14,7 @@ A native interface, lyrics that scroll, music videos and video podcasts. Free ac
 
 **[Download the latest release](https://github.com/margbug01/MySpotify/releases/latest)** · [Website](https://margbug01.github.io/MySpotify/en.html) · [Install](#get-started) · [FAQ](#faq)
 
-<img src="docs/screenshots/hero.webp" width="860" alt="The home page, in light and dark themes">
+<img src="docs/screenshots/en/hero.webp" width="860" alt="The home page, in light and dark themes">
 
 </div>
 
@@ -46,16 +46,16 @@ Experimental Linux `.deb` / `.tar.gz` builds are available. On amd64, Qt WebEngi
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/screenshots/playing.webp" alt="Now Playing with lyrics"></td>
-    <td width="50%"><img src="docs/screenshots/artist.webp" alt="An artist page"></td>
+    <td width="50%"><img src="docs/screenshots/en/playing.webp" alt="Now Playing with lyrics"></td>
+    <td width="50%"><img src="docs/screenshots/en/artist.webp" alt="An artist page"></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/search.webp" alt="Search"></td>
-    <td><img src="docs/screenshots/browse.webp" alt="Browse all"></td>
+    <td><img src="docs/screenshots/en/search.webp" alt="Search"></td>
+    <td><img src="docs/screenshots/en/browse.webp" alt="Browse all"></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/podcast.webp" alt="A podcast"></td>
-    <td><img src="docs/screenshots/track.webp" alt="A song's page"></td>
+    <td><img src="docs/screenshots/en/podcast.webp" alt="A podcast"></td>
+    <td><img src="docs/screenshots/en/track.webp" alt="A song's page"></td>
   </tr>
 </table>
 
@@ -64,11 +64,11 @@ Experimental Linux `.deb` / `.tar.gz` builds are available. On amd64, Qt WebEngi
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/screenshots/album.webp" alt="An album"></td>
-    <td width="50%"><img src="docs/screenshots/category.webp" alt="A category page"></td>
+    <td width="50%"><img src="docs/screenshots/en/album.webp" alt="An album"></td>
+    <td width="50%"><img src="docs/screenshots/en/category.webp" alt="A category page"></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/profile.webp" alt="A profile page"></td>
+    <td><img src="docs/screenshots/en/profile.webp" alt="A profile page"></td>
     <td></td>
   </tr>
 </table>

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://margbug01.github.io/MySpotify/sitemap.xml

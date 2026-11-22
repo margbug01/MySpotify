@@ -12,9 +12,9 @@ Interfaccia nativa, testi che scorrono, video musicali e podcast video. Gli acco
 
 [![Ultima versione](https://img.shields.io/github/v/release/margbug01/MySpotify?style=flat-square&label=ultima&color=ef3b45)](https://github.com/margbug01/MySpotify/releases/latest) ![Windows 10/11](https://img.shields.io/badge/Windows-10%20%7C%2011-3a6ea5?style=flat-square) ![macOS Apple silicon](https://img.shields.io/badge/macOS-Apple%20silicon-555555?style=flat-square) ![AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-c2410c?style=flat-square)
 
-**[Scarica l'ultima versione](https://github.com/margbug01/MySpotify/releases/latest)** · [Sito](https://margbug01.github.io/MySpotify/en.html) · [Installazione](#per-iniziare) · [FAQ](#faq)
+**[Scarica l'ultima versione](https://github.com/margbug01/MySpotify/releases/latest)** · [Sito](https://margbug01.github.io/MySpotify/it.html) · [Installazione](#per-iniziare) · [FAQ](#faq)
 
-<img src="docs/screenshots/hero.webp" width="860" alt="La home, con tema chiaro e scuro">
+<img src="docs/screenshots/it/hero.webp" width="860" alt="La home, con tema chiaro e scuro">
 
 </div>
 
@@ -46,16 +46,16 @@ Sono disponibili build sperimentali per Linux (`.deb` / `.tar.gz`). Su amd64 il 
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/screenshots/playing.webp" alt="In riproduzione, con il testo"></td>
-    <td width="50%"><img src="docs/screenshots/artist.webp" alt="La pagina di un artista"></td>
+    <td width="50%"><img src="docs/screenshots/it/playing.webp" alt="In riproduzione, con il testo"></td>
+    <td width="50%"><img src="docs/screenshots/it/artist.webp" alt="La pagina di un artista"></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/search.webp" alt="Ricerca"></td>
-    <td><img src="docs/screenshots/browse.webp" alt="Sfoglia tutto"></td>
+    <td><img src="docs/screenshots/it/search.webp" alt="Ricerca"></td>
+    <td><img src="docs/screenshots/it/browse.webp" alt="Sfoglia tutto"></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/podcast.webp" alt="Un podcast"></td>
-    <td><img src="docs/screenshots/track.webp" alt="La pagina di un brano"></td>
+    <td><img src="docs/screenshots/it/podcast.webp" alt="Un podcast"></td>
+    <td><img src="docs/screenshots/it/track.webp" alt="La pagina di un brano"></td>
   </tr>
 </table>
 
@@ -64,11 +64,11 @@ Sono disponibili build sperimentali per Linux (`.deb` / `.tar.gz`). Su amd64 il 
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/screenshots/album.webp" alt="Un album"></td>
-    <td width="50%"><img src="docs/screenshots/category.webp" alt="La pagina di una categoria"></td>
+    <td width="50%"><img src="docs/screenshots/it/album.webp" alt="Un album"></td>
+    <td width="50%"><img src="docs/screenshots/it/category.webp" alt="La pagina di una categoria"></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/profile.webp" alt="La pagina di un profilo"></td>
+    <td><img src="docs/screenshots/it/profile.webp" alt="La pagina di un profilo"></td>
     <td></td>
   </tr>
 </table>

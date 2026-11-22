@@ -3,23 +3,150 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MySpotify — Spotify 桌面播放器 | Windows/macOS</title>
-<meta name="description" content="Windows/macOS 非官方 Spotify 桌面播放器：原生 MyGo 界面、同步歌词和 MV 播放。免费开源，使用自己的 Spotify 账号。">
+<title>MySpotify — 轻量原生 Spotify 桌面客户端 | 桌面歌词、MV 与同步翻译 (Win/Mac)</title>
+<meta name="description" content="免费开源的非官方 Spotify 桌面播放器（Windows / macOS）。Go + MyGo 原生界面非 Electron，安装包小于 10 MB、浏览内存约 190 MB，支持桌面悬浮歌词、歌词翻译、MV、视频播客、均衡器与 Spotify Connect。">
 <meta name="theme-color" content="#0d0a09">
 <link rel="canonical" href="https://margbug01.github.io/MySpotify/">
 <link rel="alternate" hreflang="zh-CN" href="https://margbug01.github.io/MySpotify/">
 <link rel="alternate" hreflang="en" href="https://margbug01.github.io/MySpotify/en.html">
 <link rel="alternate" hreflang="it" href="https://margbug01.github.io/MySpotify/it.html">
-<link rel="alternate" hreflang="x-default" href="https://margbug01.github.io/MySpotify/">
+<link rel="alternate" hreflang="x-default" href="https://margbug01.github.io/MySpotify/en.html">
 <meta property="og:type" content="website">
+<meta property="og:site_name" content="MySpotify">
+<meta property="og:locale" content="zh_CN">
 <meta property="og:url" content="https://margbug01.github.io/MySpotify/">
-<meta property="og:title" content="MySpotify — Spotify 桌面播放器 | Windows/macOS">
-<meta property="og:description" content="Windows/macOS 非官方 Spotify 桌面播放器：原生 MyGo 界面、同步歌词和 MV 播放。免费开源，使用自己的 Spotify 账号。">
-<meta property="og:image" content="https://margbug01.github.io/MySpotify/screenshots/hero.webp">
+<meta property="og:title" content="MySpotify — 轻量原生 Spotify 桌面客户端 | 桌面歌词与 MV">
+<meta property="og:description" content="非 Electron 的 Go 原生 Spotify 桌面播放器：安装包小于 10 MB、内存约 190 MB，支持桌面悬浮歌词、歌词翻译、MV、播客逐字稿与均衡器。">
+<meta property="og:image" content="https://margbug01.github.io/MySpotify/og-zh.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="MySpotify 轻量原生 Spotify 桌面客户端浅色与深色首页截图">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="MySpotify — 轻量原生 Spotify 桌面客户端 | 桌面歌词与 MV">
+<meta name="twitter:description" content="Go + MyGo 原生界面，非 Electron，安装包 <10 MB，支持桌面悬浮歌词、翻译、MV、视频播客与 Spotify Connect。">
+<meta name="twitter:image" content="https://margbug01.github.io/MySpotify/og-zh.png">
 <link rel="icon" href="icon.png">
 <link rel="stylesheet" href="style.css">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"MySpotify","url":"https://margbug01.github.io/MySpotify/","description":"Windows/macOS 非官方 Spotify 桌面播放器：原生 MyGo 界面、同步歌词和 MV 播放。免费开源，使用自己的 Spotify 账号。","operatingSystem":"Windows, macOS","applicationCategory":"MultimediaApplication","downloadUrl":"https://github.com/margbug01/MySpotify/releases/latest","license":"https://github.com/margbug01/MySpotify/blob/main/LICENSE","screenshot":"https://margbug01.github.io/MySpotify/screenshots/hero.webp"}</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://margbug01.github.io/MySpotify/#app",
+      "name": "MySpotify",
+      "alternateName": "Vinyl",
+      "url": "https://margbug01.github.io/MySpotify/",
+      "description": "免费开源的非官方 Spotify 桌面播放器，采用 Go 与 MyGo 原生界面渲染（非 Electron），支持 Windows 与 macOS，提供桌面悬浮歌词、多源歌词补全与翻译、MV、视频播客逐字稿、均衡器与 Spotify Connect。",
+      "operatingSystem": "Windows 10, Windows 11, macOS (Apple Silicon, Intel experimental), Linux (experimental)",
+      "applicationCategory": "MultimediaApplication",
+      "applicationSubCategory": "MusicPlayer",
+      "softwareVersion": "0.4.41",
+      "inLanguage": ["zh-CN", "en", "it"],
+      "isAccessibleForFree": true,
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "author": {
+        "@type": "Person",
+        "name": "margbug01",
+        "url": "https://github.com/margbug01"
+      },
+      "downloadUrl": "https://github.com/margbug01/MySpotify/releases/latest",
+      "softwareHelp": "https://github.com/margbug01/MySpotify#常见问题",
+      "license": "https://github.com/margbug01/MySpotify/blob/main/LICENSE",
+      "screenshot": "https://margbug01.github.io/MySpotify/screenshots/hero.webp",
+      "sameAs": [
+        "https://github.com/margbug01/MySpotify",
+        "https://margbug01.github.io/MySpotify/en.html",
+        "https://margbug01.github.io/MySpotify/it.html"
+      ],
+      "featureList": [
+        "Go + MyGo 原生桌面界面（非 Electron），安装包小于 10 MB，浏览内存约 190 MB",
+        "Mac 与 Windows 桌面悬浮歌词，支持封面取色高亮、鼠标穿透锁定与暂停自动隐藏",
+        "Spotify、网易云音乐与 LRCLIB 三源时间轴歌词补全及中文翻译",
+        "音乐视频（MV）与视频播客播放、逐字稿滚动跟读与 0.5x-3x 播客倍速",
+        "Windows 6 段可拖拽曲线均衡器（22 套预设）与 0-12 秒交叉淡入淡出",
+        "macOS 刘海播放器与 AppleScript 只读状态查询",
+        "Spotify Connect 手机电脑接力与 Google Cast / Nest 音箱唤醒（实验性）",
+        "零统计与遥测，支持系统/自定义代理及加密本地缓存"
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://margbug01.github.io/MySpotify/#faq-schema",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "MySpotify 相比官方 Spotify 客户端有什么区别，内存占用低多少？",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "MySpotify 使用 Go 和 MyGo 原生绘制界面，不内置完整 Chromium/Electron 浏览器壳。下载安装包小于 10 MB，仅浏览时总内存占用约 190 MB，播放音乐时额外启动一个约 60 MB 的系统 DRM 解密进程；同时内置了官方客户端缺少的桌面悬浮歌词、歌词翻译、网易云/LRCLIB 歌词补全和零遥测特性。官方客户端则提供无损音质、离线下载、Jam/DJ 及官方账号保障。"
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "MySpotify 支持 macOS 和 Windows 的桌面悬浮歌词吗？",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "支持。在 macOS 和 Windows 上点击播放栏的「桌面歌词」按钮即可开启，当前演唱的歌词会悬浮在所有窗口上方，文字随专辑封面取色逐字亮起，第二行可显示中文翻译或下一句歌词。支持锁定后鼠标穿透、暂停时自动隐藏、自定义字号颜色以及全局快捷键开关。"
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "MySpotify 安全吗？会破解 DRM 或上传账号数据吗？",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "MySpotify 不破解 DRM，音频解密完全在系统自带的 WebView2 Widevine（Windows）或 WebKit FairPlay（macOS）模块内完成，程序无法获取密钥或解密后的媒体文件。登录直接走 Spotify 官方登录页，续期 Cookie 通过 Windows DPAPI 或 macOS 钥匙串加密保存在本地，程序没有任何统计或跟踪。"
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "免费账号和 Premium 账号在音质和功能上有什么区别？",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "免费账号登录即可整首播放歌曲（128k AAC），不登录也可先以访客身份浏览首页、搜索和歌单。Premium 账号可在「设置 › 音质」中开启高音质（256k AAC）；若免费账号开启该选项被 Spotify 拒绝授权，会自动无缝回退为 128k 播放。无损音质和离线下载仅限官方客户端。"
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "为什么点了播放显示「这首歌暂时无法播放」？",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "这首歌在你所在地区不可播，或者 Spotify 拒绝了许可证（403）。同一首在网页版也放不了的话，就是版权或地区限制问题。"
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "播放栏写「Spotify 暂时限流，稍后重试」怎么办？",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "什么都不用做。MySpotify 会按 Spotify 要求的时间等完，再从刚才的位置接着放。短时间里不要频繁起播，就不容易触发限流。"
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "缓存了不是可以离线吗，为什么还要联网？",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "缓存的是 CDN 返回的加密音频分段，每次解密播放仍需要 Spotify 当场签发许可证。缓存的作用是节省流量和减少缓冲等待时间，也可在设置中自定义缓存文件夹和上限。"
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "代理怎么设？关掉窗口后怎么彻底退出？",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "代理默认跟随系统代理，也可在「设置 › 网络 › 代理」填写 127.0.0.1:7890、http://、https:// 或 socks5://。关闭窗口默认收进系统托盘继续播放，右键托盘图标选择「退出 MySpotify」即可彻底退出。"
+          }
+        }
+      ]
+    }
+  ]
+}
+</script>
 <script src="site.js" defer></script>
 </head>
 <body>
@@ -29,6 +156,8 @@
   <a class="brand" href="./"><img src="icon.png" alt="" width="28" height="28">MySpotify</a>
   <nav class="links" aria-label="导航">
     <a href="#features">功能</a>
+    <a href="desktop-lyrics.html">桌面歌词</a>
+    <a href="compare.html">客户端对比</a>
     <a href="#install">下载安装</a>
     <a href="https://github.com/margbug01/MySpotify">GitHub</a>
     <span class="langs">
@@ -42,15 +171,15 @@
 <main id="main">
   <div class="hero">
     <div class="hero-copy">
-      <p class="eyebrow">MYSPOTIFY · 非官方 · 开源 · WINDOWS / MACOS</p>
+      <p class="eyebrow">MYSPOTIFY · GO 原生非 ELECTRON · 开源 · WINDOWS / MACOS</p>
       <h1>把 Spotify 放进真正的桌面软件</h1>
-      <p class="lead">原生界面，会滚动的歌词，MV 和视频播客。免费账号也能整首播放，不登录也能先逛。</p>
+      <p class="lead">Go + MyGo 原生界面，安装包小于 10 MB。内置桌面悬浮歌词与翻译、MV 和视频播客、均衡器与设备接力；免费账号也能整首播放，不登录也能先逛。</p>
       <div class="cta">
         <a class="btn" data-dl="mac" href="https://github.com/margbug01/MySpotify/releases/latest">下载 macOS 版<small data-size="Apple 芯片">Apple 芯片</small></a>
         <a class="btn" data-dl="mac-intel" href="https://github.com/margbug01/MySpotify/releases/latest">下载 Intel Mac 版<small data-size="实验版">实验版</small></a>
         <a class="btn" data-dl="win" href="https://github.com/margbug01/MySpotify/releases/latest">下载 Windows 版<small data-size="Windows 10 / 11">Windows 10 / 11</small></a>
       </div>
-      <p class="caveat">个人项目，和 Spotify 没有任何关系，使用它账号有被限制的风险。<a href="#risk">先看风险说明</a></p>
+      <p class="caveat">个人开源项目（AGPL-3.0），和 Spotify 没有任何关系，使用第三方客户端账号有被限制的风险。<a href="#risk">先看风险说明</a></p>
     </div>
     <div class="disc" aria-hidden="true">
       <svg viewBox="0 0 1024 1024"><path d="M226.2 677A330 330 0 0 1 512 182" fill="none" stroke="#fff" stroke-width="62" stroke-linecap="round"/><path d="M292.7 409.7A242 242 0 0 1 650.8 313.8" fill="none" stroke="#fff" stroke-width="54" stroke-linecap="round"/><path d="M471.6 361.3A156 156 0 0 1 653.4 446.1" fill="none" stroke="#fff" stroke-width="46" stroke-linecap="round"/><circle cx="512" cy="512" r="44" fill="#fff"/></svg>
@@ -79,7 +208,7 @@
         <article class="line" data-shot="artist" data-glow="#4a2a22">
           <time>[00:12.40]</time>
           <h3>像个桌面软件。</h3>
-          <p>界面是 <a href="https://github.com/egoist/mygo">MyGo</a> 画的原生界面，不是套一层网页。侧栏、全屏播放页、律动舞台、系统媒体键、全局快捷键、深浅色主题都有；关窗口收进托盘接着放。</p>
+          <p>界面是 <a href="https://github.com/egoist/mygo">MyGo</a> 画的原生界面，不是套一层网页。侧栏、全屏播放页、律动舞台、macOS 刘海播放器、系统媒体键、全局快捷键、深浅色主题都有；关窗口收进托盘接着放。</p>
         </article>
         <article class="line" data-shot="browse" data-glow="#3f2147">
           <time>[00:31.08]</time>
@@ -88,23 +217,23 @@
         </article>
         <article class="line" data-shot="album" data-glow="#22303f">
           <time>[00:49.72]</time>
-          <h3>免费账号整首放。</h3>
-          <p>登录走 Spotify 官方的登录页。音频由系统网页组件自带的 DRM 模块解密，和你在浏览器里听是同一条路，128k AAC。</p>
+          <h3>免费账号整首放，Premium 支持 256k。</h3>
+          <p>登录走 Spotify 官方的登录页。音频由系统网页组件自带的 DRM 模块解密，和你在浏览器里听是同一条路：免费账号 128k AAC，Premium 可在设置里开启 256k 高音质。</p>
         </article>
         <article class="line" data-shot="playing" data-glow="#5a3320">
           <time>[01:16.25]</time>
-          <h3>歌词基本都有，而且会滚。</h3>
-          <p>Spotify 没有的，去网易云和 LRCLIB 找，带时间轴的优先，按歌名和时长核对版本，不乱配。外语歌有中文翻译时一起显示。</p>
+          <h3>桌面悬浮歌词，多源补全还会翻译。</h3>
+          <p>Spotify 没有的去网易云和 LRCLIB 找，核对歌名和时长不乱配，外语歌自动带中文翻译。Mac 和 Windows 支持桌面悬浮歌词：封面取色高亮、锁定鼠标穿透、暂停自动隐藏。<a href="desktop-lyrics.html">了解桌面歌词细节</a></p>
         </article>
         <article class="line" data-shot="playing" data-glow="#642a24">
           <time>[01:42.90]</time>
           <h3>能看 MV。</h3>
-          <p>有 MV 的歌带个小标，点它就放，播放栏里也能随时切换。可以放在封面的位置、铺满窗口或者全屏，下方跟着当前这句歌词。</p>
+          <p>有 MV 的歌带个小标，点它就放，播放栏里也能随时切换。可以放在封面的位置、铺满窗口或者全屏，下方跟着当前这句歌词，还能用 <code>[</code> / <code>]</code> 微调 0.5 秒偏移。</p>
         </article>
         <article class="line" data-shot="podcast" data-glow="#4a2228">
           <time>[02:07.33]</time>
           <h3>播客能听、能看、能跟读。</h3>
-          <p>视频播客点一下就看画面。逐字稿像歌词一样跟着滚，一个词一个词亮起，点一句就跳过去。</p>
+          <p>视频播客点一下就看画面，支持 0.5×–3× 变速不变调倍速播放。逐字稿像歌词一样跟着滚，一个词一个词亮起，点一句就跳过去。</p>
         </article>
       </div>
     </div>
@@ -118,15 +247,15 @@
         <h3>能放的</h3>
         <ol>
           <li><i>1</i><div><b>首页</b><span>照 Spotify 的分区和标题，音乐 / 播客筛选</span></div></li>
-          <li><i>2</i><div><b>每日推荐和排行榜</b></div></li>
+          <li><i>2</i><div><b>每日推荐和排行榜</b><span>自动查找「为你打造」与每日歌单</span></div></li>
           <li><i>3</i><div><b>浏览全部分类</b></div></li>
-          <li><i>4</i><div><b>歌单和专辑</b><span>自建歌单能增删改，网页或手机上新加的会自己同步过来</span></div></li>
-          <li><i>5</i><div><b>艺人页和单曲页</b><span>制作人员、播放次数、相似歌曲</span></div></li>
+          <li><i>4</i><div><b>歌单和专辑</b><span>自建歌单能增删改、大歌单支持按关键词即时筛选，跨端自动同步</span></div></li>
+          <li><i>5</i><div><b>艺人页和单曲页</b><span>完整分组制作人员（作词/作曲/编曲/混音/发行方）、播放次数、相似歌曲</span></div></li>
           <li><i>6</i><div><b>搜索</b><span>歌曲、艺人、专辑、歌单、播客</span></div></li>
           <li><i>7</i><div><b>喜欢、关注、收藏</b></div></li>
           <li><i>8</i><div><b>下一首播放和待播清单</b></div></li>
           <li><i>9</i><div><b>电台</b><span>从歌曲或艺人开</span></div></li>
-          <li><i>10</i><div><b>最近播放和个人主页</b></div></li>
+          <li><i>10</i><div><b>最近播放、个人主页与播客倍速</b><span>播客支持 0.5×–3× 变速不变调并记住偏好</span></div></li>
         </ol>
       </div>
       <div>
@@ -136,18 +265,86 @@
           <li class="off"><i></i><div><b>离线下载</b><span>需要 Premium，而且要官方客户端</span></div></li>
           <li class="off"><i></i><div><b>Jam、DJ</b><span>需要 Premium 或手机端</span></div></li>
           <li class="off"><i></i><div><b>逐字歌词</b><span>Spotify 只给网页播放器逐行时间</span></div></li>
-          <li class="off"><i></i><div><b>macOS 上部分播客</b><span>Spotify 自己托管、只给 Widevine 加密音频的节目</span></div></li>
-          <li class="off"><i></i><div><b>Intel Mac、Linux 稳定支持</b><span>提供实验性安装包，Intel 版尚待真机验证</span></div></li>
+          <li class="off"><i></i><div><b>macOS 上部分仅 Widevine 的播客</b><span>无公开 RSS 地址且仅 Widevine 加密的节目无法用 FairPlay 解密</span></div></li>
+          <li class="off"><i></i><div><b>Intel Mac、Linux 稳定支持</b><span>提供实验性安装包（Linux 默认 Qt WebEngine），尚不属于稳定支持平台</span></div></li>
           <li class="off"><i></i><div><b>好友动态、本地文件、Blend</b><span>暂时没做</span></div></li>
         </ul>
       </div>
     </div>
   </section>
 
+  <section class="section" id="compare">
+    <p class="kicker">COMPARISON</p>
+    <h2>和官方桌面端、网页版有什么区别</h2>
+    <p class="note">把差异摊开说清：MySpotify 主打原生轻量、桌面歌词和无追踪；无损音质、离线下载和官方合规保障请继续使用 Spotify 官方客户端。<a href="compare.html">查看完整对比（含 Spicetify / 终端客户端）</a></p>
+    <div class="compare-wrap">
+      <table class="compare">
+        <thead>
+          <tr>
+            <th>对比项</th>
+            <th class="hl">MySpotify (Go / MyGo)</th>
+            <th>Spotify 官方桌面客户端</th>
+            <th>Spotify 网页版</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>界面技术</th>
+            <td class="hl">Go + MyGo 原生绘制（非 Electron）</td>
+            <td>CEF（内置 Chromium 浏览器引擎）</td>
+            <td>依赖浏览器标签页</td>
+          </tr>
+          <tr>
+            <th>安装包体积</th>
+            <td class="hl">&lt; 10 MB</td>
+            <td>约 150–250 MB</td>
+            <td>免安装</td>
+          </tr>
+          <tr>
+            <th>常见内存占用</th>
+            <td class="hl">浏览约 190 MB，播放增加约 60 MB</td>
+            <td>通常 500 MB – 1 GB+</td>
+            <td>随浏览器标签页波动</td>
+          </tr>
+          <tr>
+            <th>桌面悬浮歌词</th>
+            <td class="hl">内置（Mac/Win，封面取色、锁定穿透、暂停隐藏）</td>
+            <td>不支持</td>
+            <td>不支持</td>
+          </tr>
+          <tr>
+            <th>歌词补全与翻译</th>
+            <td class="hl">Spotify + 网易云 + LRCLIB，自动匹配中文翻译</td>
+            <td>仅 Spotify 官方词库，无中文翻译</td>
+            <td>仅 Spotify 官方词库</td>
+          </tr>
+          <tr>
+            <th>均衡器与淡入淡出</th>
+            <td class="hl">Windows 支持 6 段曲线 EQ（22 预设）与 0–12s 淡入淡出</td>
+            <td>支持</td>
+            <td>不支持</td>
+          </tr>
+          <tr>
+            <th>音质与离线下载</th>
+            <td class="hl">免费 128k / Premium 256k AAC；不支持离线</td>
+            <td>支持更高音质与 Premium 离线下载</td>
+            <td>128k / 256k AAC；不支持离线</td>
+          </tr>
+          <tr>
+            <th>数据统计与风险</th>
+            <td class="hl">零遥测，开源可审计；非官方有账号风险</td>
+            <td>官方支持无封号风险，含官方遥测</td>
+            <td>官方支持，免费版含广告</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
   <section class="section" id="screens">
     <p class="kicker">SCREENS</p>
     <h2>每一页都是真数据</h2>
-    <p class="note">截图为中文界面。v0.4.17 起可在「设置 › 外观 › 语言」切换简体中文、英语或意大利语（v0.4.23 起），也可跟随系统。</p>
+    <p class="note">截图为中文界面。可在「设置 › 外观 › 语言」即时切换简体中文、English 或 Italiano，也可跟随系统。</p>
     <div class="strip" tabindex="0" role="group" aria-label="更多界面截图">
     <img src="screenshots/search.webp" width="1480" height="978" loading="lazy" alt="搜索结果：艺人和专辑">
     <img src="screenshots/track.webp" width="1480" height="978" loading="lazy" alt="单曲页：封面、播放次数和推荐歌曲">
@@ -160,10 +357,12 @@
     <p class="kicker">BEHIND THE SCENES</p>
     <h2>看不见的地方也做了</h2>
     <div class="quiet">
-      <div><h3>手机和电脑能接力（实验性）</h3><p>电脑会出现在手机 Spotify 的设备列表里，点它就转到电脑上放。手机在放时，电脑这边也能看到、能遥控。</p></div>
-      <div><h3>出错不会卡死</h3><p>许可证过期自动换身份重试；被限流就按 Spotify 要求的时间等完，从原位置接着放；断网了等网络回来接着放。</p></div>
-      <div><h3>听过的不用再下</h3><p>放过的歌（加密分段，原样存下）留在本机，再放更快、不耗流量。上限在设置里选，也能一键清除。</p></div>
-      <div><h3>数据只在本机</h3><p>设置和播放记录都在本机，续期用的 cookies 加密保存。只连 Spotify、Gravatar、查歌词时的网易云和 LRCLIB，以及检查更新时的 GitHub。</p></div>
+      <div><h3>手机电脑接力 &amp; Google Cast（实验性）</h3><p>电脑会出现在手机 Spotify 的设备列表里，点它就转到电脑放；也能直接唤醒同局域网的 Google Cast / Nest 音箱和多房间群组。</p></div>
+      <div><h3>Windows 均衡器与交叉淡入淡出</h3><p>内置 6 段可拖拽曲线均衡器和 22 套预设，支持键盘微调；播放选项可开启 0–12 秒歌曲交叉淡入淡出。</p></div>
+      <div><h3>macOS 刘海播放器 &amp; AppleScript</h3><p>支持 macOS 刘海屏迷你播放状态展示，并提供与系统「音乐」App 兼容的只读 AppleScript 接口，方便接入 Raycast、SketchyBar 等脚本。</p></div>
+      <div><h3>出错不会卡死</h3><p>许可证过期自动换身份重试；遇到 429 限流或 502 故障按要求等待并原位续播；断网恢复后自动接着放。</p></div>
+      <div><h3>听过的不用再下</h3><p>放过的歌（加密分段，原样存下）留在本机，再放更快、不耗流量。支持自定义缓存目录和上限，也能一键清除。</p></div>
+      <div><h3>数据只在本机</h3><p>设置和播放记录都在本机，续期 cookies 通过 Windows DPAPI 或 macOS 钥匙串加密保存。只连 Spotify、Gravatar、网易云/LRCLIB 和 GitHub。</p></div>
     </div>
   </section>
 
@@ -207,13 +406,13 @@
         <a class="btn" data-dl="win" href="https://github.com/margbug01/MySpotify/releases/latest">下载 .zip</a>
       </div>
     </div>
-    <p class="note">以后的版本在「设置 › 关于」里点「更新并重启」就行。设置和登录都不跟着程序文件，不会丢。</p>
+    <p class="note">以后的版本在「设置 › 关于」里点「更新并重启」就行，设置和登录不会丢。Linux 用户可试用实验性 <code>.deb</code> / <code>.tar.gz</code>（默认 Qt WebEngine 后端），详情见 <a href="https://github.com/margbug01/MySpotify/blob/main/LINUX.md">Linux 安装说明</a>。</p>
     <div class="keys">
       <span><kbd>Space</kbd> 播放 / 暂停</span>
       <span><kbd>⌘/Ctrl ← →</kbd> 上一首 / 下一首</span>
       <span><kbd>⌘/Ctrl D</kbd> 喜欢</span>
       <span><kbd>⌘/Ctrl L</kbd> 播放页</span>
-      <span><kbd>⌘/Ctrl F</kbd> 搜索</span>
+      <span><kbd>⌘/Ctrl F</kbd> 搜索 / 歌单筛选</span>
     </div>
   </section>
 
@@ -221,11 +420,14 @@
     <p class="kicker">FAQ</p>
     <h2>常见问题</h2>
     <div class="faq">
-      <details><summary>为什么点了播放显示「这首歌暂时无法播放」？</summary><p>这首歌在你所在地区不可播，或者 Spotify 拒绝了许可证。同一首在网页版也放不了的话，就是版权问题。</p></details>
-      <details><summary>播放栏写「Spotify 暂时限流，稍后重试」怎么办？</summary><p>什么都不用做。MySpotify 会按 Spotify 要求的时间等完，再从刚才的位置接着放。短时间里别反复起播，就不容易碰到。</p></details>
-      <details><summary>缓存了不是可以离线吗，为什么还要联网？</summary><p>缓存的是加密的音频，解密要用 Spotify 当场发的许可证。缓存省的是流量和缓冲时间。</p></details>
-      <details><summary>代理怎么设？</summary><p>默认跟随系统代理。也可以在「设置 › 网络 › 代理」填 <code>127.0.0.1:7890</code>、<code>http://…</code>、<code>https://…</code> 或 <code>socks5://…</code>。</p></details>
-      <details><summary>关掉窗口怎么还在放歌？怎么真正退出？</summary><p>关窗口只是收进托盘，音乐照常放。要退出：右键托盘图标 › 退出 MySpotify。</p></details>
+      <details><summary>MySpotify 相比官方 Spotify 客户端有什么区别，内存占用低多少？</summary><p>MySpotify 使用 Go 和 MyGo 原生绘制界面，不内置完整 Chromium/Electron 浏览器壳。下载安装包小于 10 MB，仅浏览时总内存占用约 190 MB，播放音乐时额外启动一个约 60 MB 的系统 DRM 解密进程；同时内置了官方客户端缺少的桌面悬浮歌词、歌词翻译、网易云/LRCLIB 歌词补全和零遥测特性。官方客户端则提供无损音质、离线下载、Jam/DJ 及官方账号保障。</p></details>
+      <details><summary>MySpotify 支持 macOS 和 Windows 的桌面悬浮歌词吗？</summary><p>支持。在 macOS 和 Windows 上点击播放栏的「桌面歌词」按钮即可开启，当前演唱的歌词会悬浮在所有窗口上方，文字随专辑封面取色逐字亮起，第二行可显示中文翻译或下一句歌词。支持锁定后鼠标穿透、暂停时自动隐藏、自定义字号颜色以及全局快捷键开关。</p></details>
+      <details><summary>MySpotify 安全吗？会破解 DRM 或上传账号数据吗？</summary><p>MySpotify 不破解 DRM，音频解密完全在系统自带的 WebView2 Widevine（Windows）或 WebKit FairPlay（macOS）模块内完成，程序无法获取密钥或解密后的媒体文件。登录直接走 Spotify 官方登录页，续期 Cookie 通过 Windows DPAPI 或 macOS 钥匙串加密保存在本地，程序没有任何统计或跟踪。</p></details>
+      <details><summary>免费账号和 Premium 账号在音质和功能上有什么区别？</summary><p>免费账号登录即可整首播放歌曲（128k AAC），不登录也可先以访客身份浏览首页、搜索和歌单。Premium 账号可在「设置 › 音质」中开启高音质（256k AAC）；若免费账号开启该选项被 Spotify 拒绝授权，会自动无缝回退为 128k 播放。无损音质和离线下载仅限官方客户端。</p></details>
+      <details><summary>为什么点了播放显示「这首歌暂时无法播放」？</summary><p>这首歌在你所在地区不可播，或者 Spotify 拒绝了许可证（403）。同一首在网页版也放不了的话，就是版权或地区限制问题。</p></details>
+      <details><summary>播放栏写「Spotify 暂时限流，稍后重试」怎么办？</summary><p>什么都不用做。MySpotify 会按 Spotify 要求的时间等完，再从刚才的位置接着放。短时间里不要频繁起播，就不容易触发限流。</p></details>
+      <details><summary>缓存了不是可以离线吗，为什么还要联网？</summary><p>缓存的是 CDN 返回的加密音频分段，每次解密播放仍需要 Spotify 当场签发许可证。缓存的作用是节省流量和减少缓冲等待时间，也可在设置中自定义缓存文件夹和上限。</p></details>
+      <details><summary>代理怎么设？关掉窗口后怎么彻底退出？</summary><p>代理默认跟随系统代理，也可在「设置 › 网络 › 代理」填写 <code>127.0.0.1:7890</code>、<code>http://…</code>、<code>https://…</code> 或 <code>socks5://…</code>。关闭窗口默认收进系统托盘继续播放，右键托盘图标选择「退出 MySpotify」即可彻底退出。</p></details>
     </div>
     <p class="note"><a href="https://github.com/margbug01/MySpotify#常见问题">更多问题</a> · <a href="https://github.com/margbug01/MySpotify/issues">反馈问题</a></p>
   </section>
@@ -233,7 +435,7 @@
 
 <footer>
   <p>同一作者的其他 MyGo 应用：<a href="https://margbug01.github.io/mami/">Mami</a> · <a href="https://margbug01.github.io/ShoesGUI/">MyShoes</a> · <a href="https://margbug01.github.io/Candle/">Candle</a></p>
-  <p><a href="https://github.com/margbug01/MySpotify">GitHub</a> · <a href="https://github.com/margbug01/MySpotify/blob/main/LICENSE">AGPL-3.0</a></p>
+  <p><a href="desktop-lyrics.html">桌面歌词</a> · <a href="compare.html">客户端对比</a> · <a href="llms.txt">llms.txt</a> · <a href="https://github.com/margbug01/MySpotify">GitHub</a> · <a href="https://github.com/margbug01/MySpotify/blob/main/LICENSE">AGPL-3.0</a></p>
   <p>Spotify 是 Spotify AB 的商标，MySpotify 与其没有关联。截图里的封面和照片版权归各自的权利人。</p>
 </footer>
 
