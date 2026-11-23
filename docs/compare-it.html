@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MySpotify a confronto con l’app Spotify ufficiale, Spicetify e i client TUI | Confronto</title>
+<meta name="description" content="Confronto tecnico e onesto tra MySpotify (Go / MyGo nativo), l’app desktop ufficiale di Spotify, Spicetify e i client da terminale come ncspot: RAM, dimensioni del download, testi sul desktop, MV, equalizzatore, qualità audio e rischi.">
+<meta name="theme-color" content="#0d0a09">
+<link rel="canonical" href="https://margbug01.github.io/MySpotify/compare-it.html">
+<link rel="alternate" hreflang="zh-CN" href="https://margbug01.github.io/MySpotify/compare.html">
+<link rel="alternate" hreflang="en" href="https://margbug01.github.io/MySpotify/compare-en.html">
+<link rel="alternate" hreflang="it" href="https://margbug01.github.io/MySpotify/compare-it.html">
+<link rel="alternate" hreflang="x-default" href="https://margbug01.github.io/MySpotify/compare-en.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="MySpotify">
+<meta property="og:locale" content="it_IT">
+<meta property="og:url" content="https://margbug01.github.io/MySpotify/compare-it.html">
+<meta property="og:title" content="MySpotify a confronto con l’app Spotify ufficiale, Spicetify e i client TUI">
+<meta property="og:description" content="Confronto affiancato di motore dell’interfaccia, RAM, testi sul desktop, MV, equalizzatore, download offline e rischi per l’account.">
+<meta property="og:image" content="https://margbug01.github.io/MySpotify/og-it.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="MySpotify a confronto con l’app Spotify ufficiale, Spicetify e i client TUI">
+<meta name="twitter:description" content="MySpotify nativo in Go a confronto con l’app desktop ufficiale basata su CEF, Spicetify e i player TUI.">
+<meta name="twitter:image" content="https://margbug01.github.io/MySpotify/og-it.png">
+<link rel="icon" href="icon.png">
+<link rel="stylesheet" href="style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "MySpotify", "item": "https://margbug01.github.io/MySpotify/it.html"},
+        {"@type": "ListItem", "position": 2, "name": "Confronto", "item": "https://margbug01.github.io/MySpotify/compare-it.html"}
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Perché MySpotify usa meno RAM del client desktop ufficiale di Spotify?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "L’app desktop ufficiale di Spotify include CEF (Chromium Embedded Framework) per disegnare tutta l’interfaccia. MySpotify disegna l’interfaccia in modo nativo con Go e MyGo e usa il modulo DRM del sistema (WebView2 o WebKit) solo per decifrare la riproduzione: il risultato è un installer sotto i 10 MB, circa 190 MB di RAM mentre si naviga e circa 60 MB in più durante la riproduzione."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Come si confronta MySpotify con Spicetify?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Spicetify modifica il client Spotify ufficiale con temi personalizzati ed estensioni JS, mantenendo il runtime CEF ufficiale e i download offline. MySpotify è un’app nativa in Go autonoma, che non richiede il client ufficiale, usa molto meno disco e RAM e include testi fluttuanti sul desktop, testi da più fonti e zero telemetria."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Quando conviene restare con l’app desktop ufficiale di Spotify?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Usa l’app desktop ufficiale se ti servono i download offline, l’audio lossless, Jam, il DJ con intelligenza artificiale, l’attività degli amici, i file audio locali o nessun rischio di violare le condizioni d’uso di Spotify per i client di terze parti."
+          }
+        }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip" href="#main">Vai al contenuto</a>
+
+<header class="nav">
+  <a class="brand" href="it.html"><img src="icon.png" alt="" width="28" height="28">MySpotify</a>
+  <nav class="links" aria-label="Navigazione">
+    <a href="it.html">Home</a>
+    <a href="desktop-lyrics-it.html">Testi sul desktop</a>
+    <a href="compare-it.html" aria-current="page">Confronto</a>
+    <a href="it.html#install">Installazione</a>
+    <a href="https://github.com/margbug01/MySpotify">GitHub</a>
+    <span class="langs">
+      <a href="compare.html" hreflang="zh-CN" lang="zh-CN">中文</a>
+      <a href="compare-en.html" hreflang="en" lang="en">EN</a>
+      <a href="compare-it.html" hreflang="it" lang="it" aria-current="page">IT</a>
+    </span>
+  </nav>
+</header>
+
+<main id="main">
+  <section class="sub-hero">
+    <p class="crumb"><a href="it.html">MySpotify</a> / Confronto</p>
+    <p class="eyebrow">PRESTAZIONI E CONFRONTO</p>
+    <h1>MySpotify a confronto con Spotify ufficiale, Spicetify e i client TUI</h1>
+    <p class="lead">Ogni modo di usare Spotify sul desktop ha i suoi compromessi. Ecco un confronto basato sui fatti: motore dell’interfaccia, consumo di RAM, testi sul desktop, supporto ai contenuti e limiti.</p>
+  </section>
+
+  <section class="section" style="padding-top: 24px;">
+    <div class="compare-wrap">
+      <table class="compare">
+        <thead>
+          <tr>
+            <th>Voce</th>
+            <th class="hl">MySpotify (Go/MyGo)</th>
+            <th>Spotify desktop ufficiale</th>
+            <th>Ufficiale + Spicetify</th>
+            <th>Client TUI (ncspot / spotify-player)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>Architettura dell’interfaccia</th>
+            <td class="hl">Interfaccia nativa Go + MyGo (non Electron)</td>
+            <td>CEF (Chromium integrato)</td>
+            <td>CEF ufficiale + modifiche JS/CSS</td>
+            <td>Interfaccia da terminale in Rust (librespot)</td>
+          </tr>
+          <tr>
+            <th>Dimensione dell’installer</th>
+            <td class="hl">&lt; 10 MB</td>
+            <td>~150–250 MB</td>
+            <td>App ufficiale + Spicetify CLI</td>
+            <td>~10–25 MB</td>
+          </tr>
+          <tr>
+            <th>RAM tipica</th>
+            <td class="hl">~190 MB navigando (+~60 MB in riproduzione)</td>
+            <td>Spesso 500 MB – 1 GB+</td>
+            <td>Simile o un po’ più alta dell’ufficiale</td>
+            <td>~30–80 MB</td>
+          </tr>
+          <tr>
+            <th>Tipo di account</th>
+            <td class="hl">Free (128k) e Premium (256k), navigazione anche da ospite</td>
+            <td>Free e Premium</td>
+            <td>Free e Premium</td>
+            <td>Richiede Premium (librespot)</td>
+          </tr>
+          <tr>
+            <th>Testi fluttuanti sul desktop</th>
+            <td class="hl">Integrati (macOS e Windows, blocco clic, nascondi in pausa)</td>
+            <td>No</td>
+            <td>Solo plugin della comunità (senza sovrapposizione nativa trasparente ai clic)</td>
+            <td>No</td>
+          </tr>
+          <tr>
+            <th>Testi di riserva</th>
+            <td class="hl">Spotify + NetEase Cloud Music + LRCLIB</td>
+            <td>Solo il catalogo Spotify</td>
+            <td>Tramite estensioni della comunità</td>
+            <td>Testi di base</td>
+          </tr>
+          <tr>
+            <th>Video musicali e podcast</th>
+            <td class="hl">MV, podcast video, trascrizioni parola per parola e velocità 0,5×–3×</td>
+            <td>Supporto completo</td>
+            <td>Supporto completo</td>
+            <td>Solo audio</td>
+          </tr>
+          <tr>
+            <th>Equalizzatore e crossfade</th>
+            <td class="hl">EQ a curva a 6 bande (22 preset) e crossfade 0–12 s su Windows</td>
+            <td>Sì</td>
+            <td>Sì</td>
+            <td>Limitato o assente</td>
+          </tr>
+          <tr>
+            <th>Offline e lossless</th>
+            <td class="hl">No (la cache cifrata richiede la licenza online)</td>
+            <td>Sì (Premium)</td>
+            <td>Sì (Premium)</td>
+            <td>Nessuna libreria offline ufficiale</td>
+          </tr>
+          <tr>
+            <th>Integrazione con il sistema</th>
+            <td class="hl">Tasti multimediali, area di notifica, player nella notch su macOS e AppleScript, Connect / Google Cast</td>
+            <td>Tasti multimediali, Spotify Connect</td>
+            <td>Come l’ufficiale</td>
+            <td>MPRIS / tastiera</td>
+          </tr>
+          <tr>
+            <th>Open source e privacy</th>
+            <td class="hl">Open source AGPL-3.0, zero telemetria</td>
+            <td>Codice chiuso, con telemetria</td>
+            <td>Modifiche aperte su base chiusa</td>
+            <td>Open source, nessuna telemetria ufficiale</td>
+          </tr>
+          <tr>
+            <th>Rischio per l’account e per i guasti</th>
+            <td class="hl">Interfacce web non ufficiali; rischio per le condizioni d’uso e per eventuali rotture</td>
+            <td>Supporto ufficiale, nessun rischio per le condizioni d’uso</td>
+            <td>Client modificato; si rompe con gli aggiornamenti</td>
+            <td>Client non ufficiale; rischio per le condizioni d’uso</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="section">
+    <p class="kicker">COME SCEGLIERE</p>
+    <h2>Quale client si adatta al tuo modo di usare Spotify?</h2>
+    <div class="cards">
+      <article class="card">
+        <h3>Scegli MySpotify se…</h3>
+        <p>Vuoi un’interfaccia nativa e veloce, non Electron, sotto i 10 MB, con testi fluttuanti sul desktop, testi di riserva da LRCLIB e NetEase, video musicali, trascrizioni dei podcast e zero telemetria, anche con un account gratuito.</p>
+      </article>
+      <article class="card">
+        <h3>Scegli Spotify ufficiale / Spicetify se…</h3>
+        <p>Dipendi dai download offline di Premium, dall’audio lossless, da Jam, dal DJ con intelligenza artificiale o dai file locali, oppure ti serve il rispetto rigoroso delle condizioni d’uso ufficiali.</p>
+      </article>
+      <article class="card">
+        <h3>Scegli un client TUI se…</h3>
+        <p>Hai già Spotify Premium, vivi in un terminale su Linux o macOS e non ti servono copertine, testi fluttuanti o video musicali.</p>
+      </article>
+    </div>
+    <div class="cta-inline">
+      <a class="btn primary" href="https://github.com/margbug01/MySpotify/releases/latest">Scarica MySpotify<small>Windows / macOS · &lt; 10 MB</small></a>
+      <a class="btn" href="desktop-lyrics-it.html">Scopri i testi sul desktop<small>Sovrapposizione sempre in primo piano</small></a>
+    </div>
+  </section>
+
+  <section class="section" id="faq">
+    <p class="kicker">DOMANDE FREQUENTI</p>
+    <h2>Domande sul confronto</h2>
+    <div class="faq">
+      <details><summary>Perché MySpotify usa meno RAM del client desktop ufficiale di Spotify?</summary><p>L’app desktop ufficiale di Spotify include CEF (Chromium Embedded Framework) per disegnare tutta l’interfaccia. MySpotify disegna l’interfaccia in modo nativo con Go e MyGo e usa il modulo DRM del sistema (WebView2 o WebKit) solo per decifrare la riproduzione: il risultato è un installer sotto i 10 MB, circa 190 MB di RAM mentre si naviga e circa 60 MB in più durante la riproduzione.</p></details>
+      <details><summary>Come si confronta MySpotify con Spicetify?</summary><p>Spicetify modifica il client Spotify ufficiale con temi personalizzati ed estensioni JS, mantenendo il runtime CEF ufficiale e i download offline. MySpotify è un’app nativa in Go autonoma, che non richiede il client ufficiale, usa molto meno disco e RAM e include testi fluttuanti sul desktop, testi da più fonti e zero telemetria.</p></details>
+      <details><summary>Quando conviene restare con l’app desktop ufficiale di Spotify?</summary><p>Usa l’app desktop ufficiale se ti servono i download offline, l’audio lossless, Jam, il DJ con intelligenza artificiale, l’attività degli amici, i file audio locali o nessun rischio di violare le condizioni d’uso di Spotify per i client di terze parti.</p></details>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <p><a href="it.html">Torna alla home di MySpotify</a> · <a href="desktop-lyrics-it.html">Guida ai testi sul desktop</a> · <a href="llms.txt">llms.txt</a></p>
+  <p><a href="https://github.com/margbug01/MySpotify">GitHub</a> · <a href="https://github.com/margbug01/MySpotify/blob/main/LICENSE">AGPL-3.0</a></p>
+  <p>Spotify è un marchio di Spotify AB e MySpotify non ha alcun legame con essa.</p>
+</footer>
+</body>
+</html>
