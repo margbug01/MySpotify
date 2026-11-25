@@ -22,6 +22,9 @@ type settings struct {
 	// NotchVirtual keeps a notch of the app's own showing at the top of a
 	// display without one; else it shows only while the pointer asks.
 	NotchVirtual bool `json:"notchVirtual"`
+	// NotchWidth is the open notch player's width in points, 0 for the
+	// default (notchOpenW).
+	NotchWidth float64 `json:"notchWidth,omitempty"`
 	// NotchGreeted says the notch showed itself, once, as the first song
 	// played (greet).
 	NotchGreeted bool `json:"notchGreeted"`

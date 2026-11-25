@@ -273,6 +273,8 @@
   "在屏幕顶部的刘海处显示迷你播放器，鼠标悬停即可展开": "Mostra un mini player in alto sullo schermo. Passaci sopra per espanderlo.",
   "播放时显示实时活动": "Mostra l'attività durante la riproduzione",
   "在刘海两侧显示封面与音频波形，可能遮挡刘海旁的菜单栏图标": "Mostra copertina e livelli audio ai lati del notch. Potrebbe coprire le icone della barra dei menu.",
+  "展开宽度": "Larghezza aperta",
+  "鼠标悬停展开后迷你播放器的宽度": "Quanto è largo il mini player quando si apre al passaggio del puntatore.",
   "在无刘海的屏幕上常驻显示": "Resta visibile sugli schermi senza notch",
   "关闭时，将鼠标移至屏幕顶部中央即可唤出，不会遮挡菜单栏": "Se disattivato, porta il puntatore al centro in alto per mostrarlo senza coprire la barra dei menu.",
   "外观": "Aspetto",

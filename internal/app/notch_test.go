@@ -1,6 +1,7 @@
 package app
 
 import (
+	"encoding/json"
 	"fmt"
 	"image/png"
 	"os"
@@ -23,7 +24,7 @@ func TestNotchGreetsOnce(t *testing.T) {
 	}
 	a := newTestApp()
 	a.settings = defaultSettings()
-	n := &notch{a: a, w0: 200, h0: 32, winW: notchOpenW + 60, winH: 240}
+	n := &notch{a: a, w0: 200, h0: 32, winW: notchOpenMax + 60, winH: 240}
 	a.notch = n
 	a.pl.Cue([]spotify.Track{{ID: "7", Name: "宝船", Duration: 200000}})
 	a.syncWindows()
@@ -73,7 +74,7 @@ func TestFirstUseFrames(t *testing.T) {
 	}
 	a := newTestApp()
 	a.settings = defaultSettings()
-	n := &notch{a: a, real: true, w0: 185, h0: 32, winW: notchOpenW + 60, winH: 240}
+	n := &notch{a: a, real: true, w0: 185, h0: 32, winW: notchOpenMax + 60, winH: 240}
 	a.notch = n
 	a.pl.Cue([]spotify.Track{{ID: "7", Name: "NAINAINAI", Artists: []spotify.Artist{{Name: "ATARASHII GAKKO!"}}, Duration: 193877}})
 	main := ui.NewTester(a.view, 1200, 800) // for the app's colors
@@ -87,4 +88,40 @@ func TestFirstUseFrames(t *testing.T) {
 		save(fmt.Sprintf("notch-hello-%d", ms), tt)
 	}
 
+}
+
+// The expanded-width slider in the settings sets how wide the open notch
+// player grows, and keeps it.
+func TestNotchWidthSlider(t *testing.T) {
+	a := newTestApp()
+	a.settings = defaultSettings()
+	a.settings.Notch = true
+	a.settings.path = filepath.Join(t.TempDir(), "settings.json")
+	n := &notch{a: a, real: true, w0: 185, h0: 32, winW: notchOpenMax + 60, winH: 240, open: true}
+	a.notch = n
+	a.pl.Cue([]spotify.Track{{ID: "7", Name: "宝船", Duration: 200000}})
+	tt := settingsTester(a)
+	// The row says the slider's name too: find the slider itself.
+	s, ok := tt.AccessByRole(ui.RoleSlider, "展开宽度")
+	if !ok {
+		t.Fatal("no width slider")
+	}
+	tt.ClickAt(s.Bounds.X+s.Bounds.W/2, s.Bounds.Y+s.Bounds.H/2)
+	tt.Frame()
+	clicked := a.settings.NotchWidth
+	if clicked == 0 {
+		t.Fatal("clicking the slider set no width")
+	}
+	for range 3 {
+		tt.Key(0, ui.KeyLeft)
+	}
+	tt.Frame()
+	if w, _ := n.target(); w != float32(clicked-30) {
+		t.Fatalf("open notch %v wide, want %v", w, clicked-30)
+	}
+	b, err := os.ReadFile(a.settings.path)
+	var saved settings
+	if err != nil || json.Unmarshal(b, &saved) != nil || saved.NotchWidth != clicked-30 {
+		t.Fatalf("saved width %v, %v", saved.NotchWidth, err)
+	}
 }

@@ -98,6 +98,17 @@ func (a *app) settingsPage(c *ui.Context) {
 						a.changed()
 					}
 				})
+				row(l10n.T("展开宽度"), l10n.T("鼠标悬停展开后迷你播放器的宽度"), func() {
+					width := float64(a.notch.openW())
+					ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
+						ui.Text(c, fmt.Sprint(width)).FontSize(12).FontFeatures("tnum").TextColor(p.muted).Width(44).TextAlign(ui.End)
+						if ui.Slider(c.Key("notch-width"), &width, notchOpenMin, notchOpenMax).Width(140).Step(10).Label(l10n.T("展开宽度")).Disabled(!s.Notch).Changed() {
+							s.NotchWidth = width
+							s.save()
+							a.notch.preview()
+						}
+					})
+				})
 				row(l10n.T("在无刘海的屏幕上常驻显示"), l10n.T("关闭时，将鼠标移至屏幕顶部中央即可唤出，不会遮挡菜单栏"), func() {
 					if ui.Switch(c.Key("virtual"), &s.NotchVirtual).Label(l10n.T("在无刘海的屏幕上常驻显示")).Disabled(!s.Notch).Changed() {
 						a.changed()

@@ -42,15 +42,26 @@ type notch struct {
 }
 
 const (
-	notchOpenW  = 468
-	notchIdleW  = 330
-	notchHelloW = 340
+	// The open player is as wide as the listener sets it, between these.
+	notchOpenMin = 360
+	notchOpenW   = 468
+	notchOpenMax = 560
+	notchIdleW   = 330
+	notchHelloW  = 340
 )
+
+// openW returns the width of the open player, as the settings say.
+func (n *notch) openW() float32 {
+	if n.a.settings.NotchWidth == 0 {
+		return notchOpenW
+	}
+	return float32(min(max(n.a.settings.NotchWidth, notchOpenMin), notchOpenMax))
+}
 
 func newNotch(a *app) *notch {
 	n := &notch{a: a}
 	n.measure()
-	n.winW, n.winH = notchOpenW+60, 240
+	n.winW, n.winH = notchOpenMax+60, 240
 	n.place()
 	n.win = mygo.NewWindow(mygo.WindowOptions{
 		Title:         appName + l10n.T("迷你播放器"),
@@ -218,6 +229,17 @@ func (n *notch) keep() {
 	n.setEnabled(true)
 }
 
+// preview opens the notch for a moment, as the listener sets its width.
+func (n *notch) preview() {
+	if n.win == nil {
+		return // as in tests
+	}
+	n.open = true
+	n.lastInside = time.Now().Add(time.Second)
+	n.win.Invalidate()
+	n.poll()
+}
+
 // target returns the size the shape goes to.
 func (n *notch) target() (w, h float32) {
 	tr := n.a.pl.Current()
@@ -226,7 +248,7 @@ func (n *notch) target() (w, h float32) {
 	case n.open && tr == nil:
 		return notchIdleW, n.h0 + 72
 	case n.open:
-		return notchOpenW, n.h0 + 178
+		return n.openW(), n.h0 + 178
 	case n.hello && tr != nil:
 		return notchHelloW, n.h0 + 58
 	case !n.real && !s.NotchVirtual:
@@ -374,7 +396,7 @@ func (n *notch) view(c *ui.Context) {
 			}
 			n.helloRow(c, hello*(1-open), (w-notchHelloW)/2)
 			if open > 0.02 {
-				n.expanded(c, tr, open, (w-notchOpenW)/2)
+				n.expanded(c, tr, open, (w-n.openW())/2)
 			}
 		})
 	})
@@ -422,7 +444,7 @@ func (n *notch) expanded(c *ui.Context, tr *spotify.Track, open, left float32) {
 	pl := a.pl
 	art := a.art.get(spotify.Sized(tr.Album.PicURL, 200), false)
 	a.tickTimes(c)
-	col := ui.Column(c).Absolute().Top(n.h0+6).Left(left).Width(notchOpenW).Padding(8, 22, 16, 22).Gap(12).Opacity(max(0, open*1.4-0.4))
+	col := ui.Column(c).Absolute().Top(n.h0+6).Left(left).Width(n.openW()).Padding(8, 22, 16, 22).Gap(12).Opacity(max(0, open*1.4-0.4))
 	col.Translate(0, (1-open)*-10)
 	col.Children(func() {
 		ui.Row(c).Gap(14).AlignItems(ui.Center).Children(func() {

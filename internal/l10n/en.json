@@ -273,6 +273,8 @@
   "在屏幕顶部的刘海处显示迷你播放器，鼠标悬停即可展开": "Show a mini player at the top of the screen. Hover to expand it.",
   "播放时显示实时活动": "Show activity during playback",
   "在刘海两侧显示封面与音频波形，可能遮挡刘海旁的菜单栏图标": "Show the cover and animated levels beside the notch. This may cover menu bar icons.",
+  "展开宽度": "Expanded width",
+  "鼠标悬停展开后迷你播放器的宽度": "How wide the mini player is when it expands on hover.",
   "在无刘海的屏幕上常驻显示": "Keep visible on screens without a notch",
   "关闭时，将鼠标移至屏幕顶部中央即可唤出，不会遮挡菜单栏": "When off, move the pointer to the top center to reveal it without covering the menu bar.",
   "外观": "Appearance",
