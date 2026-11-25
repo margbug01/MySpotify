@@ -48,7 +48,20 @@ const (
 	notchOpenMax = 560
 	notchIdleW   = 330
 	notchHelloW  = 340
+	// Each wing, beside the housing as music plays, is as wide as the
+	// listener sets it, between these.
+	notchWingMin = 16
+	notchWingMax = 40
 )
+
+// wing returns how far the notch reaches out on each side as music plays:
+// by default just enough for the cover and the levels.
+func (n *notch) wing() float32 {
+	if w := n.a.settings.NotchWing; w != 0 {
+		return float32(min(max(w, notchWingMin), notchWingMax))
+	}
+	return max(0, n.h0-12) + 10
+}
 
 // openW returns the width of the open player, as the settings say.
 func (n *notch) openW() float32 {
@@ -258,7 +271,7 @@ func (n *notch) target() (w, h float32) {
 	case tr != nil && s.NotchActivity && s.Notch:
 		// Wings just wide enough for the cover and the levels, so they
 		// hide no more of the menu bar than they must.
-		return n.w0 + 2*max(0, n.h0-12) + 20, n.h0
+		return n.w0 + 2*n.wing(), n.h0
 	default:
 		return n.w0, n.h0
 	}
@@ -409,8 +422,17 @@ func (n *notch) compact(c *ui.Context, tr *spotify.Track, shown float32) {
 		return
 	}
 	art := n.a.art.get(spotify.Sized(tr.Album.PicURL, 96), false)
-	s := n.h0 - 12
-	ui.Row(c).Absolute().Top(0).Left(0).Right(0).Height(n.h0).PaddingX(7).AlignItems(ui.Center).Opacity(shown).Children(func() {
+	// Narrow wings shrink the cover and the levels, a little short of the
+	// housing.
+	wing := n.wing()
+	pad := min(7, max(4, wing/4))
+	room := wing - pad - 3
+	s := min(n.h0-12, room)
+	lw, bars := min(16, room), 4
+	if lw < 14 {
+		bars = 3
+	}
+	ui.Row(c).Absolute().Top(0).Left(0).Right(0).Height(n.h0).PaddingX(pad).AlignItems(ui.Center).Opacity(shown).Children(func() {
 		cov := ui.Box(c).Size(s, s).Radius(s * 0.28)
 		in := artIn(cov, bitmap(art))
 		if in < 1 {
@@ -418,7 +440,7 @@ func (n *notch) compact(c *ui.Context, tr *spotify.Track, shown float32) {
 		}
 		cov.Children(func() { artImage(c, bitmap(art), s*0.28, in) })
 		ui.Spacer(c)
-		n.levels(c, tr, 16, s*0.7, 4)
+		n.levels(c, tr, lw, s*0.7, bars)
 	})
 }
 

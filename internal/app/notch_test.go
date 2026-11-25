@@ -125,3 +125,38 @@ func TestNotchWidthSlider(t *testing.T) {
 		t.Fatalf("saved width %v, %v", saved.NotchWidth, err)
 	}
 }
+
+// The resting-width slider in the settings sets how far the notch reaches
+// out beside the housing as music plays, and keeps it.
+func TestNotchWingSlider(t *testing.T) {
+	a := newTestApp()
+	a.settings = defaultSettings()
+	a.settings.Notch = true
+	a.settings.path = filepath.Join(t.TempDir(), "settings.json")
+	n := &notch{a: a, real: true, w0: 185, h0: 32, winW: notchOpenMax + 60, winH: 240}
+	a.notch = n
+	a.pl.Cue([]spotify.Track{{ID: "7", Name: "宝船", Duration: 200000}})
+	tt := settingsTester(a)
+	s, ok := tt.AccessByRole(ui.RoleSlider, "常驻宽度")
+	if !ok {
+		t.Fatal("no resting-width slider")
+	}
+	tt.ClickAt(s.Bounds.X+s.Bounds.W/2, s.Bounds.Y+s.Bounds.H/2)
+	tt.Frame()
+	clicked := a.settings.NotchWing
+	if clicked == 0 {
+		t.Fatal("clicking the slider set no width")
+	}
+	for range 3 {
+		tt.Key(0, ui.KeyLeft)
+	}
+	tt.Frame()
+	if w, _ := n.target(); w != 185+2*float32(clicked-6) {
+		t.Fatalf("resting notch %v wide, want %v", w, 185+2*(clicked-6))
+	}
+	b, err := os.ReadFile(a.settings.path)
+	var saved settings
+	if err != nil || json.Unmarshal(b, &saved) != nil || saved.NotchWing != clicked-6 {
+		t.Fatalf("saved wing %v, %v", saved.NotchWing, err)
+	}
+}

@@ -25,6 +25,9 @@ type settings struct {
 	// NotchWidth is the open notch player's width in points, 0 for the
 	// default (notchOpenW).
 	NotchWidth float64 `json:"notchWidth,omitempty"`
+	// NotchWing is how far the notch reaches out on each side as music
+	// plays, in points, 0 for just enough for the cover and the levels.
+	NotchWing float64 `json:"notchWing,omitempty"`
 	// NotchGreeted says the notch showed itself, once, as the first song
 	// played (greet).
 	NotchGreeted bool `json:"notchGreeted"`

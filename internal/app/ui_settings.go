@@ -98,6 +98,17 @@ func (a *app) settingsPage(c *ui.Context) {
 						a.changed()
 					}
 				})
+				row(l10n.T("常驻宽度"), l10n.T("播放时刘海两侧伸出的宽度，调窄可以少挡一些菜单栏图标"), func() {
+					wing := float64(a.notch.wing())
+					ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
+						ui.Text(c, fmt.Sprint(wing)).FontSize(12).FontFeatures("tnum").TextColor(p.muted).Width(44).TextAlign(ui.End)
+						if ui.Slider(c.Key("notch-wing"), &wing, notchWingMin, notchWingMax).Width(140).Step(2).Label(l10n.T("常驻宽度")).Disabled(!s.Notch || !s.NotchActivity).Changed() {
+							s.NotchWing = wing
+							s.save()
+							a.redraw()
+						}
+					})
+				})
 				row(l10n.T("展开宽度"), l10n.T("鼠标悬停展开后迷你播放器的宽度"), func() {
 					width := float64(a.notch.openW())
 					ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
