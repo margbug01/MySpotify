@@ -117,6 +117,12 @@ type Player struct {
 	throttles int // the times in a row, to wait longer each
 	offline   int // the times in a row the network was down, likewise
 	flaky     int // the times this track failed on the network, Spotify answering
+	// cooling is whether Spotify's wait is still running: a track picked
+	// meanwhile waits with it, rather than asking for a licence the
+	// service turns away; cools counts the waits, so an earlier one's end
+	// doesn't cut a later one short.
+	cooling bool
+	cools   int
 
 	lyrics       []lyrics.Line
 	lyricsLoaded bool
@@ -343,10 +349,12 @@ func (p *Player) ended() {
 			return
 		}
 	}
+	// Played to its end, under Spotify Connect too: the next 429 waits
+	// 30 seconds again, not the 8 minutes the last ones came to.
+	p.throttles, p.flaky = 0, 0
 	if p.control("advance", nil) {
 		return
 	}
-	p.throttles, p.flaky = 0, 0
 	if p.repeat == RepeatOne {
 		p.out.Seek(0)
 		p.out.Play()
@@ -358,6 +366,16 @@ func (p *Player) ended() {
 	}
 	if p.at+1 >= len(p.order) && p.repeat == RepeatOff {
 		p.playing = false
+		p.sync()
+		return
+	}
+	// The same song next, as a queue of one repeating: it plays again
+	// here, as with RepeatOne. Loaded anew, it would cost one more of the
+	// licences Spotify gives a device only so many of in a few hours.
+	if at := (p.at + 1) % len(p.order); p.queue[p.order[at]].ID == p.track.ID {
+		p.at = at
+		p.out.Seek(0)
+		p.out.Play()
 		p.sync()
 		return
 	}
@@ -459,7 +477,8 @@ func pageNetFault(msg string, licence int) bool {
 }
 
 // throttled waits as Spotify asked, wait, or longer each time if it did not
-// say, then loads the track again from where it was.
+// say, then loads the track again from where it was, or the one picked
+// while it waited.
 func (p *Player) throttled(wait time.Duration) {
 	if wait <= 0 {
 		wait = 30 * time.Second << min(p.throttles, 4)
@@ -467,7 +486,34 @@ func (p *Player) throttled(wait time.Duration) {
 	wait = min(wait, 30*time.Minute)
 	p.throttles++
 	log.Printf("player: throttled, again in %v", wait)
-	p.again(wait, "Spotify 暂时限流，稍后重试")
+	from := p.Position()
+	p.stop()
+	p.cool(from)
+	p.cooling = true
+	p.cools++
+	cools := p.cools
+	afterFunc(wait, func() {
+		p.post(func() {
+			if cools != p.cools {
+				return
+			}
+			p.cooling = false
+			if !p.waiting {
+				return
+			}
+			p.waiting = false
+			if p.playing {
+				p.loadSkipping(p.at, p.skipped, true, p.pending)
+			}
+		})
+	})
+}
+
+// cool has the current track wait, from from, for Spotify's wait to end.
+func (p *Player) cool(from time.Duration) {
+	p.pending, p.waiting = from, true
+	p.err = "Spotify 暂时限流，稍后重试"
+	p.sync()
 }
 
 // again loads the track again from where it is once wait is over, if it is
@@ -1191,7 +1237,14 @@ func (p *Player) load(at int) {
 // skipping those that cannot play: skipped of them so far.
 func (p *Player) loadSkipping(at, skipped int, play bool, from time.Duration) {
 	gen, t := p.cue(at, play, from)
-	p.loading, p.skipped = true, skipped
+	p.skipped = skipped
+	// Asked now, the licence would be turned away and the wait begin anew.
+	// An episode's file is its podcast's, no licence of Spotify's.
+	if p.cooling && !t.Episode {
+		p.cool(from)
+		return
+	}
+	p.loading = true
 	p.updateIdle()
 	resolveMedia := resolve
 	if m := p.takeAhead(t.ID); m != nil {

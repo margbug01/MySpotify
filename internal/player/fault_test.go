@@ -125,6 +125,70 @@ func TestThrottledPausedStays(t *testing.T) {
 	}
 }
 
+// A track picked while Spotify's wait runs waits with it, then loads. It
+// used to load at once, a licence asked and turned away each time, three in
+// six seconds on 2026-11-26, the wait begun anew.
+func TestThrottledPickWaits(t *testing.T) {
+	ch, p, waits := licensed(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusTooManyRequests)
+	})
+	fails(t, ch, p, "1")
+	p.Next()
+	if p.Loading() || p.out != nil || p.Current().ID != "2" || p.Err() != "Spotify 暂时限流，稍后重试" {
+		t.Fatalf("picked while throttled: loading %v, track %s, err %q", p.Loading(), p.Current().ID, p.Err())
+	}
+	(*waits)[0]()
+	next(t, ch) // the wait is over
+	next(t, ch) // its audio is resolved
+	if p.out == nil || p.Current().ID != "2" {
+		t.Fatalf("after the wait: track %s, loaded %v", p.Current().ID, p.out != nil)
+	}
+}
+
+// A track played to its end under Spotify Connect starts the waits over:
+// the next 429 waits 30 seconds. They used to stay at 8 minutes all evening
+// after a few 429s in the afternoon (2026-11-26).
+func TestThrottlesResetUnderConnect(t *testing.T) {
+	ch, p, waits := licensed(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("gen") != "2" {
+			w.WriteHeader(http.StatusTooManyRequests)
+		}
+	})
+	var asked []time.Duration
+	pick := afterFunc
+	afterFunc = func(d time.Duration, fn func()) { asked = append(asked, d); pick(d, fn) }
+	fails(t, ch, p, "1")
+	(*waits)[0]()
+	next(t, ch)
+	next(t, ch) // loaded again, as track 2, whose licence comes
+	p.Control = func(action string, value any) bool { return action == "advance" }
+	page(p, http.MethodPost, "/event", `{"gen":2,"type":"ended","t":60,"seq":1,"msg":"media ended"}`)
+	next(t, ch)
+	p.Control = nil
+	p.Next()
+	next(t, ch)
+	fails(t, ch, p, "3")
+	if len(asked) != 2 || asked[1] != 30*time.Second {
+		t.Fatalf("waits %v, want the second 30s", asked)
+	}
+}
+
+// The same song next, as a queue of one repeating, plays again where it is.
+// Loaded anew it cost a licence each time, nine for one song on 2026-11-26,
+// of the forty or so Spotify gives a device in a few hours.
+func TestSameSongRepeatsInPlace(t *testing.T) {
+	ch, p, _ := licensed(t, func(http.ResponseWriter, *http.Request) {})
+	p.PlayQueue([]spotify.Track{{ID: "1"}}, 0)
+	next(t, ch)
+	p.repeat = RepeatAll
+	out, gen := p.out, p.gen
+	page(p, http.MethodPost, "/event", `{"gen":`+strconv.Itoa(gen)+`,"type":"ended","t":60,"seq":1,"msg":"media ended"}`)
+	next(t, ch)
+	if p.gen != gen || p.out != out || !out.Playing() || p.Position() != 0 {
+		t.Fatalf("repeating one song: gen %d→%d, same output %v, playing %v at %v", gen, p.gen, p.out == out, out.Playing(), p.Position())
+	}
+}
+
 // A licence refused stops at the track: the rest of the queue would be
 // refused too.
 func TestRefusedLicenceStops(t *testing.T) {

@@ -583,6 +583,10 @@ func (w *Web) forward(rw http.ResponseWriter, r *http.Request, method, target st
 	wait := spotify.RetryAfter(res.Header)
 	if res.StatusCode != http.StatusOK {
 		log.Printf("player: %s: %s, retry after %v: %s", r.URL.Path, res.Status, wait, bytes.TrimSpace(out[:min(len(out), 200)]))
+	} else if r.URL.Path == "/license" {
+		// Spotify gives a device only so many in a few hours: counted here,
+		// the log shows how many went before a 429.
+		log.Printf("player: track %d: licence granted", gen)
 	}
 	o.answered(res.StatusCode, wait)
 	rw.WriteHeader(res.StatusCode)
