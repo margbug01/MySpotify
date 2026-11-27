@@ -15,13 +15,13 @@ var tsCharacters string
 
 var simplified = sync.OnceValue(func() map[rune]rune {
 	m := map[rune]rune{}
-	for _, line := range strings.Split(tsCharacters, "\n") {
-		k, v, _ := strings.Cut(line, "\t")
-		to := strings.Fields(v)
-		if kr := []rune(k); len(kr) == 1 && len(to) > 0 && len([]rune(to[0])) == 1 {
-			m[kr[0]] = []rune(to[0])[0]
+	parseOpenCC(tsCharacters, func(k string, to []string) {
+		if kr := []rune(k); len(kr) == 1 {
+			if vr := []rune(to[0]); len(vr) == 1 {
+				m[kr[0]] = vr[0]
+			}
 		}
-	}
+	})
 	return m
 })
 

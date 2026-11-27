@@ -8,6 +8,7 @@ import (
 	"time"
 	"unicode"
 
+	"vinyl/internal/l10n"
 	"vinyl/internal/lyrics"
 	"vinyl/internal/spotify"
 )
@@ -28,13 +29,16 @@ func trackLyrics(track spotify.Track) []lyrics.Line {
 // turns it off for listeners who read traditional ones.
 var SimplifyLyrics = true
 
-// localize has Chinese lyrics in simplified characters (SimplifyLyrics),
-// and timed ones in other languages come with NetEase's translation into
-// Chinese, its own lines taken where it has one: they pair with it line
-// for line, as Spotify's need not.
+// localize converts Chinese lyrics according to the active interface language
+// (phrase-level s2t when zh-TW, else SimplifyLyrics), and pairs timed
+// foreign-language lyrics with NetEase's Chinese translation (converted to
+// Traditional characters when the effective interface language is zh-TW).
 func localize(track spotify.Track, lines []lyrics.Line, translated func(spotify.Track) (string, string, error)) []lyrics.Line {
+	zhTW := l10n.Language() == l10n.LangZHTW
 	if lyrics.Chinese(lines) {
-		if SimplifyLyrics {
+		if zhTW {
+			lyrics.ToTraditional(lines)
+		} else if SimplifyLyrics {
 			lyrics.Simplify(lines)
 		}
 		return lines
@@ -48,6 +52,9 @@ func localize(track spotify.Track, lines []lyrics.Line, translated func(spotify.
 		return lines
 	}
 	if tl := lyrics.Build(synced, translation, ""); slices.ContainsFunc(tl, func(l lyrics.Line) bool { return l.Translation != "" }) && sameWords(lines, tl) {
+		if zhTW {
+			lyrics.ToTraditionalTranslations(tl)
+		}
 		return tl
 	}
 	return lines

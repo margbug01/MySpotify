@@ -5,6 +5,7 @@ import (
 	"embed"
 
 	"github.com/egoist/mygo/i18n"
+	"golang.org/x/text/language"
 )
 
 //go:embed *.json
@@ -30,16 +31,34 @@ func Count(key string, n int) string {
 // English reports whether the selected interface is English.
 func English() bool { return i18n.Base(i18n.Locale()) == "en" }
 
+// Canonical interface language tags returned by Language.
+const (
+	LangZHCN = "zh-CN"
+	LangZHTW = "zh-TW"
+	LangEN   = "en"
+	LangIT   = "it"
+)
+
 // Language is also used for Spotify's localized headings.
 func Language() string {
-	switch i18n.Base(i18n.Locale()) {
+	loc := i18n.Normalize(i18n.Locale())
+	switch i18n.Base(loc) {
 	case "en":
-		return "en"
+		return LangEN
 	case "it":
-		return "it"
+		return LangIT
+	case "zh":
+		if t, err := language.Parse(loc); err == nil {
+			if script, _ := t.Script(); script.String() == "Hant" {
+				return LangZHTW
+			}
+		}
 	}
-	return "zh-CN"
+	return LangZHCN
 }
 
-// Chinese reports whether the selected interface is Chinese.
-func Chinese() bool { return Language() == "zh-CN" }
+// Chinese reports whether the selected interface is Chinese (Simplified or Traditional).
+func Chinese() bool {
+	lang := Language()
+	return lang == LangZHCN || lang == LangZHTW
+}

@@ -207,3 +207,64 @@ func TestLyricsOfTheNextTrackAreFetchedAhead(t *testing.T) {
 		t.Fatalf("asked %v", asked)
 	}
 }
+
+// ReloadLyrics drops preloaded upcoming lyrics and reloads the current track's lyrics.
+func TestReloadLyricsClearsAheadAndReLocalizes(t *testing.T) {
+	lang := "zh-Hans"
+	useLyrics(t, func(tr spotify.Track) []lyrics.Line {
+		return []lyrics.Line{{Text: tr.ID + ":" + lang}}
+	})
+	ch := make(chan func(), 16)
+	p := New(func(fn func()) { ch <- fn })
+	p.Cue([]spotify.Track{{ID: "one", Name: "One"}, {ID: "two", Name: "Two"}})
+	p.cue(0, false, 0)
+	next(t, ch) // one
+	next(t, ch) // two ahead
+
+	lang = "zh-Hant"
+	p.ReloadLyrics()
+	next(t, ch) // one reloaded
+	next(t, ch) // two ahead reloaded
+
+	if lines, loaded := p.Lyrics(); !loaded || len(lines) != 1 || lines[0].Text != "one:zh-Hant" {
+		t.Fatalf("reloaded lyrics = %+v, loaded=%v", lines, loaded)
+	}
+	p.cue(1, false, 0)
+	if lines, loaded := p.Lyrics(); !loaded || len(lines) != 1 || lines[0].Text != "two:zh-Hant" {
+		t.Fatalf("upcoming lyrics after reload = %+v, loaded=%v", lines, loaded)
+	}
+}
+
+// Stale lyrics fetches from before ReloadLyrics do not overwrite newer results.
+func TestReloadLyricsIgnoresStaleFetch(t *testing.T) {
+	firstStarted := make(chan struct{})
+	releaseFirst := make(chan struct{})
+	var mu sync.Mutex
+	calls := 0
+	useLyrics(t, func(tr spotify.Track) []lyrics.Line {
+		mu.Lock()
+		calls++
+		call := calls
+		mu.Unlock()
+		if call == 1 {
+			close(firstStarted)
+			<-releaseFirst
+			return []lyrics.Line{{Text: "stale"}}
+		}
+		return []lyrics.Line{{Text: "fresh"}}
+	})
+	ch := make(chan func(), 16)
+	p := New(func(fn func()) { ch <- fn })
+	p.Cue([]spotify.Track{{ID: "one", Name: "One"}})
+	p.cue(0, false, 0)
+	<-firstStarted
+
+	p.ReloadLyrics()
+	next(t, ch) // fresh completes first
+	close(releaseFirst)
+	next(t, ch) // stale arrives later
+
+	if lines, loaded := p.Lyrics(); !loaded || len(lines) != 1 || lines[0].Text != "fresh" {
+		t.Fatalf("stale lyrics overwrote fresh ones: %+v, loaded=%v", lines, loaded)
+	}
+}
