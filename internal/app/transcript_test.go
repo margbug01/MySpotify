@@ -80,6 +80,43 @@ func TestLongLyricsBuildOnlyWhatShows(t *testing.T) {
 	}
 }
 
+// Measuring newly built lines whose laid-out height differs from the
+// estimate (such as Windows font metrics or wrapped text) used to leave
+// the current line offset from its target after a seek.
+func TestLongLyricsRetargetsWhenMeasuredHeightDiffers(t *testing.T) {
+	a := newTestApp()
+	a.settings = defaultSettings()
+	lines := make([]lyrics.Line, 300)
+	for i := range lines {
+		at := time.Duration(i) * 3 * time.Second
+		// Wide capitals wrap onto two lines while the 15-pt-per-char guess
+		// estimates one, matching the height mismatch seen on Windows.
+		lines[i] = lyrics.Line{At: at, End: at + 3*time.Second, Text: fmt.Sprintf("WWWWWWWWWWWWWWWWWWWW %04d", i)}
+	}
+	a.pl.Cue([]spotify.Track{{ID: "ep-wrap", Name: "Episode", Episode: true, Duration: 900 * 1000}})
+	a.pl.SetLyrics(lines)
+	a.pl.Hold(150*3*time.Second + 100*time.Millisecond)
+	a.nowPlaying, a.npPane = true, paneLyrics
+	tt := ui.NewTester(a.view, 1200, 800)
+	settle(tt)
+	said := func(i int) ui.Rect {
+		t.Helper()
+		r, ok := tt.Find(lines[i].Text)
+		if !ok {
+			t.Fatalf("line %d is not shown", i)
+		}
+		return r
+	}
+	a.pl.Seek(151*3*time.Second + 100*time.Millisecond)
+	settle(tt)
+	r := said(151)
+	a.pl.Seek(10*3*time.Second + 100*time.Millisecond)
+	settle(tt)
+	if again := said(10); again.Y < r.Y-2 || again.Y > r.Y+2 {
+		t.Fatalf("after the seek, the wrapped line is at %v, was at %v", again, r)
+	}
+}
+
 // A song's lyrics are built whole, as they were.
 func TestSongLyricsBuildWhole(t *testing.T) {
 	a := newTestApp()

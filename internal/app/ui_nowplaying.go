@@ -362,6 +362,7 @@ func (a *app) lyricsPane(c *ui.Context, tr *spotify.Track, h float32) {
 		lo, hi = rows.span(shown-view, shown+2*view)
 	}
 	var active ui.Element
+	measured := false
 	// The lines, held back by how far the glide to the line sung has still
 	// to go (lyricGlide).
 	scroll.Children(func() {
@@ -419,8 +420,8 @@ func (a *app) lyricsPane(c *ui.Context, tr *spotify.Track, h float32) {
 				if on {
 					active = line
 				}
-				if rows != nil {
-					rows.measure(i, line)
+				if rows != nil && rows.measure(i, line) {
+					measured = true
 				}
 			}
 			if hi < len(lines) {
@@ -449,6 +450,14 @@ func (a *app) lyricsPane(c *ui.Context, tr *spotify.Track, h float32) {
 		}
 		a.lyricAt = cur
 		a.lyricGlide.to(c, &a.lyricScroll, min(max(0, target), a.lyricScroll.MaxY))
+	} else if measured && rows != nil && cur >= 0 && box.H > 0 && a.lyricScroll.Y == a.lyricGlide.set {
+		// Measured lines above cur can differ from their guessed height
+		// (e.g. under Windows font metrics or wrapped text): adjust the
+		// glide target while the listener has not scrolled away.
+		target := min(max(0, rows.top(cur)-box.H*0.3), a.lyricScroll.MaxY)
+		if math.Abs(float64(target-a.lyricGlide.target)) > 0.5 {
+			a.lyricGlide.to(c, &a.lyricScroll, target)
+		}
 	}
 }
 
@@ -534,11 +543,15 @@ func (r *lyricRows) span(from, to float32) (lo, hi int) {
 	return min(lo, hi), hi
 }
 
-// measure notes how tall line i, built as e, was laid out.
-func (r *lyricRows) measure(i int, e ui.Element) {
-	if b := e.LayoutBounds(); b.H > 0 {
-		r.h[i] = b.H
+// measure notes how tall line i, built as e, was laid out, reporting
+// whether its height changed.
+func (r *lyricRows) measure(i int, e ui.Element) bool {
+	b := e.LayoutBounds()
+	if b.H <= 0 || math.Abs(float64(r.h[i]-b.H)) < 0.01 {
+		return false
 	}
+	r.h[i] = b.H
+	return true
 }
 
 // lyricGlide scrolls the lyrics to the line sung, as a critically damped
