@@ -5,6 +5,11 @@ import (
 	"embed"
 
 	"github.com/egoist/mygo/i18n"
+	// MyGo's own strings, its controls', dialogs' and menus', in the
+	// app's languages that MyGo translates.
+	_ "github.com/egoist/mygo/locales/ja"
+	_ "github.com/egoist/mygo/locales/zh-Hans"
+	_ "github.com/egoist/mygo/locales/zh-Hant"
 	"golang.org/x/text/language"
 )
 

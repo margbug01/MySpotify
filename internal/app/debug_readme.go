@@ -1,6 +1,7 @@
 package app
 
 import (
+	"slices"
 	"strings"
 	"time"
 
@@ -113,7 +114,7 @@ func readmeScene(a *app, shot func(string, *mygo.Window), step func(time.Duratio
 	var pop string
 	mygo.RunOnMain(func() {
 		for _, c := range a.cats {
-			if c.Name == "流行" {
+			if slices.Contains([]string{"流行", "流行樂", "流行音樂", "Pop", "ポップ"}, c.Name) {
 				pop = c.ID
 			}
 		}
