@@ -1,12 +1,15 @@
 package player
 
 import (
+	"os"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/egoist/mygo/audio"
+	"github.com/egoist/mygo/i18n"
 
+	"vinyl/internal/l10n"
 	"vinyl/internal/lyrics"
 	"vinyl/internal/spotify"
 )
@@ -208,11 +211,20 @@ func TestLyricsOfTheNextTrackAreFetchedAhead(t *testing.T) {
 	}
 }
 
-// ReloadLyrics drops preloaded upcoming lyrics and reloads the current track's lyrics.
+// useLocale has the interface in locale until the test ends.
+func useLocale(t *testing.T, locale string) {
+	t.Setenv("MYGO_LOCALE", locale)
+	previous := i18n.Locale()
+	i18n.SetLocaleFunc(func() string { return os.Getenv("MYGO_LOCALE") })
+	t.Cleanup(func() { i18n.SetLocaleFunc(func() string { return previous }) })
+}
+
+// Switching to Traditional Chinese fetches this track's lyrics and the next
+// one's again; switching between languages that write them alike keeps them.
 func TestReloadLyricsClearsAheadAndReLocalizes(t *testing.T) {
-	lang := "zh-Hans"
+	useLocale(t, "zh-Hans")
 	useLyrics(t, func(tr spotify.Track) []lyrics.Line {
-		return []lyrics.Line{{Text: tr.ID + ":" + lang}}
+		return []lyrics.Line{{Text: tr.ID + ":" + l10n.Language()}}
 	})
 	ch := make(chan func(), 16)
 	p := New(func(fn func()) { ch <- fn })
@@ -221,16 +233,24 @@ func TestReloadLyricsClearsAheadAndReLocalizes(t *testing.T) {
 	next(t, ch) // one
 	next(t, ch) // two ahead
 
-	lang = "zh-Hant"
+	// Regression: every switch, English to Italian too, blanked the lyrics
+	// and fetched them all again from the network.
+	t.Setenv("MYGO_LOCALE", "it")
+	p.ReloadLyrics()
+	if lines, loaded := p.Lyrics(); !loaded || len(lines) != 1 || lines[0].Text != "one:zh-CN" {
+		t.Fatalf("lyrics after switching to Italian = %+v, loaded=%v", lines, loaded)
+	}
+
+	t.Setenv("MYGO_LOCALE", "zh-Hant")
 	p.ReloadLyrics()
 	next(t, ch) // one reloaded
 	next(t, ch) // two ahead reloaded
 
-	if lines, loaded := p.Lyrics(); !loaded || len(lines) != 1 || lines[0].Text != "one:zh-Hant" {
+	if lines, loaded := p.Lyrics(); !loaded || len(lines) != 1 || lines[0].Text != "one:zh-TW" {
 		t.Fatalf("reloaded lyrics = %+v, loaded=%v", lines, loaded)
 	}
 	p.cue(1, false, 0)
-	if lines, loaded := p.Lyrics(); !loaded || len(lines) != 1 || lines[0].Text != "two:zh-Hant" {
+	if lines, loaded := p.Lyrics(); !loaded || len(lines) != 1 || lines[0].Text != "two:zh-TW" {
 		t.Fatalf("upcoming lyrics after reload = %+v, loaded=%v", lines, loaded)
 	}
 }
@@ -253,12 +273,14 @@ func TestReloadLyricsIgnoresStaleFetch(t *testing.T) {
 		}
 		return []lyrics.Line{{Text: "fresh"}}
 	})
+	useLocale(t, "zh-Hans")
 	ch := make(chan func(), 16)
 	p := New(func(fn func()) { ch <- fn })
 	p.Cue([]spotify.Track{{ID: "one", Name: "One"}})
 	p.cue(0, false, 0)
 	<-firstStarted
 
+	t.Setenv("MYGO_LOCALE", "zh-Hant")
 	p.ReloadLyrics()
 	next(t, ch) // fresh completes first
 	close(releaseFirst)

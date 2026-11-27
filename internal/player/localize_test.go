@@ -75,12 +75,12 @@ func TestLyricsLocalizedTraditional(t *testing.T) {
 		}
 
 		en := localize(spotify.Track{ID: "en"}, lyrics.Build(english, "", ""), netease(english, "[00:01.00]皇后之后在视频里发现头发干燥"))
-		if len(en) == 0 || en[0].Text != "The club isn't the best place" || en[0].Translation != "皇后之後在視頻裏發現頭髮乾燥" {
+		if len(en) == 0 || en[0].Text != "The club isn't the best place" || en[0].Translation != "皇后之後在視頻裡發現頭髮乾燥" {
 			t.Fatalf("%s english translation = %+v", locale, en)
 		}
 
 		jp := localize(spotify.Track{ID: "jp"}, lyrics.Build(japanese, "", ""), netease(japanese, "[00:01.00]在视频里"))
-		if len(jp) == 0 || jp[0].Text != "桜の夜" || jp[0].Translation != "在視頻裏" {
+		if len(jp) == 0 || jp[0].Text != "桜の夜" || jp[0].Translation != "在視頻裡" {
 			t.Fatalf("%s japanese translation = %+v", locale, jp)
 		}
 	}
@@ -93,7 +93,7 @@ func TestLyricsLocalizedTraditional(t *testing.T) {
 	}
 	t.Setenv("MYGO_LOCALE", "zh-Hant")
 	after := localize(spotify.Track{ID: "switch"}, lyrics.Build(english, "", ""), netease(english, "[00:01.00]皇后之后在视频里"))
-	if len(after) == 0 || after[0].Translation != "皇后之後在視頻裏" {
+	if len(after) == 0 || after[0].Translation != "皇后之後在視頻裡" {
 		t.Fatalf("after switching to zh-Hant, translation = %+v", after)
 	}
 }

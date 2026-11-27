@@ -19,7 +19,7 @@ func TestToTraditional(t *testing.T) {
 			t.Errorf("word[%d] = %q, want %q", i, lines[0].Words[i].Text, w)
 		}
 	}
-	if got, want := lines[0].Translation, "軟件工程師在視頻裏默認登錄"; got != want {
+	if got, want := lines[0].Translation, "軟件工程師在視頻裡默認登錄"; got != want {
 		t.Errorf("translation = %q, want %q", got, want)
 	}
 
@@ -41,8 +41,15 @@ func TestToTraditional(t *testing.T) {
 	if foreign[0].Text != "桜の夜" {
 		t.Errorf("foreign text modified: %q", foreign[0].Text)
 	}
-	if got, want := foreign[0].Translation, "皇后之後在視頻裏發現頭髮乾燥"; got != want {
+	if got, want := foreign[0].Translation, "皇后之後在視頻裡發現頭髮乾燥"; got != want {
 		t.Errorf("foreign translation = %q, want %q", got, want)
+	}
+
+	// Regression: plain s2t wrote 爲, 着 and 裏, forms Taiwan does not use.
+	for in, want := range map[string]string{"因为爱情": "因為愛情", "看着你": "看著你", "在心里": "在心裡"} {
+		if got := Traditional(in); got != want {
+			t.Errorf("Traditional(%q) = %q, want %q", in, got, want)
+		}
 	}
 
 	// Credit lines remain recognized by IsCredit after ToTraditional conversion.

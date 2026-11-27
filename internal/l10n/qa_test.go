@@ -10,8 +10,6 @@ import (
 	"strings"
 	"sync"
 	"testing"
-
-	"vinyl/internal/lyrics"
 )
 
 type qaViolation struct {
@@ -25,7 +23,7 @@ type blacklistedTerm struct {
 }
 
 var loadZhHantBlacklist = sync.OnceValue(func() []blacklistedTerm {
-	data, err := os.ReadFile(filepath.Join("..", "..", "tools", "zh_hant_blacklist.json"))
+	data, err := os.ReadFile(filepath.Join("testdata", "zh_hant_blacklist.json"))
 	if err != nil {
 		panic(err)
 	}
@@ -37,6 +35,24 @@ var loadZhHantBlacklist = sync.OnceValue(func() []blacklistedTerm {
 		panic("zh_hant_blacklist.json is empty")
 	}
 	return terms
+})
+
+// loadStrictSimplified maps each character OpenCC's STCharacters.txt converts
+// to something other than itself, so is never written in Traditional Chinese.
+var loadStrictSimplified = sync.OnceValue(func() map[rune]rune {
+	data, err := os.ReadFile(filepath.Join("..", "lyrics", "STCharacters.txt"))
+	if err != nil {
+		panic(err)
+	}
+	m := make(map[rune]rune, 4096)
+	for _, line := range strings.Split(string(data), "\n") {
+		k, v, ok := strings.Cut(strings.TrimRight(line, "\r"), "\t")
+		to := strings.Fields(v)
+		if kr := []rune(k); ok && len(kr) == 1 && len(to) > 0 && !slices.Contains(to, k) {
+			m[kr[0]] = []rune(to[0])[0]
+		}
+	}
+	return m
 })
 
 var (
@@ -113,7 +129,7 @@ func validateZhHantEntry(source, target string) []qaViolation {
 		return []qaViolation{{rule: "EmptyTranslation", msg: "translation is empty"}}
 	}
 
-	strictSimp := lyrics.StrictSimplifiedChars()
+	strictSimp := loadStrictSimplified()
 	var simp []simplifiedPair
 	seenSimp := make(map[rune]bool)
 	for _, r := range target {

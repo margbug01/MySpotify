@@ -2,8 +2,6 @@ package lyrics
 
 import (
 	_ "embed"
-	"maps"
-	"slices"
 	"strings"
 	"sync"
 	"unicode/utf8"
@@ -18,10 +16,17 @@ var stPhrases string
 //go:embed STCharacters.txt
 var stCharacters string
 
+// twVariants is OpenCC's table of the forms Taiwan writes (為, 著, 裡 rather
+// than 爲, 着, 裏), applied after the two above as OpenCC's s2tw does.
+//
+//go:embed TWVariants.txt
+var twVariants string
+
 type s2tDict struct {
 	chars         map[rune]rune
 	phrases       map[string][]rune
 	maxLenByFirst map[rune]int
+	tw            map[rune]rune
 }
 
 func parseOpenCC(table string, yield func(from string, candidates []string)) {
@@ -47,7 +52,13 @@ var loadS2T = sync.OnceValue(func() *s2tDict {
 		chars:         make(map[rune]rune, 4096),
 		phrases:       make(map[string][]rune, 50000),
 		maxLenByFirst: make(map[rune]int, 16384),
+		tw:            make(map[rune]rune, 64),
 	}
+	parseOpenCC(twVariants, func(k string, to []string) {
+		if kr, vr := []rune(k), []rune(to[0]); len(kr) == 1 && len(vr) == 1 {
+			d.tw[kr[0]] = vr[0]
+		}
+	})
 	parseOpenCC(stCharacters, func(k string, to []string) {
 		if kr := []rune(k); len(kr) == 1 {
 			if vr := []rune(to[0]); len(vr) == 1 {
@@ -69,28 +80,10 @@ var loadS2T = sync.OnceValue(func() *s2tDict {
 	return d
 })
 
-var strictSimplifiedChars = sync.OnceValue(func() map[rune]rune {
-	m := make(map[rune]rune, 4096)
-	parseOpenCC(stCharacters, func(k string, to []string) {
-		kr := []rune(k)
-		if len(kr) == 1 && !slices.Contains(to, k) {
-			if vr := []rune(to[0]); len(vr) > 0 {
-				m[kr[0]] = vr[0]
-			}
-		}
-	})
-	return m
-})
-
-// StrictSimplifiedChars returns a copy of single-character mappings where the
-// simplified source character is not itself a valid Traditional Chinese form.
-func StrictSimplifiedChars() map[rune]rune {
-	return maps.Clone(strictSimplifiedChars())
-}
-
-// Traditional converts Simplified Chinese text to Traditional Chinese characters
-// using OpenCC phrase-level longest match (STPhrases) with single-character
-// fallback (STCharacters), without regional vocabulary substitution.
+// Traditional converts Simplified Chinese text to Traditional Chinese as
+// Taiwan writes it: OpenCC phrase-level longest match (STPhrases) with
+// single-character fallback (STCharacters), then Taiwan's variant forms
+// (TWVariants), without regional vocabulary substitution.
 func Traditional(s string) string {
 	if s == "" {
 		return ""
@@ -123,6 +116,11 @@ func convertS2TRunes(in []rune) []rune {
 			out = append(out, in[i])
 		}
 		i++
+	}
+	for i, r := range out {
+		if v, ok := d.tw[r]; ok {
+			out[i] = v
+		}
 	}
 	return out
 }

@@ -127,6 +127,9 @@ type Player struct {
 	lyrics       []lyrics.Line
 	lyricsLoaded bool
 	lyricsGen    int // counts lyrics loads/reloads, to drop stale fetches after cue or language change
+	// lyricsTW is whether the lyrics were last fetched to be written in
+	// Traditional Chinese: ReloadLyrics fetches again only when that changes.
+	lyricsTW bool
 	// ahead are the lyrics of the track after this one, fetched as this
 	// one plays: LRCLIB, busy, can take seconds.
 	ahead struct {
@@ -158,7 +161,7 @@ type Player struct {
 }
 
 func New(post func(func())) *Player {
-	p := &Player{post: post, at: -1, volume: 0.8}
+	p := &Player{post: post, at: -1, volume: 0.8, lyricsTW: traditional()}
 	// The media keys, and the controls of Control Center.
 	mygo.NowPlaying.OnCommand(func(cmd mygo.MediaCommand, pos time.Duration) {
 		switch cmd {
@@ -1542,9 +1545,15 @@ func (p *Player) fetchLyrics(gen, lgen int, t spotify.Track) {
 	}()
 }
 
-// ReloadLyrics clears cached upcoming lyrics and reloads the current track's
-// lyrics for the active interface language.
+// ReloadLyrics fetches this track's lyrics again, and drops the next one's,
+// when the interface language changes whether they are written in
+// Traditional Chinese; other switches leave them as they are.
 func (p *Player) ReloadLyrics() {
+	tw := traditional()
+	if tw == p.lyricsTW {
+		return
+	}
+	p.lyricsTW = tw
 	p.lyricsGen++
 	p.ahead.id, p.ahead.lines = "", nil
 	if p.track == nil || p.track.ID == "" {

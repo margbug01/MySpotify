@@ -16,5 +16,6 @@ hls.js                            internal/player/web/hls.min.js   hls.js-LICENS
 OpenCC 繁简字表                   internal/lyrics/TSCharacters.txt OpenCC-LICENSE（Apache-2.0）
 OpenCC 简繁词表                   internal/lyrics/STPhrases.txt    OpenCC-LICENSE（Apache-2.0）
 OpenCC 简繁字表                   internal/lyrics/STCharacters.txt OpenCC-LICENSE（Apache-2.0）
+OpenCC 台湾异体字表               internal/lyrics/TWVariants.txt   OpenCC-LICENSE（Apache-2.0）
 
 go.mod 里的模块有变动时，这里要跟着改。

@@ -22,7 +22,7 @@ How MySpotify is built, released and debugged. To just use it, the [README](READ
 
 Messages live in `internal/l10n/zh-Hans.json`, `zh-Hant.json`, `en.json` and `it.json`, read by MyGo's `i18n.Catalog`. Use `l10n.T` for app-owned text and `l10n.Count` for ICU plural messages; never translate song titles or user playlist names. The language choice is saved in settings and applied with `mygo.App.SetLocale`. `MYGO_LOCALE=en` previews English without changing the saved language.
 
-Keep all catalogs and their formatting arguments in sync; a new language also goes into the language choices in Settings, the check in `settings.go` and `CFBundleLocalizations` in `mygo.json`. `go test ./internal/l10n` checks arguments, count forms and the `zh-Hant` QA gate, and `python3 tools/l10n_qa_validator.py` validates `zh-Hant.json` against `zh-Hans.json`; `go test ./internal/app -run TestLanguageSelection -count=5` checks language selection. `NM_FRAMES=<directory> go test ./internal/app -run TestEnglishFrames` saves rendered pages at normal and minimum widths.
+Keep all catalogs and their formatting arguments in sync; a new language also goes into the language choices in Settings, the check in `settings.go` and `CFBundleLocalizations` in `mygo.json`. `go test ./internal/l10n` checks arguments, count forms, and the terms and punctuation of `zh-Hant.json` against `zh-Hans.json` (the term blacklist is `internal/l10n/testdata/zh_hant_blacklist.json`); `go test ./internal/app -run TestLanguageSelection -count=5` checks language selection. `NM_FRAMES=<directory> go test ./internal/app -run TestEnglishFrames` saves rendered pages at normal and minimum widths.
 
 ## Build from source
 

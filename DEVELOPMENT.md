@@ -22,7 +22,7 @@ MySpotify 的实现细节、构建、发版和调试。普通使用看 [README](
 
 文案在 `internal/l10n/zh-Hans.json`、`zh-Hant.json`、`en.json` 和 `it.json`，通过 MyGo 的 `i18n.Catalog` 读取；应用自己写的文案用 `l10n.T`，带数量的消息用 `l10n.Count` 的 ICU 单复数。歌曲名、用户歌单名等内容不要送进翻译。语言选择保存在设置中，交给 `mygo.App.SetLocale` 应用；`MYGO_LOCALE=en` 可临时预览英文，不改保存的语言。
 
-新增或修改文案时同步所有目录并保留格式参数；加新语言时还要加进设置里的语言选项、`settings.go` 的校验和 `mygo.json` 的 `CFBundleLocalizations`。`go test ./internal/l10n` 检查参数、数量格式与 `zh-Hant` QA 门禁校验，`python3 tools/l10n_qa_validator.py` 可对照 `zh-Hans.json` 校验 `zh-Hant.json`；`go test ./internal/app -run TestLanguageSelection -count=5` 验证语言选择；`NM_FRAMES=<目录> go test ./internal/app -run TestEnglishFrames` 保存普通与最窄窗口的实际渲染。
+新增或修改文案时同步所有目录并保留格式参数；加新语言时还要加进设置里的语言选项、`settings.go` 的校验和 `mygo.json` 的 `CFBundleLocalizations`。`go test ./internal/l10n` 检查参数、数量格式，并对照 `zh-Hans.json` 校验 `zh-Hant.json` 的用语与标点（术语黑名单在 `internal/l10n/testdata/zh_hant_blacklist.json`）；`go test ./internal/app -run TestLanguageSelection -count=5` 验证语言选择；`NM_FRAMES=<目录> go test ./internal/app -run TestEnglishFrames` 保存普通与最窄窗口的实际渲染。
 
 ## 从源码构建
 
