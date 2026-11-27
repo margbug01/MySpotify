@@ -11,7 +11,7 @@ import (
 // settings are the listener's choices, kept in settings.json in the user
 // data directory.
 type settings struct {
-	// Language is empty to follow the system, or zh-Hans / en / it.
+	// Language is empty to follow the system, or zh-Hans / zh-Hant / en / it.
 	Language string `json:"language,omitempty"`
 	// Notch shows the quick player around the notch: the listener turns
 	// it on.
@@ -127,7 +127,7 @@ func loadSettings() settings {
 		}
 		s.path = path
 	}
-	if s.Language != "en" && s.Language != "zh-Hans" && s.Language != "it" {
+	if !supportedLanguage(s.Language) {
 		s.Language = ""
 	}
 	return s

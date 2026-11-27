@@ -253,7 +253,12 @@ func Quiets(lines []Line, length, least time.Duration) []Quiet {
 }
 
 // creditNames are what credit lines begin with.
-var creditNames = []string{"作词", "作曲", "编曲", "制作", "监制", "混音", "录音", "母带", "和声", "吉他", "贝斯", "鼓", "键盘", "弦乐", "出品", "发行", "OP", "SP", "词", "曲", "Lyrics", "Music", "Composer", "Arranger", "Producer"}
+var creditNames = []string{
+	"作词", "作詞", "作曲", "编曲", "編曲", "制作", "製作", "监制", "監製", "混音",
+	"录音", "錄音", "母带", "母帶", "和声", "和聲", "吉他", "贝斯", "貝斯", "鼓",
+	"键盘", "鍵盤", "弦乐", "弦樂", "出品", "发行", "發行", "OP", "SP", "词", "詞", "曲",
+	"Lyrics", "Music", "Composer", "Arranger", "Producer",
+}
 
 // IsCredit reports whether a line names who made the song, as "作词 :
 // 林夕", rather than being sung.

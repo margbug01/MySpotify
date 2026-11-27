@@ -11,9 +11,29 @@ import (
 
 var setLocale = mygo.App.SetLocale
 
+var languageOptions = []struct {
+	tag   string
+	label string
+}{
+	{"", ""},
+	{"zh-Hans", "简体中文"},
+	{"zh-Hant", "繁體中文"},
+	{"en", "English"},
+	{"it", "Italiano"},
+}
+
+func supportedLanguage(tag string) bool {
+	for _, opt := range languageOptions {
+		if opt.tag == tag {
+			return true
+		}
+	}
+	return false
+}
+
 // chooseLanguage keeps the choice, while MyGo saves and applies its locale.
 func (a *app) chooseLanguage(tag string) {
-	if tag != "" && tag != "zh-Hans" && tag != "en" && tag != "it" {
+	if !supportedLanguage(tag) {
 		return
 	}
 	a.settings.Language = tag
@@ -29,10 +49,16 @@ func (a *app) languageChanged() {
 	if a.signin.win != nil {
 		a.signin.win.SetTitle(l10n.T("登录 Spotify"))
 	}
-	if a.notch != nil {
+	if a.notch != nil && a.notch.win != nil {
 		a.notch.win.SetTitle(appName + " · " + l10n.T("迷你播放器"))
 	}
+	if a.desk != nil && a.desk.win != nil {
+		a.desk.win.SetTitle(l10n.T("桌面歌词"))
+	}
 	a.reloadLocalizedPages()
+	if a.pl != nil {
+		a.pl.ReloadLyrics()
+	}
 	a.redraw()
 }
 
@@ -70,7 +96,7 @@ func (a *app) reloadLocalizedPages() {
 }
 
 func shortDate(day time.Time, year bool) string {
-	if l10n.Language() == "it" {
+	if l10n.Language() == l10n.LangIT {
 		if year {
 			return fmt.Sprintf("%d/%d/%d", day.Day(), day.Month(), day.Year())
 		}
@@ -89,7 +115,7 @@ func shortDate(day time.Time, year bool) string {
 }
 
 func dailyMonth(day time.Time) string {
-	if l10n.Language() == "it" {
+	if l10n.Language() == l10n.LangIT {
 		return fmt.Sprintf("%s · %s", [...]string{"gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"}[day.Month()-1], weekday(day))
 	}
 	if l10n.English() {
@@ -99,7 +125,7 @@ func dailyMonth(day time.Time) string {
 }
 
 func dailyDate(day time.Time) string {
-	if l10n.Language() == "it" {
+	if l10n.Language() == l10n.LangIT {
 		return fmt.Sprintf("%s %d/%d", weekday(day), day.Day(), day.Month())
 	}
 	if l10n.English() {

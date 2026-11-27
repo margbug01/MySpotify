@@ -27,7 +27,14 @@ func TestRequestLanguage(t *testing.T) {
 		header = req.Header.Get("Accept-Language")
 		return &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(`{}`))}, nil
 	})}
-	for _, tc := range []struct{ locale, header, liked string }{{"en", "en", "Liked Songs"}, {"zh-Hans", "zh-CN", likedName}} {
+	for _, tc := range []struct{ locale, header, liked string }{
+		{"en", "en", "Liked Songs"},
+		{"zh-Hans", "zh-CN", likedName},
+		{"zh-Hant", "zh-TW", "已按讚的歌曲"},
+		{"zh-TW", "zh-TW", "已按讚的歌曲"},
+		{"zh-HK", "zh-TW", "已按讚的歌曲"},
+		{"zh-MO", "zh-TW", "已按讚的歌曲"},
+	} {
 		t.Setenv("MYGO_LOCALE", tc.locale)
 		_, err := do(func() (*http.Request, error) { return http.NewRequest(http.MethodGet, "https://example.test/", nil) })
 		if err != nil {

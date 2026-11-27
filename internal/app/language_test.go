@@ -44,41 +44,100 @@ func TestLanguageSelection(t *testing.T) {
 	a.open(route{page: pageSettings})
 	tt := ui.NewTester(a.view, 1180, 1000)
 	tt.Frame()
-	if err := tt.Click("界面语言"); err != nil {
-		t.Fatal(err)
+	readSaved := func() settings {
+		t.Helper()
+		b, err := os.ReadFile(a.settings.path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var saved settings
+		if err := json.Unmarshal(b, &saved); err != nil {
+			t.Fatal(err)
+		}
+		return saved
 	}
-	tt.Advance(300 * time.Millisecond)
-	tt.Frame()
-	if err := tt.Click("English"); err != nil {
-		t.Fatalf("%v; shows %q", err, tt.Texts())
+	selectLanguage := func(trigger, option string) {
+		t.Helper()
+		if err := tt.Click(trigger); err != nil {
+			t.Fatal(err)
+		}
+		tt.Advance(300 * time.Millisecond)
+		tt.Frame()
+		if option == "" {
+			tt.Key(0, ui.KeyHome)
+			tt.Key(0, ui.KeyEnter)
+		} else if err := tt.Click(option); err != nil {
+			t.Fatalf("%v; shows %q", err, tt.Texts())
+		}
+		tt.Frame()
+		tt.Frame()
 	}
-	tt.Frame()
-	tt.Frame()
+
+	selectLanguage("界面语言", "English")
 	if a.settings.Language != "en" || len(tags) != 1 || tags[0] != "en" {
 		t.Fatalf("language %q, applied %v", a.settings.Language, tags)
 	}
-	b, err := os.ReadFile(a.settings.path)
+	if saved := readSaved(); saved.Language != "en" || saved.Volume != 0.37 {
+		t.Fatalf("saved language %q, volume %v", saved.Language, saved.Volume)
+	}
+	selectLanguage("Interface language", "")
+	if a.settings.Language != "" || len(tags) != 2 || tags[1] != "" {
+		t.Fatalf("system choice %q, applied %v", a.settings.Language, tags)
+	}
+	selectLanguage("界面语言", "繁體中文")
+	if a.settings.Language != "zh-Hant" || len(tags) != 3 || tags[2] != "zh-Hant" {
+		t.Fatalf("traditional choice %q, applied %v", a.settings.Language, tags)
+	}
+	if saved := readSaved(); saved.Language != "zh-Hant" {
+		t.Fatalf("saved language %q, want zh-Hant", saved.Language)
+	}
+}
+
+// loadSettings keeps valid language tags including zh-Hant and falls back to
+// following the system on unknown tags.
+func TestLoadSettingsLanguageValidation(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HOME", dir)
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	t.Setenv("APPDATA", dir)
+	path, err := settingsPath()
 	if err != nil {
 		t.Fatal(err)
 	}
-	var saved settings
-	if err := json.Unmarshal(b, &saved); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if saved.Language != "en" || saved.Volume != 0.37 {
-		t.Fatalf("saved language %q, volume %v", saved.Language, saved.Volume)
-	}
-	if err := tt.Click("Interface language"); err != nil {
+	if err := os.WriteFile(path, []byte(`{"language":"zh-Hant"}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	tt.Advance(300 * time.Millisecond)
-	tt.Frame()
-	tt.Key(0, ui.KeyHome)
-	tt.Key(0, ui.KeyEnter)
-	tt.Frame()
-	tt.Frame()
-	if a.settings.Language != "" || len(tags) != 2 || tags[1] != "" {
-		t.Fatalf("system choice %q, applied %v", a.settings.Language, tags)
+	if got := loadSettings().Language; got != "zh-Hant" {
+		t.Fatalf("valid zh-Hant loaded as %q", got)
+	}
+	if err := os.WriteFile(path, []byte(`{"language":"xx-Invalid"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if got := loadSettings().Language; got != "" {
+		t.Fatalf("invalid tag loaded as %q, want empty", got)
+	}
+}
+
+// Traditional Chinese dates, compact counts, and media actions keep Chinese formatting with zh-Hant terms.
+func TestTraditionalChineseFormatting(t *testing.T) {
+	testLanguage(t, "zh-Hant")
+	day := time.Date(2026, time.November, 10, 12, 0, 0, 0, time.UTC)
+	for _, tc := range []struct{ got, want string }{
+		{shortDate(day, false), "11月10日"}, {shortDate(day, true), "2026年11月10日"},
+		{dailyMonth(day), "11月 · 星期二"}, {dailyDate(day), "11月10日 星期二"},
+		{plays(12000), "1萬"}, {plays(120000000), "1.2億"},
+		{mvAction("播放", "影片"), "播放影片"}, {mvAction("播放", "MV"), "播放 MV"},
+		{dailyArtists([]spotify.Track{
+			{Artists: []spotify.Artist{{Name: "周杰倫"}}},
+			{Artists: []spotify.Artist{{Name: "林俊傑"}}},
+		}), "周杰倫、林俊傑 等 2 首"},
+	} {
+		if tc.got != tc.want {
+			t.Errorf("got %q, want %q", tc.got, tc.want)
+		}
 	}
 }
 
@@ -115,6 +174,37 @@ func TestHomeCacheLanguage(t *testing.T) {
 	}
 	if len(b.homeSections) != 0 {
 		t.Fatal("restored headings from the previous language")
+	}
+
+	// Legacy empty-language home snapshots only restore headings under zh-CN,
+	// never under zh-TW, while preserving account profile and library lists.
+	legacy, err := json.Marshal(homeSnapshot{
+		Profile:  a.profile,
+		Sections: testSections(1),
+		Mine:     []spotify.Playlist{{ID: "spotify:playlist:mine", Name: "我的原名"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(a.homeFile, legacy, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	testLanguage(t, "zh-Hant")
+	tw := newTestApp()
+	tw.homeFile = a.homeFile
+	tw.restoreHome()
+	if tw.profile == nil || len(tw.mine) != 1 || tw.mine[0].Name != "我的原名" {
+		t.Fatal("account data was lost or renamed on legacy cache under zh-TW")
+	}
+	if len(tw.homeSections) != 0 {
+		t.Fatal("restored legacy empty-language headings under zh-TW")
+	}
+	testLanguage(t, "zh-Hans")
+	cn := newTestApp()
+	cn.homeFile = a.homeFile
+	cn.restoreHome()
+	if len(cn.homeSections) != 1 {
+		t.Fatalf("legacy empty-language headings under zh-CN: got %d, want 1", len(cn.homeSections))
 	}
 }
 

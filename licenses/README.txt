@@ -14,5 +14,8 @@ golang.org/x/sys                  v0.49.0      golang.org_x_sys-LICENSE、-PATEN
 golang.org/x/text                 v0.43.0      golang.org_x_text-LICENSE、-PATENTS
 hls.js                            internal/player/web/hls.min.js   hls.js-LICENSE（Apache-2.0）
 OpenCC 繁简字表                   internal/lyrics/TSCharacters.txt OpenCC-LICENSE（Apache-2.0）
+OpenCC 简繁词表                   internal/lyrics/STPhrases.txt    OpenCC-LICENSE（Apache-2.0）
+OpenCC 简繁字表                   internal/lyrics/STCharacters.txt OpenCC-LICENSE（Apache-2.0）
+OpenCC 台湾异体字表               internal/lyrics/TWVariants.txt   OpenCC-LICENSE（Apache-2.0）
 
 go.mod 里的模块有变动时，这里要跟着改。

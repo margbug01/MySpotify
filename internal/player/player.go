@@ -126,6 +126,10 @@ type Player struct {
 
 	lyrics       []lyrics.Line
 	lyricsLoaded bool
+	lyricsGen    int // counts lyrics loads/reloads, to drop stale fetches after cue or language change
+	// lyricsTW is whether the lyrics were last fetched to be written in
+	// Traditional Chinese: ReloadLyrics fetches again only when that changes.
+	lyricsTW bool
 	// ahead are the lyrics of the track after this one, fetched as this
 	// one plays: LRCLIB, busy, can take seconds.
 	ahead struct {
@@ -157,7 +161,7 @@ type Player struct {
 }
 
 func New(post func(func())) *Player {
-	p := &Player{post: post, at: -1, volume: 0.8}
+	p := &Player{post: post, at: -1, volume: 0.8, lyricsTW: traditional()}
 	// The media keys, and the controls of Control Center.
 	mygo.NowPlaying.OnCommand(func(cmd mygo.MediaCommand, pos time.Duration) {
 		switch cmd {
@@ -1518,22 +1522,45 @@ func (p *Player) cue(at int, play bool, from time.Duration) (int, spotify.Track)
 		}
 	}()
 
+	p.lyricsGen++
 	if p.ahead.id == t.ID && len(p.ahead.lines) > 0 {
 		p.lyrics, p.lyricsLoaded = p.ahead.lines, true
 		p.lyricsAhead()
 		return gen, t
 	}
+	p.fetchLyrics(gen, p.lyricsGen, t)
+	return gen, t
+}
+
+func (p *Player) fetchLyrics(gen, lgen int, t spotify.Track) {
 	go func() {
 		lines := lyricsOf(t)
 		p.post(func() {
-			if gen == p.gen {
+			if gen == p.gen && lgen == p.lyricsGen {
 				p.lyrics = lines
 				p.lyricsLoaded = true
 				p.lyricsAhead()
 			}
 		})
 	}()
-	return gen, t
+}
+
+// ReloadLyrics fetches this track's lyrics again, and drops the next one's,
+// when the interface language changes whether they are written in
+// Traditional Chinese; other switches leave them as they are.
+func (p *Player) ReloadLyrics() {
+	tw := traditional()
+	if tw == p.lyricsTW {
+		return
+	}
+	p.lyricsTW = tw
+	p.lyricsGen++
+	p.ahead.id, p.ahead.lines = "", nil
+	if p.track == nil || p.track.ID == "" {
+		return
+	}
+	p.lyrics, p.lyricsLoaded = nil, false
+	p.fetchLyrics(p.gen, p.lyricsGen, *p.track)
 }
 
 // lyricsAhead fetches the lyrics of the track after this one, once this
@@ -1546,11 +1573,12 @@ func (p *Player) lyricsAhead() {
 	if next.Episode || p.ahead.id == next.ID {
 		return
 	}
+	lgen := p.lyricsGen
 	p.ahead.id, p.ahead.lines = next.ID, nil
 	go func() {
 		lines := lyricsOf(next)
 		p.post(func() {
-			if p.ahead.id == next.ID {
+			if lgen == p.lyricsGen && p.ahead.id == next.ID {
 				p.ahead.lines = lines
 			}
 		})
