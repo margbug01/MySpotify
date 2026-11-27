@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/egoist/mygo"
+
 	"vinyl/internal/spotify"
 )
 
@@ -35,6 +37,7 @@ func licensed(t *testing.T, licence http.HandlerFunc) (chan func(), *Player, *[]
 		licenseHost, resolve, afterFunc = host, res, after
 		spotify.SetIdentity(spotify.Identity{})
 		spotify.Renew = nil
+		mygo.NowPlaying.Clear()
 	})
 
 	ch := make(chan func(), 16)

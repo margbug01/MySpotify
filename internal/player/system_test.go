@@ -127,6 +127,7 @@ func TestSystemSeeks(t *testing.T) {
 func TestPageShowsWhatPlays(t *testing.T) {
 	defer func(was bool) { pageNowPlaying = was }(pageNowPlaying)
 	pageNowPlaying = true
+	mygo.NowPlaying.Clear()
 	oldVisibility := nativeNowPlayingVisible
 	defer func() { nativeNowPlayingVisible = oldVisibility }()
 	var visible bool
