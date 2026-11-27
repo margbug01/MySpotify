@@ -8,7 +8,7 @@
 
 A native interface, lyrics that scroll, music videos and video podcasts. Free accounts play whole songs, and you can look around before signing in.
 
-**English** · [简体中文](README.zh-CN.md) · [Italiano](README.it.md)
+**English** · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [日本語](README.ja.md) · [Italiano](README.it.md)
 
 [![Test](https://github.com/margbug01/MySpotify/actions/workflows/test.yml/badge.svg)](https://github.com/margbug01/MySpotify/actions/workflows/test.yml) [![Latest release](https://img.shields.io/github/v/release/margbug01/MySpotify?style=flat-square&label=latest&color=ef3b45)](https://github.com/margbug01/MySpotify/releases/latest) ![Windows 10/11](https://img.shields.io/badge/Windows-10%20%7C%2011-3a6ea5?style=flat-square) ![macOS Apple silicon](https://img.shields.io/badge/macOS-Apple%20silicon-555555?style=flat-square) ![AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-c2410c?style=flat-square)
 
@@ -24,7 +24,7 @@ Experimental Linux `.deb` / `.tar.gz` builds are available. On amd64, Qt WebEngi
 > MySpotify is a personal project. It has no connection to Spotify and isn't endorsed by it. It uses the internal interfaces of Spotify's web player rather than a public API, and Spotify can change them at any time. Using Spotify this way likely goes against its terms of use and could get your account restricted. Use only your own account, at your own risk. See [Risks and limits](#risks-and-limits).
 
 > [!NOTE]
-> From v0.4.17, the interface supports Simplified Chinese and English, and from v0.4.23 Italian. Choose System, 简体中文, English or Italiano under Settings → Appearance → Language; the choice is saved and applies immediately. Song titles, artist names and lyrics keep their original content.
+> From v0.4.17, the interface supports Simplified Chinese and English, from v0.4.23 Italian, and from v0.4.45 Traditional Chinese and Japanese. Choose System, 简体中文, 繁體中文, English, Italiano or 日本語 under Settings → Appearance → Language; the choice is saved and applies immediately. Song titles, artist names and lyrics keep their original content, except that Chinese lyrics and translations show in traditional characters when the interface is in Traditional Chinese.
 
 ## Why use it
 

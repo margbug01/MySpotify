@@ -8,7 +8,7 @@
 
 原生界面，会滚动的歌词，MV 和视频播客。免费账号也能整首播放，不登录也能先逛。
 
-[English](README.md) · **简体中文** · [Italiano](README.it.md)
+[English](README.md) · **简体中文** · [繁體中文](README.zh-TW.md) · [日本語](README.ja.md) · [Italiano](README.it.md)
 
 [![Test](https://github.com/margbug01/MySpotify/actions/workflows/test.yml/badge.svg)](https://github.com/margbug01/MySpotify/actions/workflows/test.yml) [![最新版本](https://img.shields.io/github/v/release/margbug01/MySpotify?style=flat-square&label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC&color=ef3b45)](https://github.com/margbug01/MySpotify/releases/latest) ![Windows 10/11](https://img.shields.io/badge/Windows-10%20%7C%2011-3a6ea5?style=flat-square) ![macOS Apple 芯片](https://img.shields.io/badge/macOS-Apple%20%E8%8A%AF%E7%89%87-555555?style=flat-square) ![AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-c2410c?style=flat-square)
 
@@ -74,7 +74,7 @@ Linux 提供实验性 `.deb` / `.tar.gz` 构建。amd64 默认使用 Qt WebEngin
 
 ## 开始使用
 
-v0.4.17 起支持简体中文和英语，v0.4.23 起加入意大利语：在「设置 › 外观 › 语言」选择跟随系统、简体中文、English 或 Italiano，即时切换并记住选择。歌曲名、歌手名和歌词内容保持原样。
+v0.4.17 起支持简体中文和英语，v0.4.23 起加入意大利语，v0.4.45 起加入繁体中文和日语：在「设置 › 外观 › 语言」选择跟随系统、简体中文、繁體中文、English、Italiano 或日本語，即时切换并记住选择。歌曲名、歌手名和歌词内容保持原样；界面是繁体中文时，中文歌词和翻译显示成繁体字。
 
 ### Windows
 

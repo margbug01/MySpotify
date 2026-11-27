@@ -8,7 +8,7 @@
 - **Platforms**: Windows 10/11 (amd64, WebView2 Widevine), macOS Apple Silicon (arm64, WebKit FairPlay), experimental macOS Intel (amd64), experimental Linux amd64 (`.deb`/`.tar.gz`, Qt WebEngine)
 - **Current Version**: v0.4.41
 - **License**: AGPL-3.0
-- **Languages**: Simplified Chinese (`zh-CN`), Traditional Chinese (`zh-TW` / `zh-Hant`), English (`en`), Italian (`it`)
+- **Languages**: Simplified Chinese (`zh-CN`), Traditional Chinese (`zh-TW` / `zh-Hant`), English (`en`), Italian (`it`), Japanese (`ja`)
 - **Privacy**: Zero telemetry or analytics; session renewal cookies are encrypted locally with Windows DPAPI or macOS Keychain
 - **DRM & Compliance**: Does not crack DRM (uses OS Widevine/FairPlay modules). Unofficial client using Spotify Web Player internal interfaces; violates Spotify ToS and carries account restriction risk.
 

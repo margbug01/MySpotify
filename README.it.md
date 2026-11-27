@@ -8,7 +8,7 @@
 
 Interfaccia nativa, testi che scorrono, video musicali e podcast video. Gli account gratuiti riproducono i brani per intero e puoi dare un'occhiata anche senza accedere.
 
-[English](README.md) · [简体中文](README.zh-CN.md) · **Italiano**
+[English](README.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [日本語](README.ja.md) · **Italiano**
 
 [![Test](https://github.com/margbug01/MySpotify/actions/workflows/test.yml/badge.svg)](https://github.com/margbug01/MySpotify/actions/workflows/test.yml) [![Ultima versione](https://img.shields.io/github/v/release/margbug01/MySpotify?style=flat-square&label=ultima&color=ef3b45)](https://github.com/margbug01/MySpotify/releases/latest) ![Windows 10/11](https://img.shields.io/badge/Windows-10%20%7C%2011-3a6ea5?style=flat-square) ![macOS Apple silicon](https://img.shields.io/badge/macOS-Apple%20silicon-555555?style=flat-square) ![AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-c2410c?style=flat-square)
 
@@ -24,7 +24,7 @@ Sono disponibili build sperimentali per Linux (`.deb` / `.tar.gz`). Su amd64 il 
 > MySpotify è un progetto personale. Non ha alcun legame con Spotify e non è approvato da Spotify. Usa le interfacce interne del web player di Spotify, non un'API pubblica, e Spotify può cambiarle in qualsiasi momento. Usare Spotify in questo modo molto probabilmente va contro i suoi termini d'uso e può far limitare il tuo account. Usa solo il tuo account, a tuo rischio. Vedi [Rischi e limiti](#rischi-e-limiti).
 
 > [!NOTE]
-> Dalla v0.4.17 l'interfaccia è disponibile in cinese semplificato e inglese, dalla v0.4.23 anche in italiano. In Impostazioni › Aspetto › Lingua scegli Sistema, 简体中文, English o Italiano; la scelta viene salvata e si applica subito. Titoli dei brani, nomi degli artisti e testi restano com'erano.
+> Dalla v0.4.17 l'interfaccia è disponibile in cinese semplificato e inglese, dalla v0.4.23 anche in italiano e dalla v0.4.45 in cinese tradizionale e giapponese. In Impostazioni › Aspetto › Lingua scegli Sistema, 简体中文, 繁體中文, English, Italiano o 日本語; la scelta viene salvata e si applica subito. Titoli dei brani, nomi degli artisti e testi restano com'erano; con l'interfaccia in cinese tradizionale, i testi e le traduzioni in cinese appaiono in caratteri tradizionali.
 
 ## Perché usarla
 
