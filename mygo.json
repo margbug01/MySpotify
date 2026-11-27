@@ -9,7 +9,7 @@
     "icon": "AppIcon.icon",
     "infoPlist": {
       "CFBundleDevelopmentRegion": "zh_CN",
-      "CFBundleLocalizations": ["zh-Hans", "zh-Hant", "en", "it"],
+      "CFBundleLocalizations": ["zh-Hans", "zh-Hant", "en", "it", "ja"],
       "NSLocalNetworkUsageDescription": "在「播放设备」里找到同一网络中的 Google Cast 音箱。",
       "NSBonjourServices": ["_googlecast._tcp"],
       "NSAppleScriptEnabled": true,

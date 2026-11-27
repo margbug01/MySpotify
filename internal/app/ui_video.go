@@ -511,8 +511,12 @@ func lyricsName(tr *spotify.Track) string {
 	return l10n.T("歌词")
 }
 
-// mvAction is verb and name together: a space between Chinese and MV.
+// mvAction is verb and name together: a space between Chinese and MV,
+// and in Japanese the name first, as MVを再生.
 func mvAction(verb, name string) string {
+	if l10n.Language() == l10n.LangJA {
+		return name + "を" + verb
+	}
 	if name == "MV" || !l10n.Chinese() {
 		return verb + " " + name
 	}

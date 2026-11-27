@@ -37,6 +37,7 @@ const (
 	LangZHTW = "zh-TW"
 	LangEN   = "en"
 	LangIT   = "it"
+	LangJA   = "ja"
 )
 
 // Language is also used for Spotify's localized headings.
@@ -47,6 +48,8 @@ func Language() string {
 		return LangEN
 	case "it":
 		return LangIT
+	case "ja":
+		return LangJA
 	case "zh":
 		if t, err := language.Parse(loc); err == nil {
 			if script, _ := t.Script(); script.String() == "Hant" {

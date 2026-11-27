@@ -2,6 +2,7 @@ package app
 
 import (
 	_ "embed"
+	"fmt"
 	"log"
 
 	"github.com/egoist/mygo"
@@ -40,7 +41,7 @@ func (a *app) newTray() *mygo.Tray {
 		}
 		idle := a.pl.Current() == nil
 		items := []*mygo.MenuItem{
-			{Label: l10n.T("打开 ") + name, Click: run(a.showMain)},
+			{Label: fmt.Sprintf(l10n.T("打开 %s"), name), Click: run(a.showMain)},
 			mygo.Separator(),
 			{Label: toggle, Disabled: idle, Click: run(func() { a.pl.TogglePlay() })},
 			{Label: l10n.T("上一首"), Disabled: idle, Click: run(func() { a.pl.Prev() })},
@@ -50,7 +51,7 @@ func (a *app) newTray() *mygo.Tray {
 		if desk := a.deskMenu(run); desk != nil {
 			items = append(append(items, desk...), mygo.Separator())
 		}
-		items = append(items, &mygo.MenuItem{Label: l10n.T("退出 ") + name, Click: run(mygo.App.Quit)})
+		items = append(items, &mygo.MenuItem{Label: fmt.Sprintf(l10n.T("退出 %s"), name), Click: run(mygo.App.Quit)})
 		t.SetMenu(mygo.NewMenu(items))
 		// Without a menu, a click reaches OnClick.
 		defer t.SetMenu(nil)

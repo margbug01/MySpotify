@@ -17,15 +17,19 @@ import (
 
 const sidebarWidth = 232
 
-var appFont = func() string {
-	if runtime.GOOS == "darwin" {
+// appFont is the interface's font. Han characters are in YaHei: left to
+// the system, they fall back by the language, and outside Chinese ones a
+// word mixes a Japanese font's with YaHei's, of other weights. A Japanese
+// interface draws them in Yu Gothic, as YaHei's are Chinese shapes.
+func appFont() string {
+	switch {
+	case runtime.GOOS == "darwin":
 		return "system-ui"
+	case l10n.Language() == l10n.LangJA:
+		return "Yu Gothic UI, Meiryo UI, system-ui"
 	}
-	// Han characters in YaHei: left to the system, they fall back by the
-	// language, and outside Chinese ones a word mixes a Japanese font's
-	// with YaHei's, of other weights.
 	return "MiSans, system-ui, Microsoft YaHei UI"
-}()
+}
 
 func (a *app) view(c *ui.Context) {
 	t := *c.Theme()
@@ -33,7 +37,7 @@ func (a *app) view(c *ui.Context) {
 	p := a.pal
 	t.Accent, t.AccentText = p.accent, p.onAccent
 	t.Selection = p.accent.Alpha(0.3)
-	t.Font = appFont
+	t.Font = appFont()
 	c.SetTheme(&t)
 
 	a.shortcuts(c)

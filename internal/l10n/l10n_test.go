@@ -14,7 +14,7 @@ import (
 
 // Catalogs must parse and keep every source message and formatting argument.
 func TestCatalogArguments(t *testing.T) {
-	for _, lang := range []string{"zh-Hant", "en", "it"} {
+	for _, lang := range []string{"zh-Hant", "en", "it", "ja"} {
 		t.Run(lang, func(t *testing.T) { testCatalog(t, lang) })
 	}
 }
@@ -135,6 +135,8 @@ func TestLanguageAndChinese(t *testing.T) {
 		{"en", "en", false, true},
 		{"en-US", "en", false, true},
 		{"it", "it", false, false},
+		{"ja", "ja", false, false},
+		{"ja-JP", "ja", false, false},
 		{"", "zh-CN", true, false},
 	} {
 		t.Setenv("MYGO_LOCALE", tc.locale)

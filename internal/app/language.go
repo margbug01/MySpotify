@@ -20,6 +20,7 @@ var languageOptions = []struct {
 	{"zh-Hant", "繁體中文"},
 	{"en", "English"},
 	{"it", "Italiano"},
+	{"ja", "日本語"},
 }
 
 func supportedLanguage(tag string) bool {

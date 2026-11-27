@@ -157,6 +157,27 @@ func TestEnglishFormatting(t *testing.T) {
 	}
 }
 
+// Japanese dates and counts read as Japanese, media actions put the name
+// before the verb, and artists are joined with 、.
+func TestJapaneseFormatting(t *testing.T) {
+	testLanguage(t, "ja")
+	day := time.Date(2026, time.November, 10, 12, 0, 0, 0, time.UTC)
+	for _, tc := range []struct{ got, want string }{
+		{shortDate(day, false), "11月10日"}, {shortDate(day, true), "2026年11月10日"},
+		{dailyMonth(day), "11月 · 火曜日"}, {dailyDate(day), "11月10日 火曜日"},
+		{plays(12000), "1.2万"}, {plays(120000000), "1.2億"},
+		{mvAction("再生", "MV"), "MVを再生"}, {mvAction("閉じる", "動画"), "動画を閉じる"},
+		{dailyArtists([]spotify.Track{
+			{Artists: []spotify.Artist{{Name: "米津玄師"}}},
+			{Artists: []spotify.Artist{{Name: "YOASOBI"}}},
+		}), "米津玄師、YOASOBI など · 2 曲"},
+	} {
+		if tc.got != tc.want {
+			t.Errorf("got %q, want %q", tc.got, tc.want)
+		}
+	}
+}
+
 // A cached home in another language keeps account data but cannot restore its old headings.
 func TestHomeCacheLanguage(t *testing.T) {
 	testLanguage(t, "zh-Hans")
@@ -244,7 +265,7 @@ func TestEnglishFrames(t *testing.T) {
 	if dir == "" {
 		t.Skip()
 	}
-	for _, lang := range []string{"en", "it"} {
+	for _, lang := range []string{"en", "it", "zh-Hant", "ja"} {
 		t.Run(lang, func(t *testing.T) { languageFrames(t, dir, lang) })
 	}
 }
