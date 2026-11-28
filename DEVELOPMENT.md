@@ -20,7 +20,7 @@ MySpotify 的实现细节、构建、发版和调试。普通使用看 [README](
 
 ## 界面语言
 
-文案在 `internal/l10n/zh-Hans.json`、`zh-Hant.json`、`en.json` 和 `it.json`，通过 MyGo 的 `i18n.Catalog` 读取；应用自己写的文案用 `l10n.T`，带数量的消息用 `l10n.Count` 的 ICU 单复数。歌曲名、用户歌单名等内容不要送进翻译。语言选择保存在设置中，交给 `mygo.App.SetLocale` 应用；`MYGO_LOCALE=en` 可临时预览英文，不改保存的语言。
+文案在 `internal/l10n/zh-Hans.json`、`zh-Hant.json`、`en.json`、`it.json` 和 `ja.json`，通过 MyGo 的 `i18n.Catalog` 读取；应用自己写的文案用 `l10n.T`，带数量的消息用 `l10n.Count` 的 ICU 单复数。歌曲名、用户歌单名等内容不要送进翻译。语言选择保存在设置中，交给 `mygo.App.SetLocale` 应用；`MYGO_LOCALE=en` 可临时预览英文，不改保存的语言。
 
 新增或修改文案时同步所有目录并保留格式参数；加新语言时还要加进设置里的语言选项、`settings.go` 的校验和 `mygo.json` 的 `CFBundleLocalizations`。`go test ./internal/l10n` 检查参数、数量格式，并对照 `zh-Hans.json` 校验 `zh-Hant.json` 的用语与标点（术语黑名单在 `internal/l10n/testdata/zh_hant_blacklist.json`）；`go test ./internal/app -run TestLanguageSelection -count=5` 验证语言选择；`NM_FRAMES=<目录> go test ./internal/app -run TestEnglishFrames` 保存普通与最窄窗口的实际渲染。
 
@@ -77,7 +77,7 @@ Linux 附件包括 `.deb`、`.tar.gz`、`update-linux-amd64.json` 及 `install-l
 - `NM_SHOTS=<目录>`：走一遍首页、排行榜、歌单、播放页、待播清单、搜索，每步截图（静音）。
 - `NM_SHOTS=<目录> NM_SCENE=once`：静音放排行榜里的一首歌 10 秒（`NM_PLAY=<歌单/专辑/播客 URI>` 换成放那张列表的第一首），只要一次许可证，打印播放状态和缓存大小。验证真播放先用它。加 `NM_VIDEO=1` 放有视频的那首的视频（MV、视频播客），停在正在播放页。加 `NM_RATE=2` 让播客按这个倍速放（外部托管的能放，如 `spotify:show:2MAi0BvDc6GTFvKFPXnkCL`）。
 - `NM_SHOTS=<目录> NM_SCENE=play`：完整验证播放（起播、拖到结尾接下一首、暂停继续、下一首），要好几次许可证，别连着跑。
-- `NM_SHOTS=<目录> NM_SCENE=readme`：用真数据截 README 里的这些图，账号名显示成 Alex（首页标题里的也换），不播放；再跑 `python tools/readme_shots.py <目录> docs/screenshots` 出圆角投影的 WebP。这个场景退出时会写设置和播放会话，想不碰自己的就把 `APPDATA` 指到别的目录再跑。
+- `NM_SHOTS=<目录> NM_SCENE=readme`：用真数据截 README 里的这些图，账号名显示成 Alex（首页标题和自己歌单卡片上的也换），不播放；再跑 `python tools/readme_shots.py <目录> docs/screenshots`（其他语言输出到 `docs/screenshots/<语言>`）出圆角投影的 WebP。在 Mac 上，这个场景不用系统的侧边栏材质（截图截不到它，会变成黑底），侧边栏和 Windows 一样涂上底色。这个场景退出时会写设置和播放会话，想不碰自己的就把 `APPDATA` 指到别的目录再跑（Mac 上先备份 `~/Library/Application Support/Vinyl`）。首页上 Daily Mix 的简介，Spotify 按语言分开存，只在用那种语言打开那个歌单时才生成；还没生成的语言，首页会拿别的语言的顶上。换语言截图前，先用那个语言把首页上的 Daily Mix 打开一遍。
 - `NM_SHOTS=<目录> NM_SCENE=connect`：Connect 注册探针，不放音频，结束后注销测试设备。
 - `NM_SHOTS=<目录> NM_SCENE=identity`：把当前登录身份导出成 `identity.json`，给下面的 LIVE 测试用。
 - `NM_SHOTS=<目录> NM_SCENE=renewal`：只验证登录迁移和续期，不导出身份、不请求媒体许可证；输出 `identity ready true` 后退出。
@@ -89,4 +89,4 @@ Linux 附件包括 `.deb`、`.tar.gz`、`update-linux-amd64.json` 及 `install-l
 
 ## 官网
 
-官网从 `main` 分支的 `docs/` 发布，不需要构建。`docs/index.html` 是中文，`docs/en.html` 是英文，两页结构一样，共用 `docs/style.css` 和 `docs/site.js`。改功能说明时同步改页面和各语言 README（`README.md`、`README.zh-CN.md`、`README.it.md`）。
+官网从 `main` 分支的 `docs/` 发布，不需要构建。`docs/index.html` 是中文，`docs/en.html` 是英文，两页结构一样，共用 `docs/style.css` 和 `docs/site.js`。改功能说明时同步改页面和各语言 README（`README.md`、`README.zh-CN.md`、`README.zh-TW.md`、`README.ja.md`、`README.it.md`）。

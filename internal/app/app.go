@@ -531,9 +531,11 @@ func Run() error {
 
 // sidebarVibrancy is the material behind the sidebar: macOS's. Windows'
 // stays light under a dark theme, the sidebar's text unreadable on it, so
-// the sidebar is painted there.
+// the sidebar is painted there. So it is for the README's screenshots too:
+// a capture holds only what the app paints, the material none of it, and
+// the sidebar would come out black.
 func sidebarVibrancy() mygo.Vibrancy {
-	if runtime.GOOS == "darwin" {
+	if runtime.GOOS == "darwin" && os.Getenv("NM_SCENE") != "readme" {
 		return mygo.VibrancySidebar
 	}
 	return mygo.VibrancyNone

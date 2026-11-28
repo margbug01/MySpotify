@@ -30,14 +30,21 @@ func readmeScene(a *app, shot func(string, *mygo.Window), step func(time.Duratio
 		time.Sleep(time.Second)
 	}
 	// Spotify names the listener in some of the home's titles too ("根据 …
-	// 的喜好推荐"): Alex there as well, again before each page, the home
-	// being fetched again meanwhile.
+	// 的喜好推荐"), and under their own playlists' cards, as recently
+	// played: Alex there as well, again before each page, the home being
+	// fetched again meanwhile.
 	var real string
 	mygo.RunOnMain(func() { real = a.profile.Nickname })
 	alias := func() {
+		if real == "" {
+			return
+		}
 		for i := range a.homeSections {
-			if real != "" {
-				a.homeSections[i].Title = strings.ReplaceAll(a.homeSections[i].Title, real, "Alex")
+			a.homeSections[i].Title = strings.ReplaceAll(a.homeSections[i].Title, real, "Alex")
+			for _, it := range a.homeSections[i].Items {
+				if it.List != nil && it.List.Creator.Nickname == real {
+					it.List.Creator.Nickname = "Alex"
+				}
 			}
 		}
 	}
