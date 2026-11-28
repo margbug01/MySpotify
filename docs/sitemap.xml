@@ -30,6 +30,7 @@
     <lastmod>2026-11-23</lastmod>
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://margbug01.github.io/MySpotify/desktop-lyrics.html"/>
     <xhtml:link rel="alternate" hreflang="en" href="https://margbug01.github.io/MySpotify/desktop-lyrics-en.html"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://margbug01.github.io/MySpotify/desktop-lyrics-it.html"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://margbug01.github.io/MySpotify/desktop-lyrics-en.html"/>
   </url>
   <url>
@@ -37,6 +38,7 @@
     <lastmod>2026-11-23</lastmod>
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://margbug01.github.io/MySpotify/desktop-lyrics.html"/>
     <xhtml:link rel="alternate" hreflang="en" href="https://margbug01.github.io/MySpotify/desktop-lyrics-en.html"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://margbug01.github.io/MySpotify/desktop-lyrics-it.html"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://margbug01.github.io/MySpotify/desktop-lyrics-en.html"/>
   </url>
   <url>
@@ -44,6 +46,7 @@
     <lastmod>2026-11-23</lastmod>
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://margbug01.github.io/MySpotify/compare.html"/>
     <xhtml:link rel="alternate" hreflang="en" href="https://margbug01.github.io/MySpotify/compare-en.html"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://margbug01.github.io/MySpotify/compare-it.html"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://margbug01.github.io/MySpotify/compare-en.html"/>
   </url>
   <url>
@@ -51,6 +54,23 @@
     <lastmod>2026-11-23</lastmod>
     <xhtml:link rel="alternate" hreflang="zh-CN" href="https://margbug01.github.io/MySpotify/compare.html"/>
     <xhtml:link rel="alternate" hreflang="en" href="https://margbug01.github.io/MySpotify/compare-en.html"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://margbug01.github.io/MySpotify/compare-it.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://margbug01.github.io/MySpotify/compare-en.html"/>
+  </url>
+  <url>
+    <loc>https://margbug01.github.io/MySpotify/desktop-lyrics-it.html</loc>
+    <lastmod>2026-11-23</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://margbug01.github.io/MySpotify/desktop-lyrics.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://margbug01.github.io/MySpotify/desktop-lyrics-en.html"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://margbug01.github.io/MySpotify/desktop-lyrics-it.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://margbug01.github.io/MySpotify/desktop-lyrics-en.html"/>
+  </url>
+  <url>
+    <loc>https://margbug01.github.io/MySpotify/compare-it.html</loc>
+    <lastmod>2026-11-23</lastmod>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://margbug01.github.io/MySpotify/compare.html"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://margbug01.github.io/MySpotify/compare-en.html"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://margbug01.github.io/MySpotify/compare-it.html"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://margbug01.github.io/MySpotify/compare-en.html"/>
   </url>
 </urlset>

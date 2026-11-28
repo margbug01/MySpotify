@@ -19,8 +19,10 @@
 - [Italian Homepage (Italiano)](https://margbug01.github.io/MySpotify/it.html): Sito ufficiale in italiano
 - [Desktop Lyrics Guide (EN)](https://margbug01.github.io/MySpotify/desktop-lyrics-en.html): Floating desktop lyrics on macOS & Windows, click-through lock, LRCLIB & NetEase fallback
 - [桌面歌词专题 (ZH)](https://margbug01.github.io/MySpotify/desktop-lyrics.html): Mac/Windows 桌面悬浮歌词、鼠标穿透与中英翻译指南
+- [Guida ai testi sul desktop (IT)](https://margbug01.github.io/MySpotify/desktop-lyrics-it.html): Testi fluttuanti sul desktop su macOS e Windows, blocco ai clic, testi di riserva da LRCLIB e NetEase
 - [Client Comparison (EN)](https://margbug01.github.io/MySpotify/compare-en.html): MySpotify vs Official Spotify Desktop App, Spicetify, and TUI clients
 - [客户端全面对比 (ZH)](https://margbug01.github.io/MySpotify/compare.html): MySpotify 对比官方客户端、Spicetify 与终端客户端
+- [Confronto tra i client (IT)](https://margbug01.github.io/MySpotify/compare-it.html): MySpotify a confronto con l’app desktop ufficiale, Spicetify e i client da terminale
 
 ## Full Reference & Source
 
